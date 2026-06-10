@@ -1,0 +1,42 @@
+{{- if .Values.ingress.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "interop.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "interop.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.ingress.tls }}
+  tls:
+    {{- toYaml .Values.ingress.tls | nindent 4 }}
+  {{- end }}
+  rules:
+    {{- range .Values.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                {{- if eq .service "backend" }}
+                name: {{ include "interop.backend.serviceName" $ }}
+                port:
+                  number: {{ $.Values.service.backend.port }}
+                {{- else }}
+                name: {{ include "interop.frontend.serviceName" $ }}
+                port:
+                  number: {{ $.Values.service.frontend.port }}
+                {{- end }}
+          {{- end }}
+    {{- end }}
+{{- end }}

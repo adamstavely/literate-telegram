@@ -1,0 +1,132 @@
+{{- if .Values.elasticsearch.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "interop.fullname" . }}-elasticsearch
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "interop.labels" . | nindent 4 }}
+    app.kubernetes.io/component: elasticsearch
+spec:
+  serviceName: {{ include "interop.fullname" . }}-elasticsearch-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "interop.elasticsearch.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "interop.elasticsearch.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: elasticsearch
+    spec:
+      {{- include "interop.imagePullSecrets" . | nindent 6 }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      initContainers:
+        # Ensure the data directory is writable by the elasticsearch user (uid 1000)
+        - name: fix-permissions
+          image: busybox:1.36
+          command: ["sh", "-c", "chown -R 1000:1000 /usr/share/elasticsearch/data"]
+          securityContext:
+            runAsNonRoot: false
+            runAsUser: 0
+          volumeMounts:
+            - name: es-data
+              mountPath: /usr/share/elasticsearch/data
+        # vm.max_map_count must be >= 262144 for Elasticsearch
+        - name: increase-vm-max-map
+          image: busybox:1.36
+          command: ["sysctl", "-w", "vm.max_map_count=262144"]
+          securityContext:
+            runAsNonRoot: false
+            runAsUser: 0
+            privileged: true
+      containers:
+        - name: elasticsearch
+          image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - name: http
+              containerPort: 9200
+              protocol: TCP
+            - name: transport
+              containerPort: 9300
+              protocol: TCP
+          env:
+            - name: discovery.type
+              value: single-node
+            - name: xpack.security.enabled
+              value: "true"
+            - name: xpack.security.http.ssl.enabled
+              value: "false"
+            - name: cluster.name
+              value: interop-cluster
+            - name: node.name
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: ES_JAVA_OPTS
+              value: {{ .Values.elasticsearch.javaOpts | default "-Xms512m -Xmx512m" | quote }}
+            - name: ELASTIC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.backend.envSecret }}
+                  key: ES_PASSWORD
+            - name: bootstrap.memory_lock
+              value: "false"
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - |
+                  curl -sf -u elastic:${ELASTIC_PASSWORD} \
+                    http://localhost:9200/_cluster/health \
+                    | grep -qE '"status":"(green|yellow)"'
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            failureThreshold: 10
+            timeoutSeconds: 10
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - |
+                  curl -sf -u elastic:${ELASTIC_PASSWORD} \
+                    http://localhost:9200/_cluster/health \
+                    | grep -qE '"status":"(green|yellow)"'
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 5
+            timeoutSeconds: 10
+          resources:
+            {{- toYaml .Values.elasticsearch.resources | nindent 12 }}
+          volumeMounts:
+            - name: es-data
+              mountPath: /usr/share/elasticsearch/data
+  volumeClaimTemplates:
+    - metadata:
+        name: es-data
+        labels:
+          {{- include "interop.labels" . | nindent 10 }}
+          app.kubernetes.io/component: elasticsearch
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        {{- if .Values.elasticsearch.storageClassName }}
+        storageClassName: {{ .Values.elasticsearch.storageClassName }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.elasticsearch.storageSize | default "10Gi" }}
+{{- end }}

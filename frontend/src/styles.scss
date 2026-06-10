@@ -1,0 +1,165 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap');
+
+:root {
+  // Accent (Cobalt default, user-switchable)
+  --accent: #3b5bff;
+  --accent-wash: #eef0ff;
+  --accent-line: #c7ceff;
+  --accent-dark: #2a45e8;
+  --accent-rgb: 59, 91, 255;
+
+  // Neutral scale
+  --ink: #16181d;
+  --ink-2: #4a4f5e;
+  --ink-3: #8a8f9e;
+  --faint: #e8eaf0;
+  --line: #dde0e9;
+  --bg-2: #f4f5f8;
+  --bg-3: #fafbfc;
+  --bg: #ffffff;
+
+  // Semantic
+  --ok: #27ae60;
+  --ok-wash: #e8f8ef;
+  --warn: #e6a817;
+  --warn-wash: #fdf4e3;
+  --danger: #e53e3e;
+  --danger-wash: #fde8e8;
+
+  // Shadows
+  --shadow-sm: 0 1px 3px rgba(16,18,29,0.08), 0 1px 2px rgba(16,18,29,0.04);
+  --shadow-md: 0 4px 12px rgba(16,18,29,0.10), 0 2px 4px rgba(16,18,29,0.06);
+  --shadow-lg: 0 8px 24px rgba(16,18,29,0.12), 0 4px 8px rgba(16,18,29,0.06);
+
+  // Typography
+  --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono', 'Fira Code', 'Cascadia Code', monospace;
+
+  // Radii
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+
+  // Layout
+  --header-height: 56px;
+  --sidebar-width: 220px;
+  --container-width: 1160px;
+  --browse-container-width: 1480px;
+}
+
+[data-theme="dark"] {
+  --ink: #f0f2f8;
+  --ink-2: #a8adbf;
+  --ink-3: #636880;
+  --faint: #262a36;
+  --line: #2e3344;
+  --bg-2: #1a1d28;
+  --bg-3: #141720;
+  --bg: #0f1119;
+  --accent-wash: rgba(59,91,255,0.12);
+  --accent-line: rgba(59,91,255,0.3);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.2);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.5), 0 4px 8px rgba(0,0,0,0.2);
+}
+
+// Accent color variants
+[data-accent="iris"] { --accent: #6c63ff; --accent-dark: #5a52e0; --accent-rgb: 108,99,255; }
+[data-accent="emerald"] { --accent: #059669; --accent-dark: #047857; --accent-rgb: 5,150,105; }
+[data-accent="ember"] { --accent: #ea580c; --accent-dark: #c2410c; --accent-rgb: 234,88,12; }
+[data-accent="mono"] { --accent: #374151; --accent-dark: #1f2937; --accent-rgb: 55,65,81; }
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html { font-size: 16px; scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  background-image: radial-gradient(circle, rgba(var(--accent-rgb), 0.06) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+// Focus ring - WCAG compliant
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+// Skip to main content link - WCAG required
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 16px;
+  z-index: 9999;
+  padding: 8px 16px;
+  background: var(--accent);
+  color: white;
+  font-weight: 600;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  text-decoration: none;
+
+  &:focus {
+    top: 0;
+    outline: 2px solid white;
+    outline-offset: 2px;
+  }
+}
+
+// Typography
+h1, h2, h3, h4, h5, h6 {
+  line-height: 1.2;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  &:hover { text-decoration: underline; }
+}
+
+// Containers
+.container {
+  max-width: var(--container-width);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.container--browse {
+  max-width: var(--browse-container-width);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+// Scrollbar
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--ink-3); }
+
+// Utility
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.visually-hidden { @extend .sr-only; }

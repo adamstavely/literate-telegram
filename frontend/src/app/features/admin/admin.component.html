@@ -1,0 +1,280 @@
+<div class="admin-page">
+  <div class="container">
+    <!-- Header -->
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Moderation Queue</h1>
+        <p class="page-sub">Review and moderate pending registry submissions.</p>
+      </div>
+      <a routerLink="/admin/policy" class="policy-link">
+        <app-icon name="shield" [size]="14" aria-hidden="true"></app-icon>
+        Policy Settings
+      </a>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="kpi-grid" role="list" aria-label="Queue statistics">
+      <div class="kpi-card" role="listitem">
+        <div class="kpi-icon kpi-icon--pending">
+          <app-icon name="clock" [size]="20" aria-hidden="true"></app-icon>
+        </div>
+        <div>
+          <div class="kpi-num" aria-live="polite">{{ kpi().awaiting }}</div>
+          <div class="kpi-label">Awaiting review</div>
+        </div>
+      </div>
+      <div class="kpi-card" role="listitem">
+        <div class="kpi-icon kpi-icon--published">
+          <app-icon name="check" [size]="20" aria-hidden="true"></app-icon>
+        </div>
+        <div>
+          <div class="kpi-num" aria-live="polite">{{ kpi().published }}</div>
+          <div class="kpi-label">Published</div>
+        </div>
+      </div>
+      <div class="kpi-card" role="listitem">
+        <div class="kpi-icon kpi-icon--risk">
+          <app-icon name="warning" [size]="20" aria-hidden="true"></app-icon>
+        </div>
+        <div>
+          <div class="kpi-num" aria-live="polite">{{ kpi().highRisk }}</div>
+          <div class="kpi-label">High-risk entries</div>
+        </div>
+      </div>
+      <div class="kpi-card" role="listitem">
+        <div class="kpi-icon kpi-icon--total">
+          <app-icon name="list" [size]="20" aria-hidden="true"></app-icon>
+        </div>
+        <div>
+          <div class="kpi-num" aria-live="polite">{{ total() }}</div>
+          <div class="kpi-label">Total submissions</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-bar">
+      <!-- Status tabs -->
+      <div class="filter-tabs" role="tablist" aria-label="Filter by status">
+        @for (tab of statusTabs; track tab.value) {
+          <button
+            class="filter-tab"
+            [class.filter-tab--active]="statusFilter() === tab.value"
+            type="button"
+            role="tab"
+            [attr.aria-selected]="statusFilter() === tab.value"
+            (click)="setStatusFilter(tab.value)"
+          >{{ tab.label }}</button>
+        }
+      </div>
+
+      <!-- Type tabs -->
+      <div class="type-filter-wrap">
+        @for (tab of typeTabs; track tab.value) {
+          <button
+            class="type-tab"
+            [class.type-tab--active]="typeFilter() === tab.value"
+            type="button"
+            (click)="setTypeFilter(tab.value)"
+          >{{ tab.label }}</button>
+        }
+      </div>
+
+      <!-- Risk dropdown -->
+      <div class="risk-filter">
+        <label for="risk-select" class="sr-only">Filter by risk level</label>
+        <select
+          id="risk-select"
+          class="risk-select"
+          [value]="riskFilter()"
+          (change)="setRiskFilter($any($event.target).value)"
+        >
+          @for (opt of riskOptions; track opt.value) {
+            <option [value]="opt.value">{{ opt.label }}</option>
+          }
+        </select>
+      </div>
+    </div>
+
+    <!-- Results count -->
+    <div class="results-count" aria-live="polite">
+      @if (!loading()) { {{ total() }} submission{{ total() === 1 ? '' : 's' }} }
+    </div>
+
+    <!-- Error -->
+    @if (error()) {
+      <div class="error-state" role="alert">
+        <app-icon name="warning" [size]="16" aria-hidden="true"></app-icon>
+        {{ error() }}
+        <button type="button" (click)="loadPending()">Retry</button>
+      </div>
+    }
+
+    <!-- Loading skeletons -->
+    @if (loading()) {
+      <div aria-busy="true" aria-label="Loading submissions">
+        @for (n of [1,2,3,4,5]; track n) {
+          <div class="skeleton skeleton-row" aria-hidden="true"></div>
+        }
+      </div>
+    }
+
+    <!-- Queue table -->
+    @if (!loading() && !error()) {
+      @if (pending().length === 0) {
+        <div class="empty-state" role="status">
+          <app-icon name="check" [size]="40" aria-hidden="true"></app-icon>
+          <p>No submissions match the current filters.</p>
+        </div>
+      } @else {
+        <div class="queue-table" role="table" aria-label="Pending submissions">
+          <div class="queue-thead" role="rowgroup">
+            <div class="queue-header-row" role="row">
+              <span role="columnheader">Entry</span>
+              <span role="columnheader">Risk</span>
+              <span role="columnheader">Submitted</span>
+              <span role="columnheader">Flags</span>
+              <span role="columnheader">Actions</span>
+            </div>
+          </div>
+          <div class="queue-tbody" role="rowgroup">
+            @for (entry of pending(); track entry.id) {
+              <div class="queue-row" role="row" [class.queue-row--processing]="actionInProgress() === entry.id">
+                <!-- Entry info -->
+                <div class="queue-cell queue-cell--entry" role="cell">
+                  <span class="entry-type-badge" [attr.data-type]="entry.entry.type">{{ entry.entry.type }}</span>
+                  <div>
+                    <div class="entry-name">{{ entry.entry.name || 'Untitled' }}</div>
+                    <div class="entry-publisher">by {{ entry.entry.publisher }}</div>
+                  </div>
+                </div>
+
+                <!-- Risk bar -->
+                <div class="queue-cell" role="cell">
+                  <div class="risk-wrap">
+                    <div class="risk-bar-track" [attr.aria-label]="'Risk level: ' + entry.risk">
+                      <div
+                        class="risk-bar-fill"
+                        [class]="'risk-bar--' + entry.risk"
+                        [style.width]="riskBarWidth(entry.risk)"
+                      ></div>
+                    </div>
+                    <span class="risk-label" [class]="'risk-label--' + entry.risk">{{ entry.risk }}</span>
+                  </div>
+                </div>
+
+                <!-- Submitted date -->
+                <div class="queue-cell" role="cell">
+                  <div class="submitted-date">{{ entry.submittedAt | slice:0:10 }}</div>
+                  <div class="submitted-by">{{ entry.submittedBy }}</div>
+                </div>
+
+                <!-- Flags -->
+                <div class="queue-cell" role="cell">
+                  @if (entry.flags.length > 0) {
+                    <ul class="flag-list" aria-label="{{ entry.flags.length }} flags">
+                      @for (flag of entry.flags; track flag) {
+                        <li class="flag-item">
+                          <app-icon name="flag" [size]="11" aria-hidden="true"></app-icon>
+                          {{ flag }}
+                        </li>
+                      }
+                    </ul>
+                  } @else {
+                    <span class="no-flags">—</span>
+                  }
+                </div>
+
+                <!-- Actions -->
+                <div class="queue-cell queue-cell--actions" role="cell">
+                  @if (entry.status === 'pending') {
+                    <button
+                      class="action-btn action-btn--approve"
+                      type="button"
+                      [disabled]="actionInProgress() === entry.id"
+                      (click)="approve(entry)"
+                      [attr.aria-label]="'Approve ' + entry.entry.name"
+                    >
+                      <app-icon name="check" [size]="13" aria-hidden="true"></app-icon>
+                      Approve
+                    </button>
+                    <button
+                      class="action-btn action-btn--reject"
+                      type="button"
+                      [disabled]="actionInProgress() === entry.id"
+                      (click)="openRejectModal(entry)"
+                      [attr.aria-label]="'Reject ' + entry.entry.name"
+                    >
+                      <app-icon name="close" [size]="13" aria-hidden="true"></app-icon>
+                      Reject
+                    </button>
+                  } @else {
+                    <span class="status-badge" [class]="'status-badge--' + entry.status">{{ entry.status }}</span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    }
+  </div>
+</div>
+
+<!-- Reject Modal -->
+@if (rejectModalEntry()) {
+  <div class="modal-backdrop" role="dialog" aria-modal="true" [attr.aria-labelledby]="'reject-modal-title'">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="reject-modal-title">Reject submission</h2>
+        <button class="modal-close" type="button" (click)="closeRejectModal()" aria-label="Close dialog">
+          <app-icon name="close" [size]="16" aria-hidden="true"></app-icon>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p>Rejecting: <strong>{{ rejectModalEntry()!.entry.name }}</strong></p>
+        <label class="modal-label" for="reject-reason">
+          Reason for rejection <span aria-hidden="true">*</span>
+        </label>
+        <textarea
+          id="reject-reason"
+          class="modal-textarea"
+          rows="4"
+          placeholder="Describe why this submission is being rejected…"
+          [value]="rejectReason()"
+          (input)="rejectReason.set($any($event.target).value)"
+          aria-required="true"
+        ></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn modal-btn--cancel" type="button" (click)="closeRejectModal()">Cancel</button>
+        <button
+          class="modal-btn modal-btn--reject"
+          type="button"
+          [disabled]="!rejectReason().trim() || actionInProgress() !== null"
+          (click)="confirmReject()"
+        >
+          Confirm rejection
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Toast notifications -->
+<div class="toast-container" role="status" aria-live="polite" aria-label="Notifications">
+  @for (toast of toasts(); track toast.id) {
+    <div class="toast" [class]="'toast--' + toast.type">
+      <app-icon [name]="toast.type === 'success' ? 'check' : 'warning'" [size]="14" aria-hidden="true"></app-icon>
+      {{ toast.message }}
+      <button
+        class="toast-dismiss"
+        type="button"
+        (click)="dismissToast(toast.id)"
+        aria-label="Dismiss notification"
+      >
+        <app-icon name="close" [size]="12" aria-hidden="true"></app-icon>
+      </button>
+    </div>
+  }
+</div>

@@ -1,0 +1,69 @@
+<article
+  class="entry-card"
+  [class.entry-card--list]="viewMode === 'list'"
+  role="article"
+  [attr.aria-label]="entry.name + ' ' + entry.type + ' by ' + entry.publisher"
+  tabindex="0"
+  (click)="navigate()"
+  (keydown)="onKeydown($event)"
+>
+  <!-- Sensitivity badge top-right -->
+  <div class="sensitivity-badge">
+    <app-sensitivity-badge [level]="entry.sensitivity"></app-sensitivity-badge>
+  </div>
+
+  <!-- Card header -->
+  <div class="card-header">
+    <div class="card-logo" [attr.aria-hidden]="true">
+      <app-icon [name]="typeIcon" [size]="20"></app-icon>
+    </div>
+    <div class="card-title-row">
+      <div class="card-name">
+        <span class="card-name-text">{{ entry.name }}</span>
+        @if (entry.verified) {
+          <app-verified-mark></app-verified-mark>
+        }
+      </div>
+      <div class="card-publisher">{{ entry.publisher }}</div>
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <p class="card-summary">{{ entry.summary }}</p>
+
+  <!-- Footer -->
+  <div class="card-footer">
+    <div class="install-count" [attr.aria-label]="entry.installs + ' installs'">
+      <app-icon name="install" [size]="12"></app-icon>
+      <span>{{ formattedInstalls }}</span>
+      <app-sparkline [seed]="entry.id" [width]="52" [height]="20"></app-sparkline>
+    </div>
+
+    @if (entry.version) {
+      <span class="version-chip" [attr.aria-label]="'Version ' + entry.version">v{{ entry.version }}</span>
+    }
+
+    <!-- Type-specific chips -->
+    @if (serverTransports.length > 0) {
+      @for (transport of serverTransports; track transport) {
+        <span class="chip">{{ transport }}</span>
+      }
+    }
+
+    @if (agentModel) {
+      <span class="chip">{{ agentModel }}</span>
+    }
+
+    @if (apiStyle) {
+      <span class="chip">{{ apiStyle }}</span>
+    }
+
+    @if (skillTokens !== null) {
+      <span class="chip" [attr.aria-label]="skillTokens + ' tokens'">{{ skillTokens | number }}t</span>
+    }
+
+    @if (toolReadOnly === true) {
+      <span class="chip chip--readonly">read-only</span>
+    }
+  </div>
+</article>

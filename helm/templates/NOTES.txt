@@ -1,0 +1,94 @@
+Thank you for installing {{ .Chart.Name }} v{{ .Chart.AppVersion }}!
+
+=============================================================================
+ Interop AI Registry
+=============================================================================
+
+Release name : {{ .Release.Name }}
+Namespace    : {{ .Release.Namespace }}
+
+{{- if .Values.ingress.enabled }}
+
+Application URL:
+{{- range .Values.ingress.hosts }}
+  https://{{ .host }}
+{{- end }}
+
+{{- else }}
+
+To access the frontend, run:
+
+  kubectl port-forward -n {{ .Release.Namespace }} \
+    svc/{{ include "interop.frontend.serviceName" . }} 8080:80
+
+Then open http://localhost:8080
+
+{{- end }}
+
+-----------------------------------------------------------------------------
+ Backend API
+-----------------------------------------------------------------------------
+
+To test the health endpoint from inside the cluster:
+
+  kubectl run -it --rm debug --image=curlimages/curl --restart=Never \
+    -- curl http://{{ include "interop.backend.serviceName" . }}.{{ .Release.Namespace }}.svc.cluster.local:3000/api/health
+
+-----------------------------------------------------------------------------
+ Elasticsearch
+-----------------------------------------------------------------------------
+
+{{- if .Values.elasticsearch.enabled }}
+
+Elasticsearch is running as a StatefulSet inside the cluster.
+
+To check cluster health:
+
+  kubectl port-forward -n {{ .Release.Namespace }} \
+    svc/{{ include "interop.elasticsearch.serviceName" . }} 9200:9200
+
+  curl http://localhost:9200/_cluster/health?pretty
+
+{{- else }}
+
+Using external Elasticsearch at: {{ .Values.elasticsearch.host }}:{{ .Values.elasticsearch.port }}
+
+{{- end }}
+
+-----------------------------------------------------------------------------
+ Seed data (first install only)
+-----------------------------------------------------------------------------
+
+A post-install Job was created to seed the Elasticsearch indices.
+Check its status with:
+
+  kubectl get jobs -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+  kubectl logs -n {{ .Release.Namespace }} job/{{ include "interop.fullname" . }}-seed
+
+-----------------------------------------------------------------------------
+ Secrets
+-----------------------------------------------------------------------------
+
+Update the backend secret with real credentials:
+
+  kubectl create secret generic {{ .Values.backend.envSecret }} \
+    --namespace {{ .Release.Namespace }} \
+    --from-literal=ES_PASSWORD='<your-password>' \
+    --from-literal=OIDC_ISSUER='<issuer-url>' \
+    --from-literal=OIDC_AUDIENCE='<audience>' \
+    --from-literal=OIDC_JWKS_URI='<jwks-uri>' \
+    --dry-run=client -o yaml | kubectl apply -f -
+
+-----------------------------------------------------------------------------
+ Useful commands
+-----------------------------------------------------------------------------
+
+  # Watch pod status
+  kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }} -w
+
+  # View backend logs
+  kubectl logs -n {{ .Release.Namespace }} \
+    -l app.kubernetes.io/component=backend,app.kubernetes.io/instance={{ .Release.Name }} -f
+
+  # Upgrade the release
+  helm upgrade {{ .Release.Name }} ./helm --namespace {{ .Release.Namespace }} -f values-prod.yaml

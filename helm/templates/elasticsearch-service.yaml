@@ -1,0 +1,46 @@
+{{- if .Values.elasticsearch.enabled }}
+# Headless service for StatefulSet DNS (pod-to-pod discovery)
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "interop.fullname" . }}-elasticsearch-headless
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "interop.labels" . | nindent 4 }}
+    app.kubernetes.io/component: elasticsearch
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  ports:
+    - name: http
+      port: 9200
+      protocol: TCP
+    - name: transport
+      port: 9300
+      protocol: TCP
+  selector:
+    {{- include "interop.elasticsearch.selectorLabels" . | nindent 4 }}
+---
+# ClusterIP service for application access
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "interop.elasticsearch.serviceName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "interop.labels" . | nindent 4 }}
+    app.kubernetes.io/component: elasticsearch
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 9200
+      targetPort: http
+      protocol: TCP
+    - name: transport
+      port: 9300
+      targetPort: transport
+      protocol: TCP
+  selector:
+    {{- include "interop.elasticsearch.selectorLabels" . | nindent 4 }}
+{{- end }}

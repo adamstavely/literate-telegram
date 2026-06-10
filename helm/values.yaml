@@ -1,0 +1,169 @@
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+
+# ---------------------------------------------------------------------------
+# Image configuration
+# ---------------------------------------------------------------------------
+image:
+  frontend:
+    repository: interop/frontend
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  backend:
+    repository: interop/backend
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+# ---------------------------------------------------------------------------
+# Service configuration
+# ---------------------------------------------------------------------------
+service:
+  frontend:
+    type: ClusterIP
+    port: 80
+  backend:
+    type: ClusterIP
+    port: 3000
+
+# ---------------------------------------------------------------------------
+# Ingress
+# ---------------------------------------------------------------------------
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "10"
+    # Uncomment to force HTTPS redirect
+    # nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: interop.io
+      paths:
+        - path: /api
+          pathType: Prefix
+          service: backend
+        - path: /
+          pathType: Prefix
+          service: frontend
+  tls:
+    - secretName: interop-tls
+      hosts:
+        - interop.io
+
+# ---------------------------------------------------------------------------
+# Backend workload
+# ---------------------------------------------------------------------------
+backend:
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  env:
+    NODE_ENV: production
+    PORT: "3000"
+    LOG_LEVEL: info
+    ALLOWED_ORIGINS: "https://interop.io"
+    RATE_LIMIT_WINDOW_MS: "60000"
+    RATE_LIMIT_MAX: "200"
+    LOG_INDEX: "interop-logs"
+    AUDIT_INDEX: "interop-audit"
+  # Name of the Secret that holds ES_PASSWORD, OIDC_ISSUER, OIDC_AUDIENCE, OIDC_JWKS_URI
+  envSecret: interop-backend-secrets
+
+# ---------------------------------------------------------------------------
+# Frontend workload
+# ---------------------------------------------------------------------------
+frontend:
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+  # The value injected as BACKEND_URL into nginx — points at the backend service
+  backendUrl: "interop-backend:3000"
+
+# ---------------------------------------------------------------------------
+# Elasticsearch (built-in single-node StatefulSet)
+# Set enabled=false and provide host/port to use an external cluster.
+# ---------------------------------------------------------------------------
+elasticsearch:
+  enabled: true
+  host: ""        # External host — used only when enabled=false
+  port: 9200
+  username: elastic
+  password: "changeme"   # Override via --set or a values override file
+  storageSize: 10Gi
+  storageClassName: ""   # Leave blank to use cluster default StorageClass
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+  javaOpts: "-Xms512m -Xmx512m"
+
+# ---------------------------------------------------------------------------
+# OIDC / JWT settings (values stored in the Secret, not here)
+# Provide these at install time with --set or a sealed-secrets override.
+# ---------------------------------------------------------------------------
+oidc:
+  issuer: ""
+  audience: ""
+  jwksUri: ""
+
+# ---------------------------------------------------------------------------
+# Horizontal Pod Autoscaler
+# ---------------------------------------------------------------------------
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+# ---------------------------------------------------------------------------
+# ServiceAccount
+# ---------------------------------------------------------------------------
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# ---------------------------------------------------------------------------
+# Pod metadata
+# ---------------------------------------------------------------------------
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "3000"
+  prometheus.io/path: "/api/metrics"
+
+# ---------------------------------------------------------------------------
+# Security contexts
+# ---------------------------------------------------------------------------
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 2000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+# ---------------------------------------------------------------------------
+# Pod scheduling
+# ---------------------------------------------------------------------------
+nodeSelector: {}
+tolerations: []
+affinity: {}

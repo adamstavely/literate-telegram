@@ -1,0 +1,122 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "interop.fullname" . }}-seed
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "interop.labels" . | nindent 4 }}
+    app.kubernetes.io/component: seed-job
+  annotations:
+    # Run only on first install
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "10"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 5
+  activeDeadlineSeconds: 600
+  template:
+    metadata:
+      labels:
+        {{- include "interop.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: seed-job
+    spec:
+      {{- include "interop.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "interop.serviceAccountName" . }}
+      restartPolicy: OnFailure
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        # Wait for Elasticsearch to be available before seeding
+        - name: wait-for-elasticsearch
+          image: curlimages/curl:8.7.1
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+          command:
+            - sh
+            - -c
+            - |
+              ES_URL="{{ include "interop.elasticsearch.url" . }}"
+              ES_USER="{{ .Values.elasticsearch.username | default "elastic" }}"
+              echo "Waiting for Elasticsearch at ${ES_URL} ..."
+              until curl -sf -u "${ES_USER}:${ES_PASS}" "${ES_URL}/_cluster/health" \
+                    | grep -qE '"status":"(green|yellow)"'; do
+                echo "  ES not ready yet, retrying in 5s..."
+                sleep 5
+              done
+              echo "Elasticsearch is ready."
+          env:
+            - name: ES_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.backend.envSecret }}
+                  key: ES_PASSWORD
+        # Wait for backend API to be available
+        - name: wait-for-backend
+          image: curlimages/curl:8.7.1
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+          command:
+            - sh
+            - -c
+            - |
+              BACKEND="http://{{ include "interop.backend.serviceName" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.backend.port }}"
+              echo "Waiting for backend at ${BACKEND}/api/health ..."
+              until curl -sf "${BACKEND}/api/health" > /dev/null; do
+                echo "  Backend not ready yet, retrying in 5s..."
+                sleep 5
+              done
+              echo "Backend is ready."
+      containers:
+        - name: seed
+          image: "{{ if .Values.global.imageRegistry }}{{ .Values.global.imageRegistry }}/{{ end }}{{ .Values.image.backend.repository }}:{{ .Values.image.backend.tag }}"
+          imagePullPolicy: {{ .Values.image.backend.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          command: ["node", "dist/elasticsearch/seed.js"]
+          envFrom:
+            - configMapRef:
+                name: {{ include "interop.fullname" . }}-backend-config
+          env:
+            - name: ES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.backend.envSecret }}
+                  key: ES_PASSWORD
+            - name: OIDC_ISSUER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.backend.envSecret }}
+                  key: OIDC_ISSUER
+            - name: OIDC_AUDIENCE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.backend.envSecret }}
+                  key: OIDC_AUDIENCE
+            - name: OIDC_JWKS_URI
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.backend.envSecret }}
+                  key: OIDC_JWKS_URI
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /app/tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

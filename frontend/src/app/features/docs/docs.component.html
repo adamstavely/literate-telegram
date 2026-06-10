@@ -1,0 +1,93 @@
+<div class="docs" aria-labelledby="docs-heading">
+  <div class="docs__layout">
+    <!-- Left sidebar nav -->
+    <nav class="docs__sidebar" aria-label="Documentation navigation">
+      <p class="docs__sidebar-title" id="docs-heading">Documentation</p>
+
+      @for (section of sections(); track section.id) {
+        @if ((articlesByCategory().get(section.label) ?? []).length > 0) {
+          <section
+            class="docs__nav-section"
+            [attr.aria-labelledby]="'section-' + section.id"
+          >
+            <h3
+              class="docs__nav-category"
+              [id]="'section-' + section.id"
+            >{{ section.label }}</h3>
+            <ul role="list" class="docs__nav-list">
+              @for (article of articlesByCategory().get(section.label) ?? []; track article.id) {
+                <li>
+                  <button
+                    class="docs__nav-link"
+                    [class.docs__nav-link--active]="activeArticle()?.id === article.id"
+                    type="button"
+                    (click)="selectArticle(article)"
+                    [attr.aria-current]="activeArticle()?.id === article.id ? 'page' : null"
+                  >{{ article.title }}</button>
+                </li>
+              }
+            </ul>
+          </section>
+        }
+      }
+    </nav>
+
+    <!-- Main article content -->
+    <main class="docs__main" id="docs-content" tabindex="-1">
+      @if (activeArticle(); as article) {
+        <article class="docs__article" [attr.aria-label]="article.title">
+          <header class="docs__article-header">
+            <p class="docs__article-meta">
+              <span>{{ article.readTime }} min read</span>
+              <span class="docs__meta-sep" aria-hidden="true">·</span>
+              <span>Updated {{ article.updatedAt }}</span>
+            </p>
+            <h1 class="docs__article-title">{{ article.title }}</h1>
+            <p class="docs__article-lead">{{ article.lead }}</p>
+          </header>
+
+          <div
+            class="docs__article-body prose"
+            [innerHTML]="renderContent(article.body)"
+            aria-live="polite"
+          ></div>
+
+          <!-- Prev / Next navigation -->
+          <nav class="docs__pager" aria-label="Article navigation">
+            @if (prevArticle(); as prev) {
+              <button
+                type="button"
+                class="docs__pager-btn docs__pager-btn--prev"
+                (click)="selectArticle(prev)"
+                [attr.aria-label]="'Previous: ' + prev.title"
+              >
+                <span class="docs__pager-dir" aria-hidden="true">← Previous</span>
+                <span class="docs__pager-title">{{ prev.title }}</span>
+              </button>
+            } @else {
+              <span></span>
+            }
+
+            @if (nextArticle(); as next) {
+              <button
+                type="button"
+                class="docs__pager-btn docs__pager-btn--next"
+                (click)="selectArticle(next)"
+                [attr.aria-label]="'Next: ' + next.title"
+              >
+                <span class="docs__pager-dir" aria-hidden="true">Next →</span>
+                <span class="docs__pager-title">{{ next.title }}</span>
+              </button>
+            } @else {
+              <span></span>
+            }
+          </nav>
+        </article>
+      } @else {
+        <div class="docs__empty" role="status">
+          <p>Select an article from the sidebar to get started.</p>
+        </div>
+      }
+    </main>
+  </div>
+</div>
