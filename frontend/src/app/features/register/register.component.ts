@@ -24,7 +24,6 @@ interface WizardStep {
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, FormsModule, IconComponent],
   templateUrl: './register.component.html',
-  styleUrl: './register.component.scss',
 })
 export class RegisterComponent implements OnInit {
   private readonly fb = inject(FormBuilder);

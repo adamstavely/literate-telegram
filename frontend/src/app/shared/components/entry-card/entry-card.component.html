@@ -1,69 +1,97 @@
-<article
-  class="entry-card"
-  [class.entry-card--list]="viewMode === 'list'"
-  role="article"
-  [attr.aria-label]="entry.name + ' ' + entry.type + ' by ' + entry.publisher"
-  tabindex="0"
-  (click)="navigate()"
-  (keydown)="onKeydown($event)"
->
-  <!-- Sensitivity badge top-right -->
-  <div class="sensitivity-badge">
-    <app-sensitivity-badge [level]="entry.sensitivity"></app-sensitivity-badge>
-  </div>
-
-  <!-- Card header -->
-  <div class="card-header">
-    <div class="card-logo" [attr.aria-hidden]="true">
-      <app-icon [name]="typeIcon" [size]="20"></app-icon>
+@if (viewMode === 'list') {
+  <div
+    class="row fade-up"
+    role="article"
+    [attr.aria-label]="entry.name + ' ' + entry.type + ' by ' + entry.publisher"
+    tabindex="0"
+    (click)="navigate()"
+    (keydown)="onKeydown($event)"
+  >
+    <div class="ec-logo">
+      <app-icon [name]="typeIcon" [size]="17" aria-hidden="true"></app-icon>
     </div>
-    <div class="card-title-row">
-      <div class="card-name">
-        <span class="card-name-text">{{ entry.name }}</span>
-        @if (entry.verified) {
-          <app-verified-mark></app-verified-mark>
+    <div style="min-width: 0; flex: 1">
+      <div class="ec-title">
+        {{ entry.name }}
+        @if (entry.verified) { <app-verified-mark></app-verified-mark> }
+        @if (entry.version) { <span class="ec-ver mono">v{{ entry.version }}</span> }
+      </div>
+      <div class="ec-summary" style="margin-top: 2px">{{ entry.summary }}</div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 18px; flex: none">
+      <app-sensitivity-badge [level]="entry.sensitivity"></app-sensitivity-badge>
+      <span class="stat">
+        <app-icon name="install" [size]="14" aria-hidden="true"></app-icon>
+        <span class="stat-val">{{ formattedInstalls }}</span>
+      </span>
+      <app-icon name="chevron-right" [size]="16" style="color: var(--faint)" aria-hidden="true"></app-icon>
+    </div>
+  </div>
+} @else {
+  <div
+    class="card card-link ec fade-up"
+    role="article"
+    [attr.aria-label]="entry.name + ' ' + entry.type + ' by ' + entry.publisher"
+    tabindex="0"
+    (click)="navigate()"
+    (keydown)="onKeydown($event)"
+  >
+    <div class="ec-top">
+      <div class="ec-logo">
+        <app-icon [name]="typeIcon" [size]="19" aria-hidden="true"></app-icon>
+      </div>
+      <div style="flex: 1; min-width: 0">
+        <div class="ec-title">
+          {{ entry.name }}
+          @if (entry.verified) { <app-verified-mark></app-verified-mark> }
+        </div>
+        <div class="ec-slug-row">
+          <span class="ec-slug mono">{{ entry.publisher }}</span>
+          @if (entry.version) { <span class="ec-ver mono">v{{ entry.version }}</span> }
+        </div>
+      </div>
+      <app-sensitivity-badge [level]="entry.sensitivity"></app-sensitivity-badge>
+    </div>
+
+    <div class="ec-summary">{{ entry.summary }}</div>
+
+    @if (serverTransports.length > 0) {
+      <div class="tool-pills">
+        @for (transport of serverTransports; track transport) {
+          <span class="tool-pill">{{ transport }}</span>
         }
       </div>
-      <div class="card-publisher">{{ entry.publisher }}</div>
-    </div>
-  </div>
-
-  <!-- Summary -->
-  <p class="card-summary">{{ entry.summary }}</p>
-
-  <!-- Footer -->
-  <div class="card-footer">
-    <div class="install-count" [attr.aria-label]="entry.installs + ' installs'">
-      <app-icon name="install" [size]="12"></app-icon>
-      <span>{{ formattedInstalls }}</span>
-      <app-sparkline [seed]="entry.id" [width]="52" [height]="20"></app-sparkline>
-    </div>
-
-    @if (entry.version) {
-      <span class="version-chip" [attr.aria-label]="'Version ' + entry.version">v{{ entry.version }}</span>
     }
 
-    <!-- Type-specific chips -->
-    @if (serverTransports.length > 0) {
-      @for (transport of serverTransports; track transport) {
-        <span class="chip">{{ transport }}</span>
+    <div class="ec-foot">
+      <div class="installs-trend">
+        <span class="stat">
+          <app-icon name="install" [size]="14" aria-hidden="true"></app-icon>
+          <span class="stat-val">{{ formattedInstalls }}</span>
+          <span class="stat-label">installs</span>
+        </span>
+        <app-sparkline class="spark" [seed]="entry.id" [width]="52" [height]="20"></app-sparkline>
+      </div>
+      <div class="spacer"></div>
+
+      @if (agentModel) {
+        <span class="model-chip">
+          <app-icon name="agent" [size]="12" aria-hidden="true"></app-icon>
+          {{ agentModel }}
+        </span>
       }
-    }
-
-    @if (agentModel) {
-      <span class="chip">{{ agentModel }}</span>
-    }
-
-    @if (apiStyle) {
-      <span class="chip">{{ apiStyle }}</span>
-    }
-
-    @if (skillTokens !== null) {
-      <span class="chip" [attr.aria-label]="skillTokens + ' tokens'">{{ skillTokens | number }}t</span>
-    }
-
-    @if (toolReadOnly === true) {
-      <span class="chip chip--readonly">read-only</span>
-    }
+      @if (apiStyle) {
+        <span class="api-style-chip style-rest">{{ apiStyle }}</span>
+      }
+      @if (skillTokens !== null) {
+        <span class="stat">
+          <app-icon name="book" [size]="12" aria-hidden="true"></app-icon>
+          <span class="stat-val">{{ skillTokens | number }}</span>
+        </span>
+      }
+      @if (toolReadOnly === true) {
+        <span class="tool-pill" style="color: var(--ok)">read-only</span>
+      }
+    </div>
   </div>
-</article>
+}

@@ -1,349 +1,375 @@
-<div class="detail-page">
-  <div class="container">
+<div class="container page">
+  <!-- Loading skeleton -->
+  @if (loading()) {
+    <div role="status" aria-label="Loading entry details" aria-busy="true">
+      <div class="skeleton"></div>
+      <div class="skeleton"></div>
+      <div class="skeleton"></div>
+    </div>
+  }
 
-    <!-- Loading skeleton -->
-    @if (loading()) {
-      <div class="skeleton-layout" role="status" aria-label="Loading entry details" aria-busy="true">
-        <div class="skeleton skeleton-hero"></div>
-        <div class="skeleton skeleton-tabs"></div>
-        <div class="skeleton skeleton-body"></div>
-      </div>
-    }
+  <!-- Error / 404 -->
+  @if (error() && !loading()) {
+    <div class="empty" role="alert">
+      <app-icon name="warning" [size]="40" aria-hidden="true"></app-icon>
+      <h1>Entry Not Found</h1>
+      <p>{{ error() }}</p>
+      <button class="btn btn-primary btn-md" type="button" (click)="goBack()">
+        <app-icon name="chevron-right" [size]="14" style="transform: rotate(180deg)" aria-hidden="true"></app-icon>
+        Back to Browse
+      </button>
+    </div>
+  }
 
-    <!-- Error / 404 -->
-    @if (error() && !loading()) {
-      <div class="not-found" role="alert">
-        <app-icon name="warning" [size]="40" aria-hidden="true"></app-icon>
-        <h1>Entry Not Found</h1>
-        <p>{{ error() }}</p>
-        <button class="btn-primary" type="button" (click)="goBack()">
-          <app-icon name="chevron-right" [size]="14" style="transform: rotate(180deg)" aria-hidden="true"></app-icon>
-          Back to Browse
-        </button>
-      </div>
-    }
+  <!-- Entry detail -->
+  @if (entry() && !loading()) {
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <a routerLink="/">Browse</a>
+      <app-icon name="chevron-right" [size]="14" aria-hidden="true"></app-icon>
+      <span>{{ entry()!.type | titlecase }}</span>
+      <app-icon name="chevron-right" [size]="14" aria-hidden="true"></app-icon>
+      <span aria-current="page">{{ entry()!.name }}</span>
+    </nav>
 
-    <!-- Entry detail -->
-    @if (entry() && !loading()) {
-      <!-- Breadcrumb -->
-      <nav class="breadcrumb" aria-label="Breadcrumb">
-        <a routerLink="/">Browse</a>
-        <app-icon name="chevron-right" [size]="14" aria-hidden="true"></app-icon>
-        <span>{{ entry()!.type | titlecase }}</span>
-        <app-icon name="chevron-right" [size]="14" aria-hidden="true"></app-icon>
-        <span aria-current="page">{{ entry()!.name }}</span>
-      </nav>
-
-      <!-- Hero Header -->
-      <header class="entry-header" aria-labelledby="entry-name">
-        <div class="entry-header-main">
-          <div class="entry-logo" [attr.aria-label]="entry()!.type + ' icon'">
-            <app-icon [name]="typeIcon()" [size]="28" aria-hidden="true"></app-icon>
-          </div>
-
-          <div class="entry-meta">
-            <div class="entry-name-row">
-              <h1 id="entry-name" class="entry-name">{{ entry()!.name }}</h1>
-              @if (entry()!.verified) {
-                <app-verified-mark></app-verified-mark>
-              }
-              <app-sensitivity-badge [level]="entry()!.sensitivity"></app-sensitivity-badge>
-            </div>
-            <p class="entry-publisher">by <strong>{{ entry()!.publisher }}</strong></p>
-            <div class="entry-chips">
-              @if (entry()!.version) {
-                <span class="entry-version" [attr.aria-label]="'Version ' + entry()!.version">v{{ entry()!.version }}</span>
-              }
-              <span class="entry-type-chip" [attr.data-type]="entry()!.type">{{ entry()!.type }}</span>
-              @for (cat of entry()!.categories; track cat) {
-                <span class="entry-cat-chip">{{ cat }}</span>
-              }
-            </div>
-          </div>
-
-          <div class="entry-header-right">
-            <div class="entry-stat" [attr.aria-label]="entry()!.installs + ' installs'">
-              <app-icon name="install" [size]="14" aria-hidden="true"></app-icon>
-              <span>{{ formatInstalls(entry()!.installs) }}</span>
-            </div>
-            <button
-              class="btn-primary install-btn"
-              type="button"
-              (click)="setTab('install')"
-              aria-label="Go to install instructions"
-            >
-              <app-icon name="install" [size]="14" aria-hidden="true"></app-icon>
-              Install
-            </button>
-          </div>
+    <header class="detail-head" aria-labelledby="entry-name">
+      <div class="detail-head-main">
+        <div [class]="'detail-logo dl-' + entry()!.type" [attr.aria-label]="entry()!.type + ' icon'">
+          <app-icon [name]="typeIcon()" [size]="28" aria-hidden="true"></app-icon>
         </div>
 
-        <p class="entry-summary">{{ entry()!.summary }}</p>
-      </header>
-
-      <!-- Tabs + Content layout -->
-      <div class="detail-layout">
-        <div class="detail-main">
-          <!-- Tab nav -->
-          <div class="tab-nav" role="tablist" aria-label="Entry details sections">
-            @for (tab of visibleTabs(); track tab.id) {
-              <button
-                class="tab-btn"
-                [class.tab-btn--active]="activeTab() === tab.id"
-                type="button"
-                role="tab"
-                [attr.id]="'tab-' + tab.id"
-                [attr.aria-selected]="activeTab() === tab.id"
-                [attr.aria-controls]="'tabpanel-' + tab.id"
-                (click)="setTab(tab.id)"
-              >{{ tab.label }}</button>
+        <div class="entry-meta">
+          <div class="entry-name-row">
+            <h1 id="entry-name" class="detail-title">{{ entry()!.name }}</h1>
+            @if (entry()!.verified) {
+              <app-verified-mark></app-verified-mark>
+            }
+            <app-sensitivity-badge [level]="entry()!.sensitivity"></app-sensitivity-badge>
+          </div>
+          <p class="detail-slug mono">{{ entry()!.slug }} · {{ entry()!.publisher }}</p>
+          <div class="entry-chips">
+            @if (entry()!.version) {
+              <span class="entry-version" [attr.aria-label]="'Version ' + entry()!.version">v{{ entry()!.version }}</span>
+            }
+            <span class="entry-type-chip" [attr.data-type]="entry()!.type">{{ entry()!.type }}</span>
+            @for (cat of entry()!.categories; track cat) {
+              <span class="entry-cat-chip">{{ cat }}</span>
             }
           </div>
+          <p class="detail-summary">{{ entry()!.summary }}</p>
+        </div>
 
-          <!-- Overview tab -->
-          @if (activeTab() === 'overview') {
-            <section
-              id="tabpanel-overview"
-              role="tabpanel"
-              aria-labelledby="tab-overview"
-              class="tab-panel"
-            >
-              <div class="description-section">
-                <h2>About</h2>
-                <p class="description-text">{{ entry()!.description }}</p>
-              </div>
+        <div class="detail-cta">
+          <div class="entry-stat" [attr.aria-label]="entry()!.installs + ' installs'">
+            <app-icon name="install" [size]="14" aria-hidden="true"></app-icon>
+            <span>{{ formatInstalls(entry()!.installs) }}</span>
+          </div>
+          <button
+            class="btn btn-accent btn-md install-btn"
+            type="button"
+            (click)="setTab('install')"
+            aria-label="Go to install instructions"
+          >
+            <app-icon name="install" [size]="14" aria-hidden="true"></app-icon>
+            Install
+          </button>
+        </div>
+      </div>
+    </header>
 
-              <!-- Type-specific overview content -->
-              @if (asServer(); as srv) {
-                <div class="overview-section">
-                  <h3>Compatible Clients</h3>
-                  @if (srv.clients.length > 0) {
-                    <div class="chip-list">
-                      @for (client of srv.clients; track client) {
-                        <span class="client-chip">{{ client }}</span>
-                      }
-                    </div>
-                  } @else {
-                    <p class="muted">No clients listed</p>
-                  }
-                </div>
-              }
+    <div class="detail-grid">
+      <div>
+        <div class="tabs" role="tablist" aria-label="Entry details sections">
+          @for (tab of visibleTabs(); track tab.id) {
+            <button
+              class="tab"
+              [class.on]="activeTab() === tab.id"
+              type="button"
+              role="tab"
+              [attr.id]="'tab-' + tab.id"
+              [attr.aria-selected]="activeTab() === tab.id"
+              [attr.aria-controls]="'tabpanel-' + tab.id"
+              (click)="setTab(tab.id)"
+            >{{ tab.label }}</button>
+          }
+        </div>
 
-              @if (asSkill(); as skill) {
-                <div class="overview-section">
-                  <h3>Triggers</h3>
-                  <div class="chip-list">
-                    @for (trigger of skill.triggers; track trigger) {
-                      <code class="trigger-chip">{{ trigger }}</code>
+        @if (activeTab() === 'overview') {
+          <section
+            id="tabpanel-overview"
+            role="tabpanel"
+            aria-labelledby="tab-overview"
+            class="tab-panel"
+          >
+            <div class="section">
+              <h2 class="section-title">About</h2>
+              <p class="description-text">{{ entry()!.description }}</p>
+            </div>
+
+            @if (asServer(); as srv) {
+              <div class="section">
+                <h2 class="section-title">Compatible Clients</h2>
+                @if (srv.clients.length > 0) {
+                  <div class="clients">
+                    @for (client of srv.clients; track client) {
+                      <span class="client-chip">{{ client }}</span>
                     }
                   </div>
-                </div>
-              }
+                } @else {
+                  <p class="muted">No clients listed</p>
+                }
+              </div>
+            }
 
-              @if (asAgent(); as agent) {
-                <div class="overview-section">
-                  <h3>Model</h3>
-                  <span class="code-chip">{{ agent.model }}</span>
-                  <h3 style="margin-top: 16px">Autonomy Level</h3>
-                  <span class="autonomy-chip autonomy-chip--{{ agent.autonomy }}">{{ agent.autonomy }}</span>
+            @if (asSkill(); as skill) {
+              <div class="section">
+                <h2 class="section-title">Triggers</h2>
+                <div class="chip-list">
+                  @for (trigger of skill.triggers; track trigger) {
+                    <code class="trigger-chip">{{ trigger }}</code>
+                  }
                 </div>
-              }
-            </section>
-          }
+              </div>
+            }
 
-          <!-- Install tab -->
-          @if (activeTab() === 'install') {
-            <section
-              id="tabpanel-install"
-              role="tabpanel"
-              aria-labelledby="tab-install"
-              class="tab-panel"
-            >
-              <div class="install-section">
-                <h2>CLI Install</h2>
-                <div class="code-block">
-                  <pre class="code-pre"><code>{{ installCommand() }}</code></pre>
-                  <button
-                    class="copy-btn"
-                    type="button"
-                    (click)="copyInstall()"
-                    [attr.aria-label]="copied() ? 'Copied!' : 'Copy install command'"
-                  >
-                    <app-icon [name]="copied() ? 'check' : 'copy'" [size]="14" aria-hidden="true"></app-icon>
-                    {{ copied() ? 'Copied!' : 'Copy' }}
-                  </button>
+            @if (asAgent(); as agent) {
+              <div class="section">
+                <h2 class="section-title">Model</h2>
+                <span class="code-chip">{{ agent.model }}</span>
+                <h2 class="section-title" style="margin-top: 16px">Autonomy Level</h2>
+                <span class="autonomy-chip autonomy-chip--{{ agent.autonomy }}">{{ agent.autonomy }}</span>
+              </div>
+            }
+          </section>
+        }
+
+        @if (activeTab() === 'install') {
+          <section
+            id="tabpanel-install"
+            role="tabpanel"
+            aria-labelledby="tab-install"
+            class="tab-panel"
+          >
+            <div class="section">
+              <h2 class="section-title">CLI Install</h2>
+              <div class="codeblock">
+                <pre class="code-pre"><code>{{ installCommand() }}</code></pre>
+                <button
+                  class="copy-btn"
+                  type="button"
+                  (click)="copyInstall()"
+                  [attr.aria-label]="copied() ? 'Copied!' : 'Copy install command'"
+                >
+                  <app-icon [name]="copied() ? 'check' : 'copy'" [size]="14" aria-hidden="true"></app-icon>
+                  {{ copied() ? 'Copied!' : 'Copy' }}
+                </button>
+              </div>
+            </div>
+
+            <div class="section">
+              <h2 class="section-title">Config JSON</h2>
+              <div class="codeblock">
+                <pre class="code-pre"><code>{{ configJson() }}</code></pre>
+                <button
+                  class="copy-btn"
+                  type="button"
+                  (click)="copyConfig()"
+                  aria-label="Copy configuration"
+                >
+                  <app-icon [name]="'copy'" [size]="14" aria-hidden="true"></app-icon>
+                  Copy
+                </button>
+              </div>
+            </div>
+
+            @if (asServer(); as srv) {
+              <div class="section">
+                <h2 class="section-title">Connection Details</h2>
+                <div class="spec">
+                  <div class="spec-row">
+                    <span class="spec-k">Auth</span>
+                    <span class="spec-v">{{ srv.auth }}</span>
+                  </div>
+                  <div class="spec-row">
+                    <span class="spec-k">Transports</span>
+                    <span class="spec-v">{{ srv.transports.join(', ') }}</span>
+                  </div>
                 </div>
+              </div>
+            }
+          </section>
+        }
 
-                <h2 style="margin-top: 24px">Config JSON</h2>
-                <div class="code-block">
-                  <pre class="code-pre"><code>{{ configJson() }}</code></pre>
-                  <button
-                    class="copy-btn"
-                    type="button"
-                    (click)="copyConfig()"
-                    aria-label="Copy configuration"
-                  >
-                    <app-icon [name]="'copy'" [size]="14" aria-hidden="true"></app-icon>
-                    Copy
-                  </button>
-                </div>
-
-                @if (asServer(); as srv) {
-                  <div class="install-details">
-                    <h3>Connection Details</h3>
-                    <dl class="spec-dl">
-                      <dt>Auth</dt>
-                      <dd>{{ srv.auth }}</dd>
-                      <dt>Transports</dt>
-                      <dd>{{ srv.transports.join(', ') }}</dd>
-                    </dl>
+        @if (activeTab() === 'tools' && asServer(); as srv) {
+          <section
+            id="tabpanel-tools"
+            role="tabpanel"
+            aria-labelledby="tab-tools"
+            class="tab-panel"
+          >
+            <h2 class="section-title">Available Tools</h2>
+            @if (srv.tools.length === 0) {
+              <p class="muted">No tools exposed by this server.</p>
+            } @else {
+              <div class="tools-list">
+                @for (tool of srv.tools; track tool.id) {
+                  <div class="tool-item">
+                    <div class="tool-header">
+                      <code class="tool-name">{{ tool.name }}</code>
+                      @if (tool.readOnly) {
+                        <span class="readonly-badge">read-only</span>
+                      }
+                    </div>
+                    <p class="tool-summary">{{ tool.summary }}</p>
+                    @if (tool.params.length > 0) {
+                      <table class="params-table" [attr.aria-label]="'Parameters for ' + tool.name">
+                        <thead>
+                          <tr>
+                            <th scope="col">Name</th>
+                            <th scope="col">Type</th>
+                            <th scope="col">Required</th>
+                            <th scope="col">Description</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (param of tool.params; track param.name) {
+                            <tr>
+                              <td><code>{{ param.name }}</code></td>
+                              <td><code>{{ param.type }}</code></td>
+                              <td>{{ param.required ? 'Yes' : 'No' }}</td>
+                              <td>{{ param.description }}</td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    }
+                    <p class="tool-returns">Returns: <code>{{ tool.returns }}</code></p>
                   </div>
                 }
               </div>
-            </section>
-          }
+            }
+          </section>
+        }
 
-          <!-- Tools tab (servers only) -->
-          @if (activeTab() === 'tools' && asServer(); as srv) {
-            <section
-              id="tabpanel-tools"
-              role="tabpanel"
-              aria-labelledby="tab-tools"
-              class="tab-panel"
-            >
-              <h2>Available Tools</h2>
-              @if (srv.tools.length === 0) {
-                <p class="muted">No tools exposed by this server.</p>
-              } @else {
-                <div class="tools-list">
-                  @for (tool of srv.tools; track tool.id) {
-                    <div class="tool-card">
-                      <div class="tool-header">
-                        <code class="tool-name">{{ tool.name }}</code>
-                        @if (tool.readOnly) {
-                          <span class="readonly-badge">read-only</span>
-                        }
-                      </div>
-                      <p class="tool-summary">{{ tool.summary }}</p>
-                      @if (tool.params.length > 0) {
-                        <table class="params-table" [attr.aria-label]="'Parameters for ' + tool.name">
-                          <thead>
-                            <tr>
-                              <th scope="col">Name</th>
-                              <th scope="col">Type</th>
-                              <th scope="col">Required</th>
-                              <th scope="col">Description</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            @for (param of tool.params; track param.name) {
-                              <tr>
-                                <td><code>{{ param.name }}</code></td>
-                                <td><code>{{ param.type }}</code></td>
-                                <td>{{ param.required ? 'Yes' : 'No' }}</td>
-                                <td>{{ param.description }}</td>
-                              </tr>
-                            }
-                          </tbody>
-                        </table>
-                      }
-                      <p class="tool-returns">Returns: <code>{{ tool.returns }}</code></p>
-                    </div>
-                  }
-                </div>
-              }
-            </section>
-          }
+        @if (activeTab() === 'reviews') {
+          <section
+            id="tabpanel-reviews"
+            role="tabpanel"
+            aria-labelledby="tab-reviews"
+            class="tab-panel"
+          >
+            <div class="empty">
+              <app-icon name="star" [size]="32" aria-hidden="true"></app-icon>
+              <p>Reviews coming soon</p>
+            </div>
+          </section>
+        }
+      </div>
 
-          <!-- Reviews tab -->
-          @if (activeTab() === 'reviews') {
-            <section
-              id="tabpanel-reviews"
-              role="tabpanel"
-              aria-labelledby="tab-reviews"
-              class="tab-panel"
-            >
-              <div class="empty-tab">
-                <app-icon name="star" [size]="32" aria-hidden="true"></app-icon>
-                <p>Reviews coming soon</p>
+      <aside aria-label="Entry specifications">
+        <div class="aside-card">
+          <h2 class="section-title">Details</h2>
+          <div class="spec">
+            <div class="spec-row">
+              <span class="spec-k">Type</span>
+              <span class="spec-v">{{ entry()!.type }}</span>
+            </div>
+
+            @if (entry()!.version) {
+              <div class="spec-row">
+                <span class="spec-k">Version</span>
+                <span class="spec-v"><code>{{ entry()!.version }}</code></span>
               </div>
-            </section>
-          }
-        </div>
+            }
 
-        <!-- Sidebar spec panel -->
-        <aside class="detail-sidebar" aria-label="Entry specifications">
-          <div class="spec-card">
-            <h2 class="spec-title">Details</h2>
-            <dl class="spec-dl">
-              <dt>Type</dt>
-              <dd>{{ entry()!.type }}</dd>
+            <div class="spec-row">
+              <span class="spec-k">Sensitivity</span>
+              <span class="spec-v"><app-sensitivity-badge [level]="entry()!.sensitivity"></app-sensitivity-badge></span>
+            </div>
 
-              @if (entry()!.version) {
-                <dt>Version</dt>
-                <dd><code>{{ entry()!.version }}</code></dd>
-              }
+            <div class="spec-row">
+              <span class="spec-k">Updated</span>
+              <span class="spec-v">{{ entry()!.updatedAt | date:'mediumDate' }}</span>
+            </div>
 
-              <dt>Sensitivity</dt>
-              <dd><app-sensitivity-badge [level]="entry()!.sensitivity"></app-sensitivity-badge></dd>
+            <div class="spec-row">
+              <span class="spec-k">Published</span>
+              <span class="spec-v">{{ entry()!.createdAt | date:'mediumDate' }}</span>
+            </div>
 
-              <dt>Updated</dt>
-              <dd>{{ entry()!.updatedAt | date:'mediumDate' }}</dd>
-
-              <dt>Published</dt>
-              <dd>{{ entry()!.createdAt | date:'mediumDate' }}</dd>
-
-              @if (asServer(); as srv) {
-                <dt>Auth</dt>
-                <dd>{{ srv.auth }}</dd>
-                <dt>License</dt>
-                <dd>{{ srv.license }}</dd>
-                @if (srv.source) {
-                  <dt>Source</dt>
-                  <dd>
+            @if (asServer(); as srv) {
+              <div class="spec-row">
+                <span class="spec-k">Auth</span>
+                <span class="spec-v">{{ srv.auth }}</span>
+              </div>
+              <div class="spec-row">
+                <span class="spec-k">License</span>
+                <span class="spec-v">{{ srv.license }}</span>
+              </div>
+              @if (srv.source) {
+                <div class="spec-row">
+                  <span class="spec-k">Source</span>
+                  <span class="spec-v">
                     <a [href]="srv.source" target="_blank" rel="noopener noreferrer" class="external-link">
                       View source
                       <app-icon name="external" [size]="12" aria-hidden="true"></app-icon>
                     </a>
-                  </dd>
-                }
-                <dt>Rating</dt>
-                <dd>{{ srv.rating }}/5</dd>
+                  </span>
+                </div>
               }
+              <div class="spec-row">
+                <span class="spec-k">Rating</span>
+                <span class="spec-v">{{ srv.rating }}/5</span>
+              </div>
+            }
 
-              @if (asTool(); as tool) {
-                <dt>Parent Server</dt>
-                <dd>{{ tool.parentServer }}</dd>
-                <dt>Returns</dt>
-                <dd><code>{{ tool.returns }}</code></dd>
-                <dt>Read-only</dt>
-                <dd>{{ tool.readOnly ? 'Yes' : 'No' }}</dd>
-              }
+            @if (asTool(); as tool) {
+              <div class="spec-row">
+                <span class="spec-k">Parent Server</span>
+                <span class="spec-v">{{ tool.parentServer }}</span>
+              </div>
+              <div class="spec-row">
+                <span class="spec-k">Returns</span>
+                <span class="spec-v"><code>{{ tool.returns }}</code></span>
+              </div>
+              <div class="spec-row">
+                <span class="spec-k">Read-only</span>
+                <span class="spec-v">{{ tool.readOnly ? 'Yes' : 'No' }}</span>
+              </div>
+            }
 
-              @if (asSkill(); as skill) {
-                <dt>Token budget</dt>
-                <dd>{{ skill.tokens | number }}</dd>
-              }
+            @if (asSkill(); as skill) {
+              <div class="spec-row">
+                <span class="spec-k">Token budget</span>
+                <span class="spec-v">{{ skill.tokens | number }}</span>
+              </div>
+            }
 
-              @if (asAgent(); as agent) {
-                <dt>Model</dt>
-                <dd>{{ agent.model }}</dd>
-                <dt>Autonomy</dt>
-                <dd>{{ agent.autonomy }}</dd>
-              }
+            @if (asAgent(); as agent) {
+              <div class="spec-row">
+                <span class="spec-k">Model</span>
+                <span class="spec-v">{{ agent.model }}</span>
+              </div>
+              <div class="spec-row">
+                <span class="spec-k">Autonomy</span>
+                <span class="spec-v">{{ agent.autonomy }}</span>
+              </div>
+            }
 
-              @if (asApi(); as api) {
-                <dt>Style</dt>
-                <dd>{{ api.style }}</dd>
-                @if (api.endpoint) {
-                  <dt>Endpoint</dt>
-                  <dd><code class="endpoint">{{ api.endpoint }}</code></dd>
-                }
+            @if (asApi(); as api) {
+              <div class="spec-row">
+                <span class="spec-k">Style</span>
+                <span class="spec-v">{{ api.style }}</span>
+              </div>
+              @if (api.endpoint) {
+                <div class="spec-row">
+                  <span class="spec-k">Endpoint</span>
+                  <span class="spec-v"><code class="endpoint">{{ api.endpoint }}</code></span>
+                </div>
               }
-            </dl>
+            }
           </div>
-        </aside>
-      </div>
-    }
-  </div>
+        </div>
+      </aside>
+    </div>
+  }
 </div>

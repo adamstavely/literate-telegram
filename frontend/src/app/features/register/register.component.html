@@ -1,56 +1,55 @@
-<div class="register-page">
-  <div class="container">
+<div class="container page">
     @if (!submitted()) {
-      <div class="wizard-layout">
+      <div class="wizard">
         <!-- Step rail (left) -->
-        <nav class="step-rail" aria-label="Registration steps">
+        <nav class="steps-rail" aria-label="Registration steps">
           @for (step of steps; track step.id) {
             <div
-              class="step-item"
-              [class.step-item--active]="currentStep() === step.id"
-              [class.step-item--done]="currentStep() > step.id"
+              class="rail-step"
+              [class.on]="currentStep() === step.id"
+              [class.done]="currentStep() > step.id"
             >
-              <div class="step-dot" [attr.aria-hidden]="true">
+              <div class="rail-num" [attr.aria-hidden]="true">
                 @if (currentStep() > step.id) {
                   <app-icon name="check" [size]="12"></app-icon>
                 } @else {
                   {{ step.id }}
                 }
               </div>
-              <div class="step-info">
-                <div class="step-label">{{ step.label }}</div>
-                <div class="step-desc">{{ step.description }}</div>
+              <div>
+                <div class="rail-label">{{ step.label }}</div>
+                <div class="rail-desc">{{ step.description }}</div>
               </div>
             </div>
           }
         </nav>
 
         <!-- Wizard form -->
-        <div class="wizard-form-area">
+        <div style="min-width: 0">
           <div aria-live="polite" class="sr-only" id="step-announce"></div>
 
           <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
             <!-- Step 1: Type selection -->
             @if (currentStep() === 1) {
-              <div class="wizard-step" role="group" aria-labelledby="step1-title">
-                <h1 id="step1-title" class="step-title">Select entry type</h1>
-                <p class="step-subtitle">What kind of registry entry are you creating?</p>
+              <div class="fade-up" role="group" aria-labelledby="step1-title">
+                <h2 id="step1-title" class="h2">Select entry type</h2>
+                <p class="field-hint">What kind of registry entry are you creating?</p>
 
-                <div class="type-grid">
+                <div class="choice-grid">
                   @for (opt of typeOptions; track opt.value) {
                     <button
-                      class="type-card"
+                      class="choice"
                       type="button"
-                      [class.type-card--selected]="selectedType === opt.value"
+                      [class.on]="selectedType === opt.value"
                       (click)="selectType(opt.value)"
                       [attr.aria-pressed]="selectedType === opt.value"
                     >
-                      <div class="type-card-icon">
+                      <div class="choice-ic">
                         <app-icon [name]="opt.icon" [size]="24" aria-hidden="true"></app-icon>
                       </div>
-                      <div class="type-card-info">
-                        <div class="type-card-label">{{ opt.label }}</div>
-                        <div class="type-card-desc">{{ opt.desc }}</div>
+                      <div>
+                        <div class="choice-t">{{ opt.label }}</div>
+                        <div class="choice-d">{{ opt.desc }}</div>
                       </div>
                     </button>
                   }
@@ -60,18 +59,18 @@
 
             <!-- Step 2: Identity -->
             @if (currentStep() === 2) {
-              <div class="wizard-step" role="group" aria-labelledby="step2-title">
-                <h1 id="step2-title" class="step-title">Identity</h1>
-                <p class="step-subtitle">Basic information about your {{ selectedType }}.</p>
+              <div class="fade-up" role="group" aria-labelledby="step2-title">
+                <h2 id="step2-title" class="h2">Identity</h2>
+                <p class="field-hint">Basic information about your {{ selectedType }}.</p>
 
-                <div class="form-grid">
-                  <div class="form-field">
-                    <label class="form-label" for="reg-name">
-                      Name <span class="required" aria-hidden="true">*</span>
+                <div class="pick-grid">
+                  <div class="field">
+                    <label class="field-label" for="reg-name">
+                      Name <span class="req-star" aria-hidden="true">*</span>
                     </label>
                     <input
                       id="reg-name"
-                      class="form-input"
+                      class="input"
                       type="text"
                       formControlName="name"
                       placeholder="My Awesome Server"
@@ -79,75 +78,75 @@
                       [attr.aria-invalid]="form.get('name')?.invalid && form.get('name')?.touched"
                       aria-describedby="reg-name-error"
                     />
-                    <div class="slug-preview" aria-live="polite">
+                    <div class="field-hint" aria-live="polite">
                       Slug: <code>{{ slugValue || 'auto-derived from name' }}</code>
                     </div>
                     @if (form.get('name')?.invalid && form.get('name')?.touched) {
-                      <span id="reg-name-error" class="field-error" role="alert">Name is required (2–100 characters)</span>
+                      <span id="reg-name-error" class="field-hint" role="alert">Name is required (2-100 characters)</span>
                     }
                   </div>
 
-                  <div class="form-field">
-                    <label class="form-label" for="reg-publisher">
-                      Publisher <span class="required" aria-hidden="true">*</span>
+                  <div class="field">
+                    <label class="field-label" for="reg-publisher">
+                      Publisher <span class="req-star" aria-hidden="true">*</span>
                     </label>
                     <input
                       id="reg-publisher"
-                      class="form-input"
+                      class="input"
                       type="text"
                       formControlName="publisher"
                       placeholder="Your name or organisation"
                       [attr.aria-invalid]="form.get('publisher')?.invalid && form.get('publisher')?.touched"
                     />
                     @if (form.get('publisher')?.invalid && form.get('publisher')?.touched) {
-                      <span class="field-error" role="alert">Publisher is required</span>
+                      <span class="field-hint" role="alert">Publisher is required</span>
                     }
                   </div>
                 </div>
 
-                <div class="form-field">
-                  <label class="form-label" for="reg-summary">
-                    Summary <span class="required" aria-hidden="true">*</span>
+                <div class="field">
+                  <label class="field-label" for="reg-summary">
+                    Summary <span class="req-star" aria-hidden="true">*</span>
                   </label>
                   <input
                     id="reg-summary"
-                    class="form-input"
+                    class="input"
                     type="text"
                     formControlName="summary"
                     placeholder="One-line description (10–280 chars)"
                     maxlength="280"
                   />
                   @if (form.get('summary')?.invalid && form.get('summary')?.touched) {
-                    <span class="field-error" role="alert">Summary required (10–280 characters)</span>
+                    <span class="field-hint" role="alert">Summary required (10-280 characters)</span>
                   }
                 </div>
 
-                <div class="form-field">
-                  <label class="form-label" for="reg-description">
-                    Description <span class="required" aria-hidden="true">*</span>
+                <div class="field">
+                  <label class="field-label" for="reg-description">
+                    Description <span class="req-star" aria-hidden="true">*</span>
                   </label>
                   <textarea
                     id="reg-description"
-                    class="form-textarea"
+                    class="textarea"
                     formControlName="description"
                     rows="5"
                     placeholder="Detailed description of capabilities, use cases, and requirements…"
                   ></textarea>
                   @if (form.get('description')?.invalid && form.get('description')?.touched) {
-                    <span class="field-error" role="alert">Description is required (min 20 characters)</span>
+                    <span class="field-hint" role="alert">Description is required (min 20 characters)</span>
                   }
                 </div>
 
-                <div class="form-grid">
-                  <div class="form-field">
-                    <label class="form-label" for="reg-version">Version</label>
-                    <input id="reg-version" class="form-input" type="text" formControlName="version" placeholder="1.0.0" />
+                <div class="pick-grid">
+                  <div class="field">
+                    <label class="field-label" for="reg-version">Version</label>
+                    <input id="reg-version" class="input" type="text" formControlName="version" placeholder="1.0.0" />
                   </div>
-                  <div class="form-field">
-                    <label class="form-label" for="reg-categories">Categories</label>
+                  <div class="field">
+                    <label class="field-label" for="reg-categories">Categories</label>
                     <input
                       id="reg-categories"
-                      class="form-input"
+                      class="input"
                       type="text"
                       formControlName="categories"
                       placeholder="Developer Tools, Productivity"
@@ -160,15 +159,15 @@
 
             <!-- Step 3: Type-specific details -->
             @if (currentStep() === 3) {
-              <div class="wizard-step" role="group" aria-labelledby="step3-title">
-                <h1 id="step3-title" class="step-title">{{ selectedType | titlecase }} details</h1>
+              <div class="fade-up" role="group" aria-labelledby="step3-title">
+                <h2 id="step3-title" class="h2">{{ selectedType | titlecase }} details</h2>
 
                 @if (isServer) {
-                  <div class="form-field">
-                    <fieldset class="transport-group">
-                      <legend class="form-label">Transports</legend>
+                  <div class="field">
+                    <fieldset style="border: none; padding: 0; margin: 0">
+                      <legend class="field-label">Transports</legend>
                       @for (t of ['stdio', 'http', 'sse']; track t) {
-                        <label class="transport-checkbox">
+                        <label style="display: inline-flex; align-items: center; gap: 6px; margin-right: 12px; margin-bottom: 6px">
                           <input
                             type="checkbox"
                             [checked]="hasTransport(t)"
@@ -180,10 +179,10 @@
                       }
                     </fieldset>
                   </div>
-                  <div class="form-grid">
-                    <div class="form-field">
-                      <label class="form-label" for="reg-auth">Auth method</label>
-                      <select id="reg-auth" class="form-select" formControlName="auth">
+                  <div class="pick-grid">
+                    <div class="field">
+                      <label class="field-label" for="reg-auth">Auth method</label>
+                      <select id="reg-auth" class="input" formControlName="auth">
                         <option value="none">None</option>
                         <option value="api-key">API Key</option>
                         <option value="oauth2">OAuth 2.0</option>
@@ -191,46 +190,46 @@
                         <option value="basic">Basic Auth</option>
                       </select>
                     </div>
-                    <div class="form-field">
-                      <label class="form-label" for="reg-license">License</label>
-                      <input id="reg-license" class="form-input" type="text" formControlName="license" placeholder="MIT" />
+                    <div class="field">
+                      <label class="field-label" for="reg-license">License</label>
+                      <input id="reg-license" class="input" type="text" formControlName="license" placeholder="MIT" />
                     </div>
                   </div>
-                  <div class="form-field">
-                    <label class="form-label" for="reg-source">Source URL</label>
-                    <input id="reg-source" class="form-input" type="url" formControlName="source" placeholder="https://github.com/org/repo" />
+                  <div class="field">
+                    <label class="field-label" for="reg-source">Source URL</label>
+                    <input id="reg-source" class="input" type="url" formControlName="source" placeholder="https://github.com/org/repo" />
                   </div>
                 }
 
                 @if (isTool) {
-                  <div class="form-field">
-                    <label class="form-label" for="reg-parent-server">Parent Server <span class="required" aria-hidden="true">*</span></label>
-                    <input id="reg-parent-server" class="form-input" type="text" formControlName="parentServer" placeholder="server-slug" />
+                  <div class="field">
+                    <label class="field-label" for="reg-parent-server">Parent Server <span class="req-star" aria-hidden="true">*</span></label>
+                    <input id="reg-parent-server" class="input" type="text" formControlName="parentServer" placeholder="server-slug" />
                   </div>
-                  <div class="form-field">
-                    <label class="form-label" for="reg-returns">Return type</label>
-                    <input id="reg-returns" class="form-input" type="text" formControlName="returns" placeholder="string | object | array" />
+                  <div class="field">
+                    <label class="field-label" for="reg-returns">Return type</label>
+                    <input id="reg-returns" class="input" type="text" formControlName="returns" placeholder="string | object | array" />
                   </div>
-                  <div class="form-field">
-                    <div class="params-header">
-                      <span class="form-label">Parameters</span>
-                      <button class="add-param-btn" type="button" (click)="addParam()">
+                  <div class="field">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px">
+                      <span class="field-label">Parameters</span>
+                      <button class="btn btn-ghost btn-sm" type="button" (click)="addParam()">
                         <app-icon name="plus" [size]="13" aria-hidden="true"></app-icon>
                         Add parameter
                       </button>
                     </div>
                     <div formArrayName="params">
                       @for (param of params.controls; track param; let i = $index) {
-                        <div class="param-row" [formGroupName]="i">
-                          <input class="form-input" type="text" formControlName="name" placeholder="name" aria-label="Parameter name" />
-                          <input class="form-input" type="text" formControlName="type" placeholder="type" aria-label="Parameter type" />
-                          <input class="form-input" type="text" formControlName="description" placeholder="description" aria-label="Parameter description" />
-                          <label class="param-required">
+                        <div [formGroupName]="i" style="display: grid; grid-template-columns: 1fr 1fr 2fr auto auto; gap: 8px; align-items: center; margin-top: 8px">
+                          <input class="input" type="text" formControlName="name" placeholder="name" aria-label="Parameter name" />
+                          <input class="input" type="text" formControlName="type" placeholder="type" aria-label="Parameter type" />
+                          <input class="input" type="text" formControlName="description" placeholder="description" aria-label="Parameter description" />
+                          <label style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; white-space: nowrap">
                             <input type="checkbox" formControlName="required" aria-label="Required" />
                             Required
                           </label>
                           <button
-                            class="remove-param-btn"
+                            class="btn btn-ghost btn-sm"
                             type="button"
                             (click)="removeParam(i)"
                             [attr.aria-label]="'Remove parameter ' + (i + 1)"
@@ -244,31 +243,31 @@
                 }
 
                 @if (isSkill) {
-                  <div class="form-field">
-                    <label class="form-label" for="reg-triggers">Triggers</label>
-                    <input id="reg-triggers" class="form-input" type="text" formControlName="triggers" placeholder="on message, on schedule" />
+                  <div class="field">
+                    <label class="field-label" for="reg-triggers">Triggers</label>
+                    <input id="reg-triggers" class="input" type="text" formControlName="triggers" placeholder="on message, on schedule" />
                     <span class="field-hint">Comma-separated trigger patterns</span>
                   </div>
-                  <div class="form-field">
-                    <label class="form-label" for="reg-reaches">Tool dependencies (reaches)</label>
-                    <input id="reg-reaches" class="form-input" type="text" formControlName="reaches" placeholder="tool-slug-1, tool-slug-2" />
+                  <div class="field">
+                    <label class="field-label" for="reg-reaches">Tool dependencies (reaches)</label>
+                    <input id="reg-reaches" class="input" type="text" formControlName="reaches" placeholder="tool-slug-1, tool-slug-2" />
                     <span class="field-hint">Comma-separated tool slugs this skill uses</span>
                   </div>
                 }
 
                 @if (isAgent) {
-                  <div class="form-grid">
-                    <div class="form-field">
-                      <label class="form-label" for="reg-model">Model</label>
-                      <select id="reg-model" class="form-select" formControlName="model">
+                  <div class="pick-grid">
+                    <div class="field">
+                      <label class="field-label" for="reg-model">Model</label>
+                      <select id="reg-model" class="input" formControlName="model">
                         @for (m of modelOptions; track m) {
                           <option [value]="m">{{ m }}</option>
                         }
                       </select>
                     </div>
-                    <div class="form-field">
-                      <label class="form-label" for="reg-autonomy">Autonomy level</label>
-                      <select id="reg-autonomy" class="form-select" formControlName="autonomy">
+                    <div class="field">
+                      <label class="field-label" for="reg-autonomy">Autonomy level</label>
+                      <select id="reg-autonomy" class="input" formControlName="autonomy">
                         <option value="low">Low — Confirm each action</option>
                         <option value="medium">Medium — Confirm on writes</option>
                         <option value="high">High — Confirm on risk</option>
@@ -276,33 +275,33 @@
                       </select>
                     </div>
                   </div>
-                  <div class="form-field">
-                    <label class="form-label" for="reg-servers">Connected servers</label>
-                    <input id="reg-servers" class="form-input" type="text" formControlName="servers" placeholder="server-slug-1, server-slug-2" />
+                  <div class="field">
+                    <label class="field-label" for="reg-servers">Connected servers</label>
+                    <input id="reg-servers" class="input" type="text" formControlName="servers" placeholder="server-slug-1, server-slug-2" />
                   </div>
-                  <div class="form-field">
-                    <label class="form-label" for="reg-skills">Bundled skills</label>
-                    <input id="reg-skills" class="form-input" type="text" formControlName="skills" placeholder="skill-slug-1, skill-slug-2" />
+                  <div class="field">
+                    <label class="field-label" for="reg-skills">Bundled skills</label>
+                    <input id="reg-skills" class="input" type="text" formControlName="skills" placeholder="skill-slug-1, skill-slug-2" />
                   </div>
                 }
 
                 @if (isApi) {
-                  <div class="form-grid">
-                    <div class="form-field">
-                      <label class="form-label" for="reg-style">API style</label>
-                      <select id="reg-style" class="form-select" formControlName="style">
+                  <div class="pick-grid">
+                    <div class="field">
+                      <label class="field-label" for="reg-style">API style</label>
+                      <select id="reg-style" class="input" formControlName="style">
                         <option value="REST">REST</option>
                         <option value="GraphQL">GraphQL</option>
                       </select>
                     </div>
-                    <div class="form-field">
-                      <label class="form-label" for="reg-endpoint">Endpoint URL</label>
-                      <input id="reg-endpoint" class="form-input" type="url" formControlName="endpoint" placeholder="https://api.example.com/v1" />
+                    <div class="field">
+                      <label class="field-label" for="reg-endpoint">Endpoint URL</label>
+                      <input id="reg-endpoint" class="input" type="url" formControlName="endpoint" placeholder="https://api.example.com/v1" />
                     </div>
                   </div>
-                  <div class="form-field">
-                    <label class="form-label" for="reg-wrapped-by">Wrapped by server (optional)</label>
-                    <input id="reg-wrapped-by" class="form-input" type="text" formControlName="wrappedBy" placeholder="server-slug" />
+                  <div class="field">
+                    <label class="field-label" for="reg-wrapped-by">Wrapped by server (optional)</label>
+                    <input id="reg-wrapped-by" class="input" type="text" formControlName="wrappedBy" placeholder="server-slug" />
                   </div>
                 }
               </div>
@@ -310,15 +309,15 @@
 
             <!-- Step 4: Governance -->
             @if (currentStep() === 4) {
-              <div class="wizard-step" role="group" aria-labelledby="step4-title">
-                <h1 id="step4-title" class="step-title">Governance</h1>
-                <p class="step-subtitle">Control how your entry is accessed and used.</p>
+              <div class="fade-up" role="group" aria-labelledby="step4-title">
+                <h2 id="step4-title" class="h2">Governance</h2>
+                <p class="field-hint">Control how your entry is accessed and used.</p>
 
-                <div class="form-field">
-                  <label class="form-label" for="reg-sensitivity">
-                    Sensitivity level <span class="required" aria-hidden="true">*</span>
+                <div class="field">
+                  <label class="field-label" for="reg-sensitivity">
+                    Sensitivity level <span class="req-star" aria-hidden="true">*</span>
                   </label>
-                  <select id="reg-sensitivity" class="form-select" formControlName="sensitivity">
+                  <select id="reg-sensitivity" class="input" formControlName="sensitivity">
                     <option value="public">Public — anyone can discover and use</option>
                     <option value="internal">Internal — organization members only</option>
                     <option value="confidential">Confidential — explicit grant required</option>
@@ -326,20 +325,38 @@
                   </select>
                 </div>
 
-                <div class="toggle-fields">
+                <div>
                   <label class="toggle-row">
-                    <div class="toggle-info">
-                      <span class="toggle-label">Read-only default</span>
-                      <span class="toggle-desc">Prevent write operations by default</span>
+                    <div class="tr-text">
+                      <span class="tr-t">Read-only default</span>
+                      <span class="tr-d">Prevent write operations by default</span>
                     </div>
-                    <input type="checkbox" formControlName="readOnly" role="switch" aria-label="Read-only default" />
+                    <input type="checkbox" formControlName="readOnly" style="display: none" />
+                    <button
+                      type="button"
+                      class="switch"
+                      [class.on]="form.get('readOnly')?.value"
+                      aria-label="Read-only default"
+                      [attr.aria-checked]="form.get('readOnly')?.value"
+                      role="switch"
+                      (click)="form.patchValue({ readOnly: !form.get('readOnly')?.value })"
+                    ></button>
                   </label>
                   <label class="toggle-row">
-                    <div class="toggle-info">
-                      <span class="toggle-label">Require approval</span>
-                      <span class="toggle-desc">Each connection requires admin approval</span>
+                    <div class="tr-text">
+                      <span class="tr-t">Require approval</span>
+                      <span class="tr-d">Each connection requires admin approval</span>
                     </div>
-                    <input type="checkbox" formControlName="approvalRequired" role="switch" aria-label="Require approval for each connection" />
+                    <input type="checkbox" formControlName="approvalRequired" style="display: none" />
+                    <button
+                      type="button"
+                      class="switch"
+                      [class.on]="form.get('approvalRequired')?.value"
+                      aria-label="Require approval for each connection"
+                      [attr.aria-checked]="form.get('approvalRequired')?.value"
+                      role="switch"
+                      (click)="form.patchValue({ approvalRequired: !form.get('approvalRequired')?.value })"
+                    ></button>
                   </label>
                 </div>
               </div>
@@ -347,49 +364,49 @@
 
             <!-- Step 5: Review -->
             @if (currentStep() === 5) {
-              <div class="wizard-step" role="group" aria-labelledby="step5-title">
-                <h1 id="step5-title" class="step-title">Review & submit</h1>
-                <p class="step-subtitle">Check your submission before sending for review.</p>
+              <div class="fade-up" role="group" aria-labelledby="step5-title">
+                <h2 id="step5-title" class="h2">Review & submit</h2>
+                <p class="field-hint">Check your submission before sending for review.</p>
 
                 @if (error()) {
-                  <div class="error-alert" role="alert" aria-live="assertive">
+                  <div class="callout" role="alert" aria-live="assertive">
                     <app-icon name="warning" [size]="16" aria-hidden="true"></app-icon>
                     {{ error() }}
                   </div>
                 }
 
-                <div class="review-card">
-                  <div class="review-row">
-                    <span class="review-key">Type</span>
-                    <span class="review-val review-type">{{ selectedType }}</span>
+                <div class="summary-card">
+                  <div class="summary-row">
+                    <span class="summary-k">Type</span>
+                    <span class="summary-v" style="text-transform: capitalize">{{ selectedType }}</span>
                   </div>
-                  <div class="review-row">
-                    <span class="review-key">Name</span>
-                    <span class="review-val">{{ form.get('name')?.value || '—' }}</span>
+                  <div class="summary-row">
+                    <span class="summary-k">Name</span>
+                    <span class="summary-v">{{ form.get('name')?.value || '—' }}</span>
                   </div>
-                  <div class="review-row">
-                    <span class="review-key">Slug</span>
-                    <span class="review-val"><code>{{ slugValue || '—' }}</code></span>
+                  <div class="summary-row">
+                    <span class="summary-k">Slug</span>
+                    <span class="summary-v"><code>{{ slugValue || '—' }}</code></span>
                   </div>
-                  <div class="review-row">
-                    <span class="review-key">Publisher</span>
-                    <span class="review-val">{{ form.get('publisher')?.value || '—' }}</span>
+                  <div class="summary-row">
+                    <span class="summary-k">Publisher</span>
+                    <span class="summary-v">{{ form.get('publisher')?.value || '—' }}</span>
                   </div>
-                  <div class="review-row">
-                    <span class="review-key">Version</span>
-                    <span class="review-val">{{ form.get('version')?.value || '—' }}</span>
+                  <div class="summary-row">
+                    <span class="summary-k">Version</span>
+                    <span class="summary-v">{{ form.get('version')?.value || '—' }}</span>
                   </div>
-                  <div class="review-row">
-                    <span class="review-key">Sensitivity</span>
-                    <span class="review-val">{{ form.get('sensitivity')?.value }}</span>
+                  <div class="summary-row">
+                    <span class="summary-k">Sensitivity</span>
+                    <span class="summary-v">{{ form.get('sensitivity')?.value }}</span>
                   </div>
-                  <div class="review-row">
-                    <span class="review-key">Summary</span>
-                    <span class="review-val review-summary">{{ form.get('summary')?.value || '—' }}</span>
+                  <div class="summary-row">
+                    <span class="summary-k">Summary</span>
+                    <span class="summary-v">{{ form.get('summary')?.value || '—' }}</span>
                   </div>
                 </div>
 
-                <p class="review-note">
+                <p class="callout">
                   <app-icon name="info" [size]="14" aria-hidden="true"></app-icon>
                   Entries are reviewed by our team before appearing in the registry. You'll receive a notification when it's approved.
                 </p>
@@ -397,29 +414,29 @@
             }
 
             <!-- Navigation -->
-            <div class="wizard-nav">
+            <div class="wizard-foot">
               @if (currentStep() > 1) {
-                <button class="btn-secondary" type="button" (click)="prevStep()">
+                <button class="btn btn-secondary" type="button" (click)="prevStep()">
                   <app-icon name="chevron-right" [size]="14" style="transform: rotate(180deg)" aria-hidden="true"></app-icon>
                   Back
                 </button>
               }
 
               @if (currentStep() < 5) {
-                <button class="btn-primary" type="button" (click)="nextStep()" style="margin-left: auto">
+                <div class="spacer"></div>
+                <button class="btn btn-primary" type="button" (click)="nextStep()">
                   Continue
                   <app-icon name="chevron-right" [size]="14" aria-hidden="true"></app-icon>
                 </button>
               } @else {
+                <div class="spacer"></div>
                 <button
-                  class="btn-primary"
+                  class="btn btn-primary"
                   type="submit"
                   [disabled]="form.invalid || submitting()"
                   [attr.aria-busy]="submitting()"
-                  style="margin-left: auto"
                 >
                   @if (submitting()) {
-                    <span class="spinner" aria-hidden="true"></span>
                     Submitting…
                   } @else {
                     Submit for review
@@ -435,20 +452,32 @@
 
     <!-- Success state -->
     @if (submitted()) {
-      <div class="success-state" role="status" aria-live="polite">
-        <div class="success-icon" aria-hidden="true">
+      <div role="status" aria-live="polite" style="max-width: 520px; margin: 60px auto; text-align: center" class="fade-up">
+        <div aria-hidden="true" style="width: 64px; height: 64px; border-radius: 18px; background: var(--accent-wash); border: 1px solid var(--accent-line); display: grid; place-items: center; margin: 0 auto 22px; color: var(--accent)">
           <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
             <circle cx="32" cy="32" r="31" fill="var(--ok-wash)" stroke="var(--ok)" stroke-width="2"/>
             <path d="M20 32l8 8 16-16" stroke="var(--ok)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </div>
-        <h2 class="success-title">Submission received!</h2>
-        <p class="success-body">Your entry has been queued for review. You'll be notified once it's approved.</p>
+        <h1 class="h1" style="margin-bottom: 10px">Submission received!</h1>
+        <p class="lede" style="margin: 0 auto 26px">Your entry has been queued for review. You'll be notified once it's approved.</p>
+        <div class="summary-card" style="text-align: left; margin-bottom: 26px">
+          <div class="summary-row">
+            <span class="summary-k">Name</span>
+            <span class="summary-v">{{ form.get('name')?.value || '—' }}</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-k">Type</span>
+            <span class="summary-v" style="text-transform: capitalize">{{ selectedType }}</span>
+          </div>
         @if (submittedId()) {
-          <p class="success-id">Reference: <code>{{ submittedId() }}</code></p>
+            <div class="summary-row">
+              <span class="summary-k">Reference</span>
+              <span class="summary-v"><code>{{ submittedId() }}</code></span>
+            </div>
         }
-        <button class="btn-primary" type="button" (click)="startOver()">Back to Registry</button>
+        </div>
+        <button class="btn btn-primary" type="button" (click)="startOver()">Back to Registry</button>
       </div>
     }
-  </div>
 </div>

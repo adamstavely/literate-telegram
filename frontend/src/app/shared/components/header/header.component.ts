@@ -28,13 +28,12 @@ import { AuthenticatedUser, Notification } from '../../types';
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   imports: [RouterLink, RouterLinkActive, AsyncPipe, NgClass, FormsModule, IconComponent, DatePipe],
   templateUrl: './header.component.html',
-  styleUrl: './header.component.scss',
 })
 export class HeaderComponent implements OnInit, OnDestroy {
   readonly auth = inject(AuthService);
   readonly themeService = inject(ThemeService);
   private readonly registryService = inject(RegistryService);
-  private readonly router = inject(Router);
+  readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
   @ViewChild('notifBtn') notifBtn!: ElementRef<HTMLButtonElement>;

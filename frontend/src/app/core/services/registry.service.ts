@@ -10,16 +10,10 @@ import {
   RegistryEntry,
   SearchParams,
   SearchResult,
+  AppStats,
 } from '../../shared/types/index';
 
-export interface RegistryStats {
-  servers: number;
-  tools: number;
-  skills: number;
-  agents: number;
-  apis: number;
-  totalInstalls: number;
-}
+export type { AppStats as RegistryStats } from '../../shared/types/index';
 
 @Injectable({ providedIn: 'root' })
 export class RegistryService {
@@ -49,9 +43,9 @@ export class RegistryService {
       .pipe(retry({ count: 1, delay: 1000, resetOnSuccess: true }));
   }
 
-  getStats(): Observable<RegistryStats> {
+  getStats(): Observable<AppStats> {
     return this.http
-      .get<RegistryStats>(`${this.base}/entries/stats`)
+      .get<AppStats>(`${this.base}/entries/stats`)
       .pipe(retry({ count: 1, delay: 1000, resetOnSuccess: true }));
   }
 

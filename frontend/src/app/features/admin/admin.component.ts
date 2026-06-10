@@ -25,7 +25,6 @@ interface Toast {
   standalone: true,
   imports: [RouterLink, CommonModule, FormsModule, IconComponent],
   templateUrl: './admin.component.html',
-  styleUrl: './admin.component.scss',
 })
 export class AdminComponent implements OnInit {
   private readonly registry = inject(RegistryService);

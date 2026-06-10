@@ -38,7 +38,6 @@ type TabId = 'overview' | 'install' | 'tools' | 'reviews';
     SensitivityBadgeComponent,
   ],
   templateUrl: './detail.component.html',
-  styleUrl: './detail.component.scss',
 })
 export class DetailComponent implements OnInit {
   /** Bound via withComponentInputBinding() from route params. */

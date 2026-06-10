@@ -1,279 +1,268 @@
-<!-- Hero Section -->
-<section class="hero" aria-labelledby="hero-title">
-  <div class="container--browse">
-    <div class="hero-content">
-      <div class="hero-logo" aria-hidden="true">
-        <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
-          <rect width="64" height="64" rx="16" fill="var(--accent)"/>
-          <circle cx="24" cy="32" r="10" stroke="white" stroke-width="3"/>
-          <circle cx="40" cy="32" r="10" stroke="white" stroke-width="3" opacity="0.7"/>
-        </svg>
-      </div>
-      <div class="hero-text">
-        <h1 id="hero-title" class="hero-title">
-          Making the stack work <span class="hero-accent">together.</span>
-        </h1>
-        <p class="hero-subtitle">
-          MCP, skills, tools, agents, APIs. Discover, govern, and integrate them from a single interface.
-        </p>
-      </div>
-      @if (stats()) {
-        <div class="hero-stats" role="complementary" aria-label="Registry statistics">
-          <div class="stat-item">
-            <span class="stat-num">{{ stats()!.agents | number }}</span>
-            <span class="stat-label">Agents</span>
+<div class="browse-page">
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="container hero-flex">
+      <div class="hero-left">
+        <div class="hero-brand">
+          <div class="hero-logo" aria-hidden="true">
+            <img src="assets/interop-mark.svg" alt="" width="132" height="132" />
           </div>
-          <div class="stat-item">
-            <span class="stat-num">{{ stats()!.servers | number }}</span>
-            <span class="stat-label">Servers</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-num">{{ stats()!.apis | number }}</span>
-            <span class="stat-label">APIs</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-num">{{ stats()!.tools | number }}</span>
-            <span class="stat-label">Tools</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-num">{{ stats()!.skills | number }}</span>
-            <span class="stat-label">Skills</span>
+          <div class="hero-text">
+            <h1 id="hero-title" class="hero-title">
+              Interop: Making the stack work <span class="accent">together</span>.
+            </h1>
+            <p class="hero-sub">
+              MCP, skills, tools, agents, &amp; APIs. Discover, govern, and integrate them from a single interface.
+            </p>
           </div>
         </div>
-      }
+      </div>
+      <div class="hero-meta" role="complementary" aria-label="Registry statistics">
+        <div class="hero-stat">
+          <div class="n mono">{{ statCount('agent') | number }}</div>
+          <div class="l"><app-icon name="agent" [size]="14" aria-hidden="true"></app-icon>agents</div>
+        </div>
+        <div class="hero-stat">
+          <div class="n mono">{{ statCount('server') | number }}</div>
+          <div class="l"><app-icon name="server" [size]="14" aria-hidden="true"></app-icon>servers</div>
+        </div>
+        <div class="hero-stat">
+          <div class="n mono">{{ statCount('api') | number }}</div>
+          <div class="l"><app-icon name="api" [size]="14" aria-hidden="true"></app-icon>APIs</div>
+        </div>
+        <div class="hero-stat">
+          <div class="n mono">{{ statCount('tool') | number }}</div>
+          <div class="l"><app-icon name="tool" [size]="14" aria-hidden="true"></app-icon>tools</div>
+        </div>
+        <div class="hero-stat">
+          <div class="n mono">{{ statCount('skill') | number }}</div>
+          <div class="l"><app-icon name="skill" [size]="14" aria-hidden="true"></app-icon>skills</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="container">
+    <div class="layout">
+      <aside class="side" role="complementary" aria-label="Filters">
+        <div>
+          <div class="side-group-label">Type</div>
+          <div class="facet">
+            @for (opt of typeOptions; track opt.value) {
+              <div
+                class="facet-item"
+                [class.on]="activeType() === opt.value"
+                role="button"
+                tabindex="0"
+                (click)="setType(opt.value)"
+                (keydown.enter)="setType(opt.value)"
+                [attr.aria-pressed]="activeType() === opt.value"
+              >
+                <span class="fi-icon"><app-icon [name]="opt.icon" [size]="15" aria-hidden="true"></app-icon></span>
+                {{ opt.label }}
+                <span class="count">{{ statCount(opt.value) | number }}</span>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div>
+          <div class="side-group-label">Category</div>
+          <div class="facet">
+            @for (cat of categoryOptions; track cat) {
+              <div
+                class="facet-item"
+                [class.on]="activeCategory() === cat"
+                role="button"
+                tabindex="0"
+                (click)="setCategory(cat)"
+                (keydown.enter)="setCategory(cat)"
+                [attr.aria-pressed]="activeCategory() === cat"
+              >
+                <span class="checkbox" [class.on]="activeCategory() === cat" aria-hidden="true">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 12l4.5 4.5L19 7"/>
+                  </svg>
+                </span>
+                {{ cat }}
+              </div>
+            }
+          </div>
+        </div>
+
+        <div>
+          <div class="side-group-label">Compatible with</div>
+          <div class="facet">
+            @for (client of clientOptions; track client) {
+              <div
+                class="facet-item"
+                [class.on]="activeClient() === client"
+                role="button"
+                tabindex="0"
+                (click)="setClient(client)"
+                (keydown.enter)="setClient(client)"
+                [attr.aria-pressed]="activeClient() === client"
+              >
+                <span class="checkbox" [class.on]="activeClient() === client" aria-hidden="true">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 12l4.5 4.5L19 7"/>
+                  </svg>
+                </span>
+                {{ client }}
+              </div>
+            }
+          </div>
+        </div>
+      </aside>
+
+      <main id="main-content">
+        <div class="results-bar">
+          <div class="results-count" aria-live="polite" aria-atomic="true">
+            @if (!loading()) {
+              <b>{{ total() | number }}</b> {{ total() === 1 ? 'result' : 'results' }}
+            } @else {
+              Loading…
+            }
+          </div>
+          <div style="flex: 1"></div>
+          <div class="sortbar">
+            <label for="sort-select" class="sr-only">Sort by</label>
+            <select
+              id="sort-select"
+              class="select"
+              [value]="sortBy()"
+              (change)="setSort($any($event.target).value)"
+            >
+              <option value="installs">Most installed</option>
+              <option value="recent">Recently updated</option>
+              <option value="rating">Highest rated</option>
+              <option value="name">Name (A–Z)</option>
+            </select>
+            <div class="segmented" role="group" aria-label="View mode">
+              <button
+                class="seg"
+                [class.seg-on]="viewMode() === 'grid'"
+                type="button"
+                (click)="setViewMode('grid')"
+                [attr.aria-pressed]="viewMode() === 'grid'"
+                aria-label="Grid view"
+              >
+                <app-icon name="grid" [size]="14" aria-hidden="true"></app-icon>
+              </button>
+              <button
+                class="seg"
+                [class.seg-on]="viewMode() === 'list'"
+                type="button"
+                (click)="setViewMode('list')"
+                [attr.aria-pressed]="viewMode() === 'list'"
+                aria-label="List view"
+              >
+                <app-icon name="list" [size]="14" aria-hidden="true"></app-icon>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        @if (activeFilters().length > 0) {
+          <div class="chips" style="margin-bottom: 16px" aria-label="Active filters">
+            @for (filter of activeFilters(); track filter.key) {
+              <span class="chip">
+                {{ filter.label }}: {{ filter.value }}
+                <button
+                  type="button"
+                  [attr.aria-label]="'Remove filter: ' + filter.label + ' ' + filter.value"
+                  (click)="removeFilter(filter)"
+                >
+                  <app-icon name="close" [size]="12" aria-hidden="true"></app-icon>
+                </button>
+              </span>
+            }
+            <button
+              class="chip"
+              type="button"
+              style="padding-right: 10px; color: var(--muted); cursor: pointer"
+              (click)="clearAllFilters()"
+            >Clear all</button>
+          </div>
+        }
+
+        @if (error()) {
+          <div class="callout" role="alert" aria-live="assertive" style="margin-bottom: 16px">
+            <app-icon name="warning" [size]="16" aria-hidden="true"></app-icon>
+            <div>{{ error() }} <button type="button" class="inline-link" (click)="clearAllFilters()">Retry</button></div>
+          </div>
+        }
+
+        @if (loading()) {
+          <div
+            [class]="viewMode() === 'grid' ? 'grid grid-cards' : 'grid'"
+            role="status"
+            aria-label="Loading results"
+            aria-busy="true"
+          >
+            @for (n of skeletonItems; track n) {
+              <div class="skeleton" style="height: 168px" aria-hidden="true"></div>
+            }
+          </div>
+        }
+
+        @if (!loading() && !error()) {
+          @if (entries().length === 0) {
+            <div class="empty" role="status">
+              <div class="empty-ic"><app-icon name="search" [size]="22" aria-hidden="true"></app-icon></div>
+              <div style="font-weight: 600; color: var(--ink); font-size: 16px">No matches</div>
+              <div style="margin-top: 6px">
+                @if (searchQuery()) {
+                  No entries match "<strong>{{ searchQuery() }}</strong>". Try a different search or clear your filters.
+                } @else {
+                  Try a different search or clear your filters.
+                }
+              </div>
+              <button class="btn btn-secondary btn-sm" type="button" style="margin-top: 16px" (click)="clearAllFilters()">
+                Clear all filters
+              </button>
+            </div>
+          } @else {
+            <div
+              [class]="viewMode() === 'grid' ? 'grid grid-cards' : 'grid'"
+              [style.gap.px]="viewMode() === 'grid' ? 14 : 10"
+              role="feed"
+              aria-label="Registry entries"
+            >
+              @for (entry of entries(); track trackEntry($index, entry)) {
+                <app-entry-card [entry]="entry" [viewMode]="viewMode()"></app-entry-card>
+              }
+            </div>
+          }
+
+          @if (totalPages() > 1) {
+            <nav class="results-bar" style="margin-top: 40px; justify-content: center" aria-label="Pagination">
+              <button
+                class="btn btn-secondary btn-sm"
+                type="button"
+                [disabled]="currentPage() === 0"
+                (click)="goToPage(currentPage() - 1)"
+                aria-label="Previous page"
+              >
+                <app-icon name="chevron-right" [size]="14" style="transform: rotate(180deg)" aria-hidden="true"></app-icon>
+                Prev
+              </button>
+              <span class="results-count" style="margin: 0 16px" aria-live="polite">
+                Page {{ currentPage() + 1 }} of {{ totalPages() }}
+              </span>
+              <button
+                class="btn btn-secondary btn-sm"
+                type="button"
+                [disabled]="currentPage() >= totalPages() - 1"
+                (click)="goToPage(currentPage() + 1)"
+                aria-label="Next page"
+              >
+                Next
+                <app-icon name="chevron-right" [size]="14" aria-hidden="true"></app-icon>
+              </button>
+            </nav>
+          }
+        }
+      </main>
     </div>
   </div>
-</section>
-
-<!-- Browse Layout -->
-<div class="browse-layout container--browse">
-
-  <!-- Sidebar Filters -->
-  <aside class="sidebar" role="complementary" aria-label="Filters">
-
-    <!-- Type filter -->
-    <fieldset class="filter-group">
-      <legend>Type</legend>
-      @for (opt of typeOptions; track opt.value) {
-        @if (opt.value !== '') {
-          <label class="filter-checkbox">
-            <input
-              type="radio"
-              name="type-filter"
-              [value]="opt.value"
-              [checked]="activeType() === opt.value"
-              (change)="setType(opt.value)"
-              [attr.aria-label]="'Filter by ' + opt.label"
-            />
-            <app-icon [name]="opt.icon" [size]="14" aria-hidden="true"></app-icon>
-            <span>{{ opt.label }}</span>
-          </label>
-        }
-      }
-      @if (activeType()) {
-        <button class="filter-clear-btn" type="button" (click)="setType('')">Clear type</button>
-      }
-    </fieldset>
-
-    <!-- Category filter -->
-    <fieldset class="filter-group">
-      <legend>Category</legend>
-      @for (cat of categoryOptions; track cat) {
-        <label class="filter-checkbox">
-          <input
-            type="checkbox"
-            [checked]="activeCategory() === cat"
-            (change)="setCategory(cat)"
-            [attr.aria-label]="'Filter by category ' + cat"
-          />
-          <span>{{ cat }}</span>
-        </label>
-      }
-    </fieldset>
-
-    <!-- Client filter -->
-    <fieldset class="filter-group">
-      <legend>Client</legend>
-      @for (client of clientOptions; track client) {
-        <label class="filter-checkbox">
-          <input
-            type="checkbox"
-            [checked]="activeClient() === client"
-            (change)="setClient(client)"
-            [attr.aria-label]="'Filter by client ' + client"
-          />
-          <span>{{ client }}</span>
-        </label>
-      }
-    </fieldset>
-  </aside>
-
-  <!-- Main Results Area -->
-  <main class="results-area" id="main-content">
-
-    <!-- Toolbar -->
-    <div class="results-toolbar" role="toolbar" aria-label="Results controls">
-      <div class="results-meta">
-        <span aria-live="polite" aria-atomic="true">
-          @if (!loading()) {
-            {{ total() | number }} result{{ total() === 1 ? '' : 's' }}
-          } @else {
-            Loading…
-          }
-        </span>
-      </div>
-      <div class="toolbar-right">
-        <label for="sort-select" class="sr-only">Sort by</label>
-        <select
-          id="sort-select"
-          class="sort-select"
-          [value]="sortBy()"
-          (change)="setSort($any($event.target).value)"
-        >
-          <option value="installs">Most installs</option>
-          <option value="recent">Most recent</option>
-          <option value="rating">Highest rated</option>
-          <option value="name">Name A–Z</option>
-        </select>
-
-        <div class="view-toggle" role="group" aria-label="View mode">
-          <button
-            class="view-btn"
-            [class.view-btn--active]="viewMode() === 'grid'"
-            type="button"
-            (click)="setViewMode('grid')"
-            aria-label="Grid view"
-            [attr.aria-pressed]="viewMode() === 'grid'"
-          >
-            <app-icon name="grid" [size]="16" aria-hidden="true"></app-icon>
-          </button>
-          <button
-            class="view-btn"
-            [class.view-btn--active]="viewMode() === 'list'"
-            type="button"
-            (click)="setViewMode('list')"
-            aria-label="List view"
-            [attr.aria-pressed]="viewMode() === 'list'"
-          >
-            <app-icon name="list" [size]="16" aria-hidden="true"></app-icon>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Active filter chips -->
-    @if (activeFilters().length > 0) {
-      <div class="active-filters" aria-label="Active filters">
-        @for (filter of activeFilters(); track filter.key) {
-          <span class="filter-chip">
-            {{ filter.label }}: {{ filter.value }}
-            <button
-              class="filter-chip-remove"
-              type="button"
-              [attr.aria-label]="'Remove filter: ' + filter.label + ' ' + filter.value"
-              (click)="removeFilter(filter)"
-            >
-              <app-icon name="close" [size]="11" aria-hidden="true"></app-icon>
-            </button>
-          </span>
-        }
-        <button class="filter-clear-all-btn" type="button" (click)="clearAllFilters()">
-          Clear all
-        </button>
-      </div>
-    }
-
-    <!-- Error state -->
-    @if (error()) {
-      <div class="error-state" role="alert" aria-live="assertive">
-        <app-icon name="warning" [size]="20" aria-hidden="true"></app-icon>
-        <p>{{ error() }}</p>
-        <button type="button" (click)="clearAllFilters()">Retry</button>
-      </div>
-    }
-
-    <!-- Loading skeleton -->
-    @if (loading()) {
-      <div
-        class="results-grid"
-        [class.results-list]="viewMode() === 'list'"
-        role="status"
-        aria-label="Loading results"
-        aria-busy="true"
-      >
-        @for (n of skeletonItems; track n) {
-          <div class="skeleton skeleton-card" aria-hidden="true"></div>
-        }
-      </div>
-    }
-
-    <!-- Results grid -->
-    @if (!loading() && !error()) {
-      <div
-        class="results-grid"
-        [class.results-list]="viewMode() === 'list'"
-        role="feed"
-        aria-label="Registry entries"
-        aria-busy="false"
-      >
-        @for (entry of entries(); track trackEntry($index, entry)) {
-          <app-entry-card
-            [entry]="entry"
-            [viewMode]="viewMode()"
-          ></app-entry-card>
-        }
-      </div>
-
-      <!-- Empty state -->
-      @if (entries().length === 0 && !loading()) {
-        <div class="empty-state" role="status">
-          <svg width="56" height="56" viewBox="0 0 56 56" fill="none" aria-hidden="true">
-            <circle cx="28" cy="28" r="27" stroke="var(--line)" stroke-width="2"/>
-            <circle cx="24" cy="24" r="10" stroke="var(--ink-3)" stroke-width="2"/>
-            <line x1="31.5" y1="31.5" x2="40" y2="40" stroke="var(--ink-3)" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-          <p class="empty-title">No results found</p>
-          <p class="empty-sub">
-            @if (searchQuery()) {
-              No entries match "<strong>{{ searchQuery() }}</strong>"
-            } @else {
-              Try adjusting your filters
-            }
-          </p>
-          <button class="empty-reset-btn" type="button" (click)="clearAllFilters()">
-            Clear all filters
-          </button>
-        </div>
-      }
-    }
-
-    <!-- Pagination -->
-    @if (totalPages() > 1 && !loading()) {
-      <nav class="pagination" aria-label="Pagination">
-        <button
-          class="page-btn"
-          type="button"
-          [disabled]="currentPage() === 0"
-          (click)="goToPage(currentPage() - 1)"
-          aria-label="Previous page"
-        >
-          <app-icon name="chevron-right" [size]="16" style="transform: rotate(180deg)" aria-hidden="true"></app-icon>
-          Prev
-        </button>
-        <span class="page-info" aria-live="polite">
-          Page {{ currentPage() + 1 }} of {{ totalPages() }}
-        </span>
-        <button
-          class="page-btn"
-          type="button"
-          [disabled]="currentPage() >= totalPages() - 1"
-          (click)="goToPage(currentPage() + 1)"
-          aria-label="Next page"
-        >
-          Next
-          <app-icon name="chevron-right" [size]="16" aria-hidden="true"></app-icon>
-        </button>
-      </nav>
-    }
-  </main>
 </div>

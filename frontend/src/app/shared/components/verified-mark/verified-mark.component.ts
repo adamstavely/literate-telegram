@@ -30,7 +30,7 @@ function buildSealPath(cx: number, cy: number, outerR: number, innerR: number, b
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <span aria-label="Verified" role="img" class="verified-wrap">
+    <span aria-label="Verified" role="img" class="verified-mark">
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="18"
@@ -53,14 +53,6 @@ function buildSealPath(cx: number, cy: number, outerR: number, innerR: number, b
       </svg>
     </span>
   `,
-  styles: [`
-    .verified-wrap {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-  `],
 })
 export class VerifiedMarkComponent {
   readonly sealPath = buildSealPath(9, 9, 8, 6.2, 12);

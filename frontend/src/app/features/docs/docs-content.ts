@@ -13,6 +13,37 @@ export interface DocArticle {
   body: string; // HTML content
 }
 
+function calloutIcon(name: 'info' | 'warning' | 'bolt'): string {
+  const paths: Record<typeof name, string> = {
+    info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/>',
+    warning: '<path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/>',
+    bolt: '<path d="M13 3L5 13h6l-1 8 8-10h-6z"/>',
+  };
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]}</svg>`;
+}
+
+function wrapCallout(content: string, tone: 'accent' | 'default', icon: 'info' | 'warning' | 'bolt'): string {
+  const cls = tone === 'accent' ? 'callout accent doc-callout' : 'callout doc-callout';
+  return `<div class="${cls}">${calloutIcon(icon)}<div>${content.trim()}</div></div>`;
+}
+
+function docBody(raw: string): string {
+  return raw
+    .replace(/<div class="callout callout--tip">([\s\S]*?)<\/div>/g, (_, c) => wrapCallout(c, 'accent', 'bolt'))
+    .replace(/<div class="callout callout--warn">([\s\S]*?)<\/div>/g, (_, c) => wrapCallout(c, 'default', 'warning'))
+    .replace(/<div class="callout callout--info">([\s\S]*?)<\/div>/g, (_, c) => wrapCallout(c, 'default', 'info'))
+    .replace(/<h2([^>]*)>/g, '<h2 class="doc-h2"$1>')
+    .replace(/<h3([^>]*)>/g, '<h3 class="doc-h3"$1>')
+    .replace(/<p([^>]*)>/g, '<p class="doc-p"$1>')
+    .replace(/<ul([^>]*)>/g, '<ul class="doc-list"$1>')
+    .replace(/<a /g, '<a class="doc-link" ')
+    .replace(/<table>/g, '<div class="doc-table-wrap"><table class="doc-table">')
+    .replace(/<\/table>/g, '</table></div>')
+    .replace(/<pre><code>/g, '<pre class="codeblock"><code class="doc-codeblock">')
+    .replace(/<code>/g, '<code class="doc-icode">')
+    .replace(/class="doc-codeblock"/g, '');
+}
+
 export const DOC_SECTIONS: DocSection[] = [
   { id: 'getting-started', label: 'Getting Started' },
   { id: 'object-types', label: 'Object Types' },
@@ -28,7 +59,7 @@ export const DOC_ARTICLES: DocArticle[] = [
     readTime: 3,
     updatedAt: '2026-05-01',
     lead: 'Interop is a governed registry for everything an agent needs — MCP servers, tools, skills, agents, and APIs — discoverable and deployable from a single interface.',
-    body: `
+    body: docBody(`
       <h2 id="what-is-interop">What is Interop?</h2>
       <p>Interop solves a coordination problem. As AI agents proliferate, so do the capabilities they depend on: MCP servers that expose database connections, tools that call APIs, skills that encode procedural knowledge, agents that compose all of the above. Without a registry, every team maintains its own list. Capability drift is invisible. Governance is impossible.</p>
       <p>Interop brings these into one governed catalog. Browse what exists, understand what each entry does, connect it to your stack, and publish your own — with a policy layer that controls what is allowed to run and for whom.</p>
@@ -49,7 +80,7 @@ export const DOC_ARTICLES: DocArticle[] = [
       <div class="callout callout--info">
         <strong>Design principle:</strong> The registry is read-first. Browsing and searching require no account. Registration and governance actions require authentication.
       </div>
-    `,
+    `),
   },
 
   {
@@ -59,7 +90,7 @@ export const DOC_ARTICLES: DocArticle[] = [
     readTime: 5,
     updatedAt: '2026-05-10',
     lead: 'Connect your first MCP server in under five minutes — find it in the catalog, copy the install command, and paste it into your client config.',
-    body: `
+    body: docBody(`
       <h2 id="find-a-server">1. Find a server</h2>
       <p>Browse to the <a href="/">catalog</a>. Use the sidebar to filter by type (Server), category, or compatible client. Or search by name — the search bar in the header runs across names, summaries, and publisher names.</p>
 
@@ -88,7 +119,7 @@ export const DOC_ARTICLES: DocArticle[] = [
       <div class="callout callout--tip">
         <strong>Tip:</strong> Use the <strong>Clients</strong> column on the detail page to confirm your client is listed as compatible before installing.
       </div>
-    `,
+    `),
   },
 
   {
@@ -98,7 +129,7 @@ export const DOC_ARTICLES: DocArticle[] = [
     readTime: 6,
     updatedAt: '2026-05-15',
     lead: 'An MCP server is the package and process that exposes a set of tools, resources, and prompts over the Model Context Protocol — the governed toolbox behind one endpoint.',
-    body: `
+    body: docBody(`
       <h2 id="what-a-server-is">What a server is</h2>
       <p>An MCP server is a running process that implements the MCP specification. It carries the credentials, the transport (stdio/HTTP/SSE), and the lifecycle. Tools-to-server is many-to-one: a server is a governed toolbox, and the tools are the individual callables it exposes.</p>
       <p>When a gateway does least-privilege through virtual servers, it is choosing which tools from which servers a caller sees. That's access control over the capability axis.</p>
@@ -126,7 +157,7 @@ export const DOC_ARTICLES: DocArticle[] = [
       <div class="callout callout--warn">
         <strong>Write tools:</strong> Any tool that mutates state (creates, updates, deletes) is flagged as a write tool and subject to stricter governance. Check the policy settings to see the rules that apply in your organization.
       </div>
-    `,
+    `),
   },
 
   {
@@ -136,7 +167,7 @@ export const DOC_ARTICLES: DocArticle[] = [
     readTime: 4,
     updatedAt: '2026-05-15',
     lead: 'A tool is one callable function: a name, a description, an input schema, and a return value. The model calls it, code runs, a result comes back. It is a primitive in the MCP spec.',
-    body: `
+    body: docBody(`
       <h2 id="anatomy-of-a-tool">Anatomy of a tool</h2>
       <p>Every tool entry in the registry records:</p>
       <ul>
@@ -156,7 +187,7 @@ export const DOC_ARTICLES: DocArticle[] = [
       <div class="callout callout--info">
         <strong>One-to-many:</strong> A tool belongs to exactly one server. If you need the same tool callable from a different server, register a separate tool entry pointing to that server.
       </div>
-    `,
+    `),
   },
 
   {
@@ -166,7 +197,7 @@ export const DOC_ARTICLES: DocArticle[] = [
     readTime: 5,
     updatedAt: '2026-05-18',
     lead: 'A skill is portable procedural knowledge — a SKILL.md file with YAML frontmatter that tells an agent how to do a task. The agent reads it; it does not call it.',
-    body: `
+    body: docBody(`
       <h2 id="skills-vs-tools">Skills vs tools</h2>
       <p>The distinguishing mechanism is the object layer. Tools and servers are MCP protocol — the spec defines tools, resources, prompts, and the server transport. Skills are not MCP. They live at the host/agent layer above the protocol.</p>
       <p>A tool gives the agent an ability to <em>do</em> something. A skill gives the agent the ability to <em>think</em> about how to do something. Tools are callable endpoints; skills are instructional documents.</p>
@@ -203,7 +234,7 @@ Use this skill when asked to review a pull request...
       <div class="callout callout--tip">
         <strong>Convention:</strong> Keep trigger phrases in the imperative and conversational. "review this PR" is better than "pull_request_review_requested" — the user types the trigger, not the developer.
       </div>
-    `,
+    `),
   },
 
   {
@@ -213,7 +244,7 @@ Use this skill when asked to review a pull request...
     readTime: 5,
     updatedAt: '2026-05-20',
     lead: 'An agent is a composed assistant — a model wired to a set of servers and skills, configured for a specific domain of work.',
-    body: `
+    body: docBody(`
       <h2 id="composition">Composition</h2>
       <p>An agent entry declares:</p>
       <ul>
@@ -237,7 +268,7 @@ Use this skill when asked to review a pull request...
       <div class="callout callout--warn">
         <strong>Scope matters:</strong> A full-autonomy agent with write access to production systems is a significant governance risk. Apply the principle of least privilege — give agents only the servers they need for their defined scope.
       </div>
-    `,
+    `),
   },
 
   {
@@ -247,7 +278,7 @@ Use this skill when asked to review a pull request...
     readTime: 4,
     updatedAt: '2026-05-22',
     lead: 'APIs are raw HTTP or GraphQL endpoints catalogued in Interop — either for direct reference, or as the backing layer for an MCP server.',
-    body: `
+    body: docBody(`
       <h2 id="why-catalogue-apis">Why catalogue APIs?</h2>
       <p>Not every service has an MCP server yet. Cataloguing the raw API lets your team know it exists and understand its shape, even before you build the server wrapper. It also documents the relationship: when you do build the MCP server, you link it back to the source API.</p>
 
@@ -264,7 +295,7 @@ Use this skill when asked to review a pull request...
       <div class="callout callout--info">
         <strong>Stripe example:</strong> The Stripe REST API is catalogued as an API entry. The Stripe MCP Server wraps it, exposing <code>create_payment_intent</code>, <code>list_customers</code>, and <code>issue_refund</code> — a curated, governed subset.
       </div>
-    `,
+    `),
   },
 
   {
@@ -274,7 +305,7 @@ Use this skill when asked to review a pull request...
     readTime: 6,
     updatedAt: '2026-05-25',
     lead: 'The governance layer controls what gets published, who can publish it, and what classification it carries — without slowing down teams who are working with already-approved capabilities.',
-    body: `
+    body: docBody(`
       <h2 id="sensitivity-classification">Sensitivity classification</h2>
       <p>Every registry entry carries one of four sensitivity tiers:</p>
       <ul>
@@ -299,7 +330,7 @@ Use this skill when asked to review a pull request...
 
       <h2 id="publisher-trust">Publisher trust</h2>
       <p>Verified publishers (organizations with a verified domain in the allowlist) can skip the review queue when the default posture is set to Balanced or Open. Strict posture always requires review regardless of publisher status.</p>
-    `,
+    `),
   },
 
   {
@@ -309,7 +340,7 @@ Use this skill when asked to review a pull request...
     readTime: 5,
     updatedAt: '2026-05-28',
     lead: 'The registration flow guides you through a five-step wizard — type, identity, details, governance, and review — before your entry lands in the moderation queue.',
-    body: `
+    body: docBody(`
       <h2 id="registration-flow">Registration flow</h2>
       <p>Click <strong>Register</strong> in the header (requires sign-in). The wizard walks you through five steps:</p>
       <ol>
@@ -329,7 +360,7 @@ Use this skill when asked to review a pull request...
       <div class="callout callout--tip">
         <strong>Versioning:</strong> Increment the version field on every update that changes behavior — adding parameters, changing return shapes, or modifying trigger phrases. Consumers depend on the version contract.
       </div>
-    `,
+    `),
   },
 
   {
@@ -339,7 +370,7 @@ Use this skill when asked to review a pull request...
     readTime: 8,
     updatedAt: '2026-05-30',
     lead: 'The Interop backend exposes a REST API at /api. All endpoints accept and return JSON. Authenticated endpoints require a Bearer token in the Authorization header.',
-    body: `
+    body: docBody(`
       <h2 id="authentication">Authentication</h2>
       <p>Include an OIDC-issued JWT in the Authorization header:</p>
       <pre><code>Authorization: Bearer &lt;token&gt;</code></pre>
@@ -389,6 +420,6 @@ Use this skill when asked to review a pull request...
       <pre><code>GET /api/health
 → 200 { status: "healthy", elasticsearch: "connected", uptime: 3600 }
 → 503 { status: "degraded", elasticsearch: "unavailable" }</code></pre>
-    `,
+    `),
   },
 ];

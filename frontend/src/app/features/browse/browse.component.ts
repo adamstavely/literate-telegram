@@ -27,7 +27,6 @@ interface ActiveFilter {
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink, EntryCardComponent, IconComponent],
   templateUrl: './browse.component.html',
-  styleUrl: './browse.component.scss',
 })
 export class BrowseComponent implements OnInit {
   private readonly registry = inject(RegistryService);
@@ -64,12 +63,12 @@ export class BrowseComponent implements OnInit {
   private readonly search$ = new Subject<SearchParams>();
 
   readonly typeOptions: Array<{ label: string; value: EntryType | ''; icon: string }> = [
-    { label: 'All', value: '', icon: 'grid' },
+    { label: 'Everything', value: '', icon: 'grid' },
+    { label: 'Agents', value: 'agent', icon: 'agent' },
     { label: 'Servers', value: 'server', icon: 'server' },
+    { label: 'APIs', value: 'api', icon: 'api' },
     { label: 'Tools', value: 'tool', icon: 'tool' },
     { label: 'Skills', value: 'skill', icon: 'skill' },
-    { label: 'Agents', value: 'agent', icon: 'agent' },
-    { label: 'APIs', value: 'api', icon: 'api' },
   ];
 
   readonly categoryOptions = [
@@ -210,7 +209,12 @@ export class BrowseComponent implements OnInit {
     return entry.id;
   }
 
-  statCount(type: EntryType): number {
-    return this.stats()?.[type + 's' as keyof RegistryStats] as number ?? 0;
+  statCount(type: EntryType | ''): number {
+    const byType = this.stats()?.totalByType;
+    if (!byType) return 0;
+    if (type === '') {
+      return (Object.values(byType) as number[]).reduce((sum, n) => sum + n, 0);
+    }
+    return byType[type] ?? 0;
   }
 }

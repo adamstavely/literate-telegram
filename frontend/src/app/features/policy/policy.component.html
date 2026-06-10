@@ -1,329 +1,316 @@
-<div class="policy-page">
-  <!-- Dirty bar -->
-  @if (dirty()) {
-    <div class="dirty-bar" role="alert" aria-live="polite">
-      <app-icon name="warning" [size]="14" aria-hidden="true"></app-icon>
-      <span>Unsaved policy changes</span>
-      <div class="dirty-actions">
-        <button class="dirty-btn dirty-btn--discard" type="button" (click)="discard()">Discard</button>
-        <button
-          class="dirty-btn dirty-btn--save"
-          type="button"
-          [disabled]="saving()"
-          (click)="save()"
-        >
-          @if (saving()) { Saving… } @else { Save changes }
-        </button>
-      </div>
+<div class="container page">
+  <nav class="crumbs" aria-label="Breadcrumb">
+    <a routerLink="/admin">Admin</a>
+    <app-icon name="chevron-right" [size]="13" aria-hidden="true"></app-icon>
+    <span aria-current="page" style="color:var(--ink);">Policy settings</span>
+  </nav>
+
+  <div class="page-head">
+    <div class="eyebrow">Governance</div>
+    <h1 class="h1">Governance Policy</h1>
+    <p class="lede">Configure automated rules applied when entries are submitted.</p>
+  </div>
+
+  @if (saved()) {
+    <div class="callout accent" role="status" aria-live="polite" style="margin-bottom:14px;">
+      <app-icon name="check" [size]="14" aria-hidden="true"></app-icon>
+      Policy saved successfully.
     </div>
   }
 
-  <div class="container">
-    <!-- Breadcrumb -->
-    <nav class="breadcrumb" aria-label="Breadcrumb">
-      <a routerLink="/admin">Admin</a>
-      <app-icon name="chevron-right" [size]="13" aria-hidden="true"></app-icon>
-      <span aria-current="page">Policy Settings</span>
+  <div class="policy-layout">
+    <nav class="policy-nav" aria-label="Policy sections">
+      @for (sec of sections; track sec.id) {
+        <button
+          class="facet-item"
+          [class.on]="activeSection() === sec.id"
+          type="button"
+          (click)="setSection(sec.id)"
+          [attr.aria-current]="activeSection() === sec.id ? 'true' : null"
+        >
+          <span class="fi-icon"><app-icon [name]="sec.icon" [size]="15" aria-hidden="true"></app-icon></span>
+          {{ sec.label }}
+        </button>
+      }
     </nav>
 
-    <h1 class="page-title">Governance Policy</h1>
-    <p class="page-sub">Configure automated rules applied when entries are submitted.</p>
-
-    @if (saved()) {
-      <div class="saved-notice" role="status" aria-live="polite">
-        <app-icon name="check" [size]="14" aria-hidden="true"></app-icon>
-        Policy saved successfully.
+    <div class="policy-pane">
+      <div class="policy-pane-head">
+        <div class="policy-pane-title">
+          @if (activeSection() === 'posture') { Security Posture }
+          @if (activeSection() === 'review') { Review & Approval }
+          @if (activeSection() === 'risk-rules') { Risk Rules }
+          @if (activeSection() === 'publisher-trust') { Publisher Trust }
+          @if (activeSection() === 'capabilities') { Capabilities }
+          @if (activeSection() === 'skills') { Skills Policy }
+        </div>
+        <div class="policy-pane-desc">
+          @if (activeSection() === 'posture') { Choose a preset or customize individual controls. }
+          @if (activeSection() === 'review') { Configure approval thresholds and review windows. }
+          @if (activeSection() === 'risk-rules') { Automated checks applied to incoming submissions. }
+          @if (activeSection() === 'publisher-trust') { Allowlisted domains are automatically trusted. }
+          @if (activeSection() === 'capabilities') { Define which transports and auth methods are allowed. }
+          @if (activeSection() === 'skills') { Configure how skill manifests and triggers are governed. }
+        </div>
       </div>
-    }
 
-    <div class="policy-layout">
-      <!-- Section nav -->
-      <nav class="section-nav" aria-label="Policy sections">
-        @for (sec of sections; track sec.id) {
-          <button
-            class="section-nav-item"
-            [class.section-nav-item--active]="activeSection() === sec.id"
-            type="button"
-            (click)="setSection(sec.id)"
-            [attr.aria-current]="activeSection() === sec.id ? 'true' : null"
-          >
-            <app-icon [name]="sec.icon" [size]="15" aria-hidden="true"></app-icon>
-            {{ sec.label }}
-          </button>
-        }
-      </nav>
+      @if (activeSection() === 'posture') {
+        <section>
+          <div class="preset-grid" role="group" aria-label="Security posture preset">
+            @for (preset of ['strict', 'balanced', 'open']; track preset) {
+              <button
+                class="preset"
+                type="button"
+                [class.on]="activePreset() === preset"
+                (click)="applyPreset($any(preset))"
+                [attr.aria-pressed]="activePreset() === preset"
+              >
+                <div class="preset-t">{{ preset | titlecase }}</div>
+                <div class="preset-d">
+                  @if (preset === 'strict') { Maximum security, all rules on }
+                  @if (preset === 'balanced') { Recommended defaults }
+                  @if (preset === 'open') { Minimal restrictions }
+                </div>
+              </button>
+            }
+          </div>
 
-      <!-- Main content -->
-      <div class="policy-content">
+          <div class="pcard" style="margin-top:14px;">
+            <div class="pcard-head">
+              <div class="pcard-title">Access Controls</div>
+            </div>
+            <div class="pcard-body">
+              <div class="set-row">
+                <div class="set-text">
+                  <div class="set-t">Read-only default</div>
+                  <div class="set-d">All connections default to read-only access.</div>
+                </div>
+                <button class="switch" [class.on]="readOnlyDefault()" type="button" role="switch" [attr.aria-checked]="readOnlyDefault()" (click)="toggleReadOnlyDefault()"></button>
+              </div>
+              <div class="set-row">
+                <div class="set-text">
+                  <div class="set-t">Per-tool approval</div>
+                  <div class="set-d">Require approval before each tool invocation.</div>
+                </div>
+                <button class="switch" [class.on]="perToolApproval()" type="button" role="switch" [attr.aria-checked]="perToolApproval()" (click)="togglePerToolApproval()"></button>
+              </div>
+              <div class="set-row">
+                <div class="set-text">
+                  <div class="set-t">Block write operations</div>
+                  <div class="set-d">Prevent any write or mutation operations globally.</div>
+                </div>
+                <button class="switch" [class.on]="blockWrites()" type="button" role="switch" [attr.aria-checked]="blockWrites()" (click)="toggleBlockWrites()"></button>
+              </div>
+              <div class="set-row">
+                <div class="set-text">
+                  <div class="set-t">Quarantine high-risk entries</div>
+                  <div class="set-d">Isolate high and critical risk entries until reviewed.</div>
+                </div>
+                <button class="switch" [class.on]="quarantineHighRisk()" type="button" role="switch" [attr.aria-checked]="quarantineHighRisk()" (click)="toggleQuarantineHighRisk()"></button>
+              </div>
+            </div>
+          </div>
+        </section>
+      }
 
-        <!-- Posture section -->
-        @if (activeSection() === 'posture') {
-          <section aria-labelledby="posture-title">
-            <h2 id="posture-title" class="section-title">Security Posture</h2>
-            <p class="section-desc">Choose a preset or customize individual controls.</p>
+      @if (activeSection() === 'review') {
+        <section>
+          <div class="pcard">
+            <div class="pcard-head"><div class="pcard-title">Review & approval controls</div></div>
+            <div class="pcard-body">
+              <div class="toggle-row">
+                <div class="tr-text">
+                  <div class="tr-t">Auto-approve verified publishers</div>
+                  <div class="tr-d">Skip review for entries from allowlisted publishers.</div>
+                </div>
+                <button class="switch" [class.on]="autoApproveVerified()" type="button" role="switch" [attr.aria-checked]="autoApproveVerified()" (click)="toggleAutoApproveVerified()"></button>
+              </div>
+              <div class="toggle-row">
+                <div class="tr-text">
+                  <div class="tr-t">Require two approvers</div>
+                  <div class="tr-d">High-risk entries need approval from two admins.</div>
+                </div>
+                <button class="switch" [class.on]="requireTwoApprovers()" type="button" role="switch" [attr.aria-checked]="requireTwoApprovers()" (click)="toggleRequireTwoApprovers()"></button>
+              </div>
+              <div class="set-row">
+                <div class="set-text">
+                  <div class="set-t">Review window (days)</div>
+                  <div class="set-d">Require review within this time window.</div>
+                </div>
+                <input
+                  id="review-window"
+                  type="number"
+                  class="input"
+                  [ngModel]="reviewWindowDays()"
+                  (ngModelChange)="setReviewWindowDays($event)"
+                  min="1"
+                  max="90"
+                  style="width:110px;"
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+      }
 
-            <div class="preset-row" role="group" aria-label="Security posture preset">
-              @for (preset of ['strict', 'balanced', 'open']; track preset) {
-                <button
-                  class="preset-btn"
-                  type="button"
-                  [class.preset-btn--active]="activePreset() === preset"
-                  (click)="applyPreset($any(preset))"
-                  [attr.aria-pressed]="activePreset() === preset"
-                >
-                  <span class="preset-name">{{ preset | titlecase }}</span>
-                  <span class="preset-desc">
-                    @if (preset === 'strict') { Maximum security, all rules on }
-                    @if (preset === 'balanced') { Recommended defaults }
-                    @if (preset === 'open') { Minimal restrictions }
+      @if (activeSection() === 'risk-rules') {
+        <section>
+          <div class="pcard">
+            <div class="pcard-head"><div class="pcard-title">Automated checks</div></div>
+            <div class="pcard-body">
+              @for (rule of rules(); track rule.id) {
+                <div class="rule-row">
+                  <div style="flex:1;min-width:0;">
+                    <div class="set-t">{{ rule.name }}</div>
+                    <div class="set-d">{{ rule.description }}</div>
+                  </div>
+                  <span class="badge" [style.color]="severityColor(rule.severity)" [style.background]="severityColor(rule.severity) + '1a'">
+                    {{ rule.severity }}
                   </span>
-                </button>
+                  <label [for]="'action-' + rule.id" class="sr-only">Action for {{ rule.name }}</label>
+                  <select
+                    [id]="'action-' + rule.id"
+                    class="select select-sm"
+                    [value]="rule.action"
+                    (change)="setRuleAction(rule.id, $any($event.target).value)"
+                  >
+                    <option value="flag">Flag</option>
+                    <option value="require-review">Require review</option>
+                    <option value="block">Block</option>
+                    <option value="auto-reject">Auto-reject</option>
+                  </select>
+                  <button class="switch" [class.on]="rule.enabled" type="button" role="switch" [attr.aria-checked]="rule.enabled" (click)="toggleRule(rule.id)"></button>
+                </div>
               }
             </div>
+          </div>
+        </section>
+      }
 
-            <h3 class="subsection-title">Access Controls</h3>
-            <div class="toggle-list">
-              <label class="toggle-row">
-                <div>
-                  <div class="toggle-label">Read-only default</div>
-                  <div class="toggle-desc">All connections default to read-only access</div>
-                </div>
-                <input type="checkbox" role="switch" [checked]="readOnlyDefault()" (change)="toggleReadOnlyDefault()" aria-label="Read-only default" />
-              </label>
-              <label class="toggle-row">
-                <div>
-                  <div class="toggle-label">Per-tool approval</div>
-                  <div class="toggle-desc">Require approval before each tool invocation</div>
-                </div>
-                <input type="checkbox" role="switch" [checked]="perToolApproval()" (change)="togglePerToolApproval()" aria-label="Per-tool approval" />
-              </label>
-              <label class="toggle-row">
-                <div>
-                  <div class="toggle-label">Block write operations</div>
-                  <div class="toggle-desc">Prevent any write or mutation operations globally</div>
-                </div>
-                <input type="checkbox" role="switch" [checked]="blockWrites()" (change)="toggleBlockWrites()" aria-label="Block write operations" />
-              </label>
-              <label class="toggle-row">
-                <div>
-                  <div class="toggle-label">Quarantine high-risk entries</div>
-                  <div class="toggle-desc">Isolate high and critical risk entries until reviewed</div>
-                </div>
-                <input type="checkbox" role="switch" [checked]="quarantineHighRisk()" (change)="toggleQuarantineHighRisk()" aria-label="Quarantine high-risk entries" />
-              </label>
-            </div>
-          </section>
-        }
-
-        <!-- Review & Approval section -->
-        @if (activeSection() === 'review') {
-          <section aria-labelledby="review-title">
-            <h2 id="review-title" class="section-title">Review & Approval</h2>
-
-            <div class="toggle-list">
-              <label class="toggle-row">
-                <div>
-                  <div class="toggle-label">Auto-approve verified publishers</div>
-                  <div class="toggle-desc">Skip review for entries from allowlisted publishers</div>
-                </div>
-                <input type="checkbox" role="switch" [checked]="autoApproveVerified()" (change)="toggleAutoApproveVerified()" aria-label="Auto-approve verified publishers" />
-              </label>
-              <label class="toggle-row">
-                <div>
-                  <div class="toggle-label">Require two approvers</div>
-                  <div class="toggle-desc">High-risk entries need approval from two admins</div>
-                </div>
-                <input type="checkbox" role="switch" [checked]="requireTwoApprovers()" (change)="toggleRequireTwoApprovers()" aria-label="Require two approvers" />
-              </label>
-            </div>
-
-            <div class="form-field" style="margin-top: 20px">
-              <label class="form-label" for="review-window">Review window (days)</label>
-              <input
-                id="review-window"
-                type="number"
-                class="form-input"
-                [ngModel]="reviewWindowDays()"
-                (ngModelChange)="setReviewWindowDays($event)"
-                min="1"
-                max="90"
-              />
-            </div>
-          </section>
-        }
-
-        <!-- Risk Rules section -->
-        @if (activeSection() === 'risk-rules') {
-          <section aria-labelledby="rules-title">
-            <h2 id="rules-title" class="section-title">Risk Rules</h2>
-            <p class="section-desc">Automated checks applied to incoming submissions.</p>
-
-            <div class="rules-table" role="table" aria-label="Policy risk rules">
-              <div class="rules-thead" role="rowgroup">
-                <div class="rules-header-row" role="row">
-                  <span role="columnheader">Rule</span>
-                  <span role="columnheader">Severity</span>
-                  <span role="columnheader">Action</span>
-                  <span role="columnheader">Enabled</span>
-                </div>
-              </div>
-              <div role="rowgroup">
-                @for (rule of rules(); track rule.id) {
-                  <div class="rule-row" role="row">
-                    <div class="rule-cell rule-cell--info" role="cell">
-                      <div class="rule-name">{{ rule.name }}</div>
-                      <div class="rule-desc">{{ rule.description }}</div>
-                    </div>
-                    <div class="rule-cell" role="cell">
-                      <span
-                        class="severity-badge"
-                        [style.color]="severityColor(rule.severity)"
-                        [style.background]="severityColor(rule.severity) + '1a'"
-                      >{{ rule.severity }}</span>
-                    </div>
-                    <div class="rule-cell" role="cell">
-                      <label [for]="'action-' + rule.id" class="sr-only">Action for {{ rule.name }}</label>
-                      <select
-                        [id]="'action-' + rule.id"
-                        class="action-select"
-                        [value]="rule.action"
-                        (change)="setRuleAction(rule.id, $any($event.target).value)"
-                      >
-                        <option value="flag">Flag</option>
-                        <option value="require-review">Require review</option>
-                        <option value="block">Block</option>
-                        <option value="auto-reject">Auto-reject</option>
-                      </select>
-                    </div>
-                    <div class="rule-cell" role="cell">
-                      <label class="toggle-switch">
-                        <input
-                          type="checkbox"
-                          [checked]="rule.enabled"
-                          (change)="toggleRule(rule.id)"
-                          [attr.aria-label]="(rule.enabled ? 'Disable' : 'Enable') + ' rule: ' + rule.name"
-                        />
-                        <span class="toggle-track" [class.on]="rule.enabled"></span>
-                      </label>
-                    </div>
-                  </div>
+      @if (activeSection() === 'publisher-trust') {
+        <section>
+          <div class="pcard">
+            <div class="pcard-head"><div class="pcard-title">Allowlisted domains</div></div>
+            <div class="pcard-body">
+              <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                @for (domain of allowlistDomains(); track domain) {
+                  <span class="domain-chip">
+                    {{ domain }}
+                    <button
+                      type="button"
+                      (click)="removeDomain(domain)"
+                      [attr.aria-label]="'Remove ' + domain + ' from allowlist'"
+                    >
+                      <app-icon name="close" [size]="12" aria-hidden="true"></app-icon>
+                    </button>
+                  </span>
                 }
               </div>
-            </div>
-          </section>
-        }
-
-        <!-- Publisher Trust section -->
-        @if (activeSection() === 'publisher-trust') {
-          <section aria-labelledby="trust-title">
-            <h2 id="trust-title" class="section-title">Publisher Trust</h2>
-            <p class="section-desc">Allowlisted domains are automatically trusted.</p>
-
-            <div class="domain-list">
-              @for (domain of allowlistDomains(); track domain) {
-                <div class="domain-item">
-                  <app-icon name="globe" [size]="14" aria-hidden="true"></app-icon>
-                  <span class="domain-text">{{ domain }}</span>
-                  <button
-                    class="domain-remove"
-                    type="button"
-                    (click)="removeDomain(domain)"
-                    [attr.aria-label]="'Remove ' + domain + ' from allowlist'"
-                  >
-                    <app-icon name="close" [size]="12" aria-hidden="true"></app-icon>
+              <div class="set-row">
+                <div class="set-text">
+                  <div class="set-t">Add domain</div>
+                  <div class="set-d">Domains in this list are treated as trusted publishers.</div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                  <input
+                    id="new-domain"
+                    type="text"
+                    class="input"
+                    placeholder="example.com"
+                    [ngModel]="newDomain()"
+                    (ngModelChange)="newDomain.set($event)"
+                    (keydown.enter)="addDomain()"
+                    style="width:220px;"
+                  />
+                  <button class="btn btn-secondary btn-sm" type="button" (click)="addDomain()">
+                    <app-icon name="plus" [size]="14" aria-hidden="true"></app-icon>
+                    Add
                   </button>
                 </div>
-              }
+              </div>
             </div>
+          </div>
+        </section>
+      }
 
-            <div class="add-domain-row">
-              <label for="new-domain" class="sr-only">Add domain to allowlist</label>
-              <input
-                id="new-domain"
-                type="text"
-                class="form-input"
-                placeholder="example.com"
-                [ngModel]="newDomain()"
-                (ngModelChange)="newDomain.set($event)"
-                (keydown.enter)="addDomain()"
-              />
-              <button class="add-domain-btn" type="button" (click)="addDomain()">
-                <app-icon name="plus" [size]="14" aria-hidden="true"></app-icon>
-                Add domain
-              </button>
-            </div>
-          </section>
-        }
-
-        <!-- Capabilities section -->
-        @if (activeSection() === 'capabilities') {
-          <section aria-labelledby="caps-title">
-            <h2 id="caps-title" class="section-title">Capabilities</h2>
-
-            <h3 class="subsection-title">Allowed transports</h3>
-            <div class="toggle-list">
+      @if (activeSection() === 'capabilities') {
+        <section>
+          <div class="pcard">
+            <div class="pcard-head"><div class="pcard-title">Allowed transports</div></div>
+            <div class="pcard-body">
               @for (t of transports(); track t.id) {
-                <label class="toggle-row">
-                  <div>
-                    <div class="toggle-label"><code>{{ t.label }}</code></div>
-                  </div>
-                  <input type="checkbox" role="switch" [checked]="t.enabled" (change)="toggleTransport(t.id)" [attr.aria-label]="'Allow ' + t.label + ' transport'" />
-                </label>
+                <div class="set-row">
+                  <div class="set-text"><div class="set-t">{{ t.label }}</div></div>
+                  <button class="switch" [class.on]="t.enabled" type="button" role="switch" [attr.aria-checked]="t.enabled" [attr.aria-label]="'Allow ' + t.label + ' transport'" (click)="toggleTransport(t.id)"></button>
+                </div>
               }
             </div>
-
-            <h3 class="subsection-title" style="margin-top: 24px">Allowed auth methods</h3>
-            <div class="toggle-list">
+          </div>
+          <div class="pcard" style="margin-top:14px;">
+            <div class="pcard-head"><div class="pcard-title">Allowed auth methods</div></div>
+            <div class="pcard-body">
               @for (a of authMethods(); track a.id) {
-                <label class="toggle-row">
-                  <div>
-                    <div class="toggle-label">{{ a.label }}</div>
-                  </div>
-                  <input type="checkbox" role="switch" [checked]="a.enabled" (change)="toggleAuth(a.id)" [attr.aria-label]="'Allow ' + a.label + ' authentication'" />
-                </label>
+                <div class="set-row">
+                  <div class="set-text"><div class="set-t">{{ a.label }}</div></div>
+                  <button class="switch" [class.on]="a.enabled" type="button" role="switch" [attr.aria-checked]="a.enabled" [attr.aria-label]="'Allow ' + a.label + ' authentication'" (click)="toggleAuth(a.id)"></button>
+                </div>
               }
             </div>
-          </section>
-        }
+          </div>
+        </section>
+      }
 
-        <!-- Skills section -->
-        @if (activeSection() === 'skills') {
-          <section aria-labelledby="skills-title">
-            <h2 id="skills-title" class="section-title">Skills Policy</h2>
-
-            <div class="toggle-list">
-              <label class="toggle-row">
-                <div>
-                  <div class="toggle-label">Enable skill triggers</div>
-                  <div class="toggle-desc">Allow skills to be invoked by event triggers</div>
+      @if (activeSection() === 'skills') {
+        <section>
+          <div class="pcard">
+            <div class="pcard-head"><div class="pcard-title">Skill controls</div></div>
+            <div class="pcard-body">
+              <div class="toggle-row">
+                <div class="tr-text">
+                  <div class="tr-t">Enable skill triggers</div>
+                  <div class="tr-d">Allow skills to be invoked by event triggers.</div>
                 </div>
-                <input type="checkbox" role="switch" [checked]="enabledSkillTriggers()" (change)="toggleEnabledSkillTriggers()" aria-label="Enable skill triggers" />
-              </label>
-              <label class="toggle-row">
-                <div>
-                  <div class="toggle-label">Require SKILL.md</div>
-                  <div class="toggle-desc">Skills must include a valid SKILL.md manifest</div>
+                <button class="switch" [class.on]="enabledSkillTriggers()" type="button" role="switch" [attr.aria-checked]="enabledSkillTriggers()" (click)="toggleEnabledSkillTriggers()"></button>
+              </div>
+              <div class="toggle-row">
+                <div class="tr-text">
+                  <div class="tr-t">Require SKILL.md</div>
+                  <div class="tr-d">Skills must include a valid SKILL.md manifest.</div>
                 </div>
-                <input type="checkbox" role="switch" [checked]="requireSkillMd()" (change)="toggleRequireSkillMd()" aria-label="Require SKILL.md" />
-              </label>
+                <button class="switch" [class.on]="requireSkillMd()" type="button" role="switch" [attr.aria-checked]="requireSkillMd()" (click)="toggleRequireSkillMd()"></button>
+              </div>
+              <div class="set-row">
+                <div class="set-text">
+                  <div class="set-t">Max token budget per skill</div>
+                  <div class="set-d">Upper bound for skill metadata and content size.</div>
+                </div>
+                <input
+                  id="max-tokens"
+                  type="number"
+                  class="input"
+                  [ngModel]="maxTokenBudget()"
+                  (ngModelChange)="setMaxTokenBudget($event)"
+                  min="100"
+                  max="128000"
+                  step="100"
+                  style="width:140px;"
+                />
+              </div>
             </div>
-
-            <div class="form-field" style="margin-top: 20px">
-              <label class="form-label" for="max-tokens">Max token budget per skill</label>
-              <input
-                id="max-tokens"
-                type="number"
-                class="form-input"
-                [ngModel]="maxTokenBudget()"
-                (ngModelChange)="setMaxTokenBudget($event)"
-                min="100"
-                max="128000"
-                step="100"
-              />
-            </div>
-          </section>
-        }
-      </div>
+          </div>
+        </section>
+      }
     </div>
   </div>
+
+  @if (dirty()) {
+    <div class="savebar" role="alert" aria-live="polite">
+      <span class="savebar-dot"></span>
+      <span class="savebar-txt">Unsaved policy changes</span>
+      <button class="btn btn-secondary btn-sm" type="button" (click)="discard()">Discard</button>
+      <button class="btn btn-accent btn-sm" type="button" [disabled]="saving()" (click)="save()">
+        @if (saving()) { Saving… } @else { Save changes }
+      </button>
+    </div>
+  }
 </div>

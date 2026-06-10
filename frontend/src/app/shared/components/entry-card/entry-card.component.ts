@@ -30,7 +30,6 @@ function formatInstalls(n: number): string {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './entry-card.component.html',
-  styleUrls: ['./entry-card.component.scss'],
 })
 export class EntryCardComponent {
   @Input() entry!: RegistryEntry;

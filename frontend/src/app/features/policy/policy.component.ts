@@ -33,7 +33,6 @@ interface AuthToggle {
   standalone: true,
   imports: [CommonModule, RouterLink, FormsModule, IconComponent],
   templateUrl: './policy.component.html',
-  styleUrl: './policy.component.scss',
 })
 export class PolicyComponent {
   readonly activeSection = signal<string>('posture');
