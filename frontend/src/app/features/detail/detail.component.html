@@ -1,5 +1,4 @@
 <div class="container page">
-  <!-- Loading skeleton -->
   @if (loading()) {
     <div role="status" aria-label="Loading entry details" aria-busy="true">
       <div class="skeleton"></div>
@@ -8,7 +7,6 @@
     </div>
   }
 
-  <!-- Error / 404 -->
   @if (error() && !loading()) {
     <div class="empty" role="alert">
       <app-icon name="warning" [size]="40" aria-hidden="true"></app-icon>
@@ -21,8 +19,183 @@
     </div>
   }
 
-  <!-- Entry detail -->
-  @if (entry() && !loading()) {
+  @if (entry() && !loading() && isTool() && asTool(); as tool) {
+  <nav class="crumbs" aria-label="Breadcrumb">
+    <a routerLink="/">Browse</a>
+    <app-icon name="chevron-right" [size]="14" aria-hidden="true"></app-icon>
+    @if (parentServer(); as parent) {
+      <a [routerLink]="['/entry', 'server', parent.slug]">Servers</a>
+      <app-icon name="chevron-right" [size]="14" aria-hidden="true"></app-icon>
+      <a [routerLink]="['/entry', 'server', parent.slug]">{{ parent.name }}</a>
+    }
+    <app-icon name="chevron-right" [size]="14" aria-hidden="true"></app-icon>
+    <span aria-current="page">{{ tool.name }}</span>
+  </nav>
+
+  <header class="detail-head" aria-labelledby="tool-name">
+    <div class="detail-head-main">
+      <div
+        class="detail-logo"
+        style="background: color-mix(in oklch, var(--ok) 9%, var(--cm)); border-color: color-mix(in oklch, var(--ok) 22%, var(--cm)); color: var(--ok)"
+        aria-hidden="true"
+      >
+        <app-icon name="tool" [size]="30"></app-icon>
+      </div>
+      <div class="entry-meta">
+        <div class="entry-name-row">
+          <h1 id="tool-name" class="detail-title mono">{{ tool.name }}</h1>
+          <span class="entry-type-chip" data-type="tool">tool</span>
+          @if (tool.readOnly) {
+            <span class="readonly-badge">read-only</span>
+          } @else {
+            <span class="readonly-badge" style="color: var(--warn); border-color: color-mix(in oklch, var(--warn) 30%, var(--cm))">write</span>
+          }
+        </div>
+        @if (parentServer(); as parent) {
+          <p class="detail-slug mono">
+            {{ parent.slug }} <span style="color: var(--faint)">/</span> {{ tool.name }}
+          </p>
+        }
+        <p class="detail-summary">{{ tool.summary }}</p>
+        <div class="entry-chips" style="margin-top: 12px">
+          @if (parentServer(); as parent) {
+            <span class="entry-stat">
+              <app-icon name="server" [size]="14"></app-icon> {{ parent.name }}
+            </span>
+          }
+          <span class="entry-stat">
+            <app-icon name="tool" [size]="14"></app-icon>
+            {{ tool.params.length }} {{ tool.params.length === 1 ? 'param' : 'params' }}
+          </span>
+        </div>
+      </div>
+      <div class="detail-cta">
+        <button class="btn btn-accent btn-md" type="button" style="width: 100%" (click)="runToolStub()">
+          <app-icon name="play" [size]="14"></app-icon> Run tool
+        </button>
+        @if (parentServer(); as parent) {
+          <button class="btn btn-secondary btn-md" type="button" style="width: 100%; margin-top: 8px" (click)="openServer(parent.slug)">
+            <app-icon name="server" [size]="14"></app-icon> Open server
+          </button>
+        }
+      </div>
+    </div>
+  </header>
+
+  <div class="detail-grid">
+    <div>
+      <div class="callout" style="margin-bottom: 22px">
+        <app-icon name="tool" [size]="16"></app-icon>
+        <div>
+          A tool is a single callable on the <b>{{ parentServer()?.name }}</b> server.
+          The gateway can expose it on its own as a <b>virtual server</b> — the unit of least-privilege access.
+        </div>
+      </div>
+
+      <div class="section">
+        <h2 class="section-title">Signature</h2>
+        <div class="tool-sigblock mono">
+          <span class="ts-name">{{ tool.name }}</span><span class="ts-sig">{{ toolSignature() }}</span>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2 class="section-title">Parameters</h2>
+        @if (tool.params.length > 0) {
+          <div class="param-table">
+            @for (param of tool.params; track param.name) {
+              <div class="param-trow">
+                <span class="param-name">{{ param.name }}</span>
+                <span class="param-type">{{ param.type }}</span>
+                @if (param.required) {
+                  <span class="param-req">required</span>
+                } @else {
+                  <span class="param-opt">optional</span>
+                }
+                <span class="param-desc">{{ param.description }}</span>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="field-hint">This tool takes no arguments.</p>
+        }
+      </div>
+
+      <div class="section">
+        <h2 class="section-title">Returns</h2>
+        <div class="returns-row">
+          <app-icon name="arrowRight" [size]="15"></app-icon>
+          <span class="mono">{{ tool.returns }}</span>
+        </div>
+      </div>
+
+      @if (toolExample(); as ex) {
+        <div class="section">
+          <h2 class="section-title">Example call</h2>
+          <div class="codeblock">
+            <pre class="code-pre"><code>{{ ex.request }}</code></pre>
+          </div>
+          <h2 class="section-title" style="margin: 16px 0 10px">Response</h2>
+          <div class="result-pane">{{ ex.response }}</div>
+        </div>
+      }
+    </div>
+
+    <aside aria-label="Tool specifications">
+      @if (parentServer(); as parent) {
+        <app-sensitivity-panel [level]="parent.sensitivity" [inherited]="parent.name"></app-sensitivity-panel>
+        <div class="aside-card" style="margin-top: 16px">
+          <h2 class="section-title">Lives on</h2>
+          <div class="compose-card" style="padding: 12px" (click)="openServer(parent.slug)" role="button" tabindex="0">
+            <div class="ec-logo" style="width: 32px; height: 32px">
+              <app-icon name="server" [size]="16"></app-icon>
+            </div>
+            <div style="flex: 1; min-width: 0">
+              <div class="compose-name" style="font-size: 14px">{{ parent.name }}</div>
+              <div class="compose-slug mono">{{ parent.tools.length }} tools · {{ parent.transports[0] }}</div>
+            </div>
+            <app-icon name="chevron-right" [size]="15" style="color: var(--faint)"></app-icon>
+          </div>
+          <div class="spec" style="margin-top: 8px">
+            <div class="spec-row">
+              <span class="spec-k">Auth</span>
+              <span class="spec-v">{{ parent.auth }}</span>
+            </div>
+            <div class="spec-row">
+              <span class="spec-k">Transport</span>
+              <span class="spec-v">{{ parent.transports.join(', ') }}</span>
+            </div>
+          </div>
+        </div>
+      }
+
+      @if (relatedSkills().length > 0 || relatedAgents().length > 0) {
+        <div class="aside-card" style="margin-top: 16px">
+          <h2 class="section-title">Reached by</h2>
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            @for (skill of relatedSkills(); track skill.id) {
+              <a class="reach-link" [routerLink]="['/entry', 'skill', skill.slug]">
+                <app-icon name="skill" [size]="14" style="color: var(--warn)"></app-icon>
+                {{ skill.name }}
+                <app-icon name="chevron-right" [size]="14" style="color: var(--faint); margin-left: auto"></app-icon>
+              </a>
+            }
+            @for (agent of relatedAgents(); track agent.id) {
+              <a class="reach-link" [routerLink]="['/entry', 'agent', agent.slug]">
+                <app-icon name="agent" [size]="14" style="color: #8b46d6"></app-icon>
+                {{ agent.name }}
+                <app-icon name="chevron-right" [size]="14" style="color: var(--faint); margin-left: auto"></app-icon>
+              </a>
+            }
+          </div>
+          <p class="field-hint" style="margin-top: 10px">Skills name this capability; agents carry the server that provides it.</p>
+        </div>
+      }
+    </aside>
+  </div>
+  }
+
+  @if (entry() && !loading() && !isTool()) {
     <nav class="crumbs" aria-label="Breadcrumb">
       <a routerLink="/">Browse</a>
       <app-icon name="chevron-right" [size]="14" aria-hidden="true"></app-icon>
@@ -36,7 +209,6 @@
         <div [class]="'detail-logo dl-' + entry()!.type" [attr.aria-label]="entry()!.type + ' icon'">
           <app-icon [name]="typeIcon()" [size]="28" aria-hidden="true"></app-icon>
         </div>
-
         <div class="entry-meta">
           <div class="entry-name-row">
             <h1 id="entry-name" class="detail-title">{{ entry()!.name }}</h1>
@@ -48,7 +220,7 @@
           <p class="detail-slug mono">{{ entry()!.slug }} · {{ entry()!.publisher }}</p>
           <div class="entry-chips">
             @if (entry()!.version) {
-              <span class="entry-version" [attr.aria-label]="'Version ' + entry()!.version">v{{ entry()!.version }}</span>
+              <span class="entry-version">v{{ entry()!.version }}</span>
             }
             <span class="entry-type-chip" [attr.data-type]="entry()!.type">{{ entry()!.type }}</span>
             @for (cat of entry()!.categories; track cat) {
@@ -57,18 +229,12 @@
           </div>
           <p class="detail-summary">{{ entry()!.summary }}</p>
         </div>
-
         <div class="detail-cta">
-          <div class="entry-stat" [attr.aria-label]="entry()!.installs + ' installs'">
+          <div class="entry-stat">
             <app-icon name="install" [size]="14" aria-hidden="true"></app-icon>
             <span>{{ formatInstalls(entry()!.installs) }}</span>
           </div>
-          <button
-            class="btn btn-accent btn-md install-btn"
-            type="button"
-            (click)="setTab('install')"
-            aria-label="Go to install instructions"
-          >
+          <button class="btn btn-accent btn-md install-btn" type="button" (click)="setTab('install')">
             <app-icon name="install" [size]="14" aria-hidden="true"></app-icon>
             Install
           </button>
@@ -85,41 +251,27 @@
               [class.on]="activeTab() === tab.id"
               type="button"
               role="tab"
-              [attr.id]="'tab-' + tab.id"
-              [attr.aria-selected]="activeTab() === tab.id"
-              [attr.aria-controls]="'tabpanel-' + tab.id"
               (click)="setTab(tab.id)"
             >{{ tab.label }}</button>
           }
         </div>
 
         @if (activeTab() === 'overview') {
-          <section
-            id="tabpanel-overview"
-            role="tabpanel"
-            aria-labelledby="tab-overview"
-            class="tab-panel"
-          >
+          <section class="tab-panel">
             <div class="section">
               <h2 class="section-title">About</h2>
               <p class="description-text">{{ entry()!.description }}</p>
             </div>
-
             @if (asServer(); as srv) {
               <div class="section">
                 <h2 class="section-title">Compatible Clients</h2>
-                @if (srv.clients.length > 0) {
-                  <div class="clients">
-                    @for (client of srv.clients; track client) {
-                      <span class="client-chip">{{ client }}</span>
-                    }
-                  </div>
-                } @else {
-                  <p class="muted">No clients listed</p>
-                }
+                <div class="clients">
+                  @for (client of srv.clients; track client) {
+                    <span class="client-chip">{{ client }}</span>
+                  }
+                </div>
               </div>
             }
-
             @if (asSkill(); as skill) {
               <div class="section">
                 <h2 class="section-title">Triggers</h2>
@@ -130,135 +282,88 @@
                 </div>
               </div>
             }
-
             @if (asAgent(); as agent) {
               <div class="section">
                 <h2 class="section-title">Model</h2>
                 <span class="code-chip">{{ agent.model }}</span>
-                <h2 class="section-title" style="margin-top: 16px">Autonomy Level</h2>
-                <span class="autonomy-chip autonomy-chip--{{ agent.autonomy }}">{{ agent.autonomy }}</span>
               </div>
             }
           </section>
         }
 
         @if (activeTab() === 'install') {
-          <section
-            id="tabpanel-install"
-            role="tabpanel"
-            aria-labelledby="tab-install"
-            class="tab-panel"
-          >
+          <section class="tab-panel">
             <div class="section">
               <h2 class="section-title">CLI Install</h2>
               <div class="codeblock">
                 <pre class="code-pre"><code>{{ installCommand() }}</code></pre>
-                <button
-                  class="copy-btn"
-                  type="button"
-                  (click)="copyInstall()"
-                  [attr.aria-label]="copied() ? 'Copied!' : 'Copy install command'"
-                >
-                  <app-icon [name]="copied() ? 'check' : 'copy'" [size]="14" aria-hidden="true"></app-icon>
+                <button class="copy-btn" type="button" (click)="copyInstall()">
+                  <app-icon [name]="copied() ? 'check' : 'copy'" [size]="14"></app-icon>
                   {{ copied() ? 'Copied!' : 'Copy' }}
                 </button>
               </div>
             </div>
-
             <div class="section">
               <h2 class="section-title">Config JSON</h2>
               <div class="codeblock">
                 <pre class="code-pre"><code>{{ configJson() }}</code></pre>
-                <button
-                  class="copy-btn"
-                  type="button"
-                  (click)="copyConfig()"
-                  aria-label="Copy configuration"
-                >
-                  <app-icon [name]="'copy'" [size]="14" aria-hidden="true"></app-icon>
-                  Copy
-                </button>
+                <button class="copy-btn" type="button" (click)="copyConfig()">Copy</button>
               </div>
             </div>
-
-            @if (asServer(); as srv) {
-              <div class="section">
-                <h2 class="section-title">Connection Details</h2>
-                <div class="spec">
-                  <div class="spec-row">
-                    <span class="spec-k">Auth</span>
-                    <span class="spec-v">{{ srv.auth }}</span>
-                  </div>
-                  <div class="spec-row">
-                    <span class="spec-k">Transports</span>
-                    <span class="spec-v">{{ srv.transports.join(', ') }}</span>
-                  </div>
-                </div>
-              </div>
-            }
           </section>
         }
 
         @if (activeTab() === 'tools' && asServer(); as srv) {
-          <section
-            id="tabpanel-tools"
-            role="tabpanel"
-            aria-labelledby="tab-tools"
-            class="tab-panel"
-          >
-            <h2 class="section-title">Available Tools</h2>
-            @if (srv.tools.length === 0) {
-              <p class="muted">No tools exposed by this server.</p>
-            } @else {
-              <div class="tools-list">
-                @for (tool of srv.tools; track tool.id) {
-                  <div class="tool-item">
-                    <div class="tool-header">
-                      <code class="tool-name">{{ tool.name }}</code>
-                      @if (tool.readOnly) {
-                        <span class="readonly-badge">read-only</span>
+          <section class="tab-panel">
+            <div class="callout" style="margin-bottom: 16px">
+              <app-icon name="server" [size]="16"></app-icon>
+              <div>Tools are the callable surface of this server. The gateway can expose a subset as a <b>virtual server</b>.</div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 10px">
+              @for (tool of srv.tools; track tool.id) {
+                <div class="tool-item">
+                  <div class="tool-item-head" style="cursor: pointer" (click)="toggleToolExpand(tool.id)">
+                    <app-icon name="tool" [size]="16" style="color: var(--ok)"></app-icon>
+                    <span class="tool-name mono">{{ tool.name }}</span>
+                    @if (!tool.readOnly) {
+                      <span class="readonly-badge" style="color: var(--warn)">write</span>
+                    }
+                    <div style="flex: 1"></div>
+                    <button class="iconbtn" type="button" title="Open tool page" (click)="openToolPage(tool.slug, $event)">
+                      <app-icon name="arrowRight" [size]="15"></app-icon>
+                    </button>
+                    <app-icon
+                      name="chevron-down"
+                      [size]="15"
+                      style="color: var(--faint); transition: .15s"
+                      [style.transform]="openToolId() === tool.id ? 'rotate(180deg)' : ''"
+                    ></app-icon>
+                  </div>
+                  <p class="tool-desc">{{ tool.summary }}</p>
+                  @if (openToolId() === tool.id && tool.params.length > 0) {
+                    <div class="params">
+                      @for (param of tool.params; track param.name) {
+                        <div class="param">
+                          <span class="param-name">{{ param.name }}</span>
+                          <span class="param-type">{{ param.type }}</span>
+                          @if (param.required) {
+                            <span class="param-req">required</span>
+                          }
+                          <span class="param-desc">{{ param.description }}</span>
+                        </div>
                       }
                     </div>
-                    <p class="tool-summary">{{ tool.summary }}</p>
-                    @if (tool.params.length > 0) {
-                      <table class="params-table" [attr.aria-label]="'Parameters for ' + tool.name">
-                        <thead>
-                          <tr>
-                            <th scope="col">Name</th>
-                            <th scope="col">Type</th>
-                            <th scope="col">Required</th>
-                            <th scope="col">Description</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          @for (param of tool.params; track param.name) {
-                            <tr>
-                              <td><code>{{ param.name }}</code></td>
-                              <td><code>{{ param.type }}</code></td>
-                              <td>{{ param.required ? 'Yes' : 'No' }}</td>
-                              <td>{{ param.description }}</td>
-                            </tr>
-                          }
-                        </tbody>
-                      </table>
-                    }
-                    <p class="tool-returns">Returns: <code>{{ tool.returns }}</code></p>
-                  </div>
-                }
-              </div>
-            }
+                  }
+                </div>
+              }
+            </div>
           </section>
         }
 
         @if (activeTab() === 'reviews') {
-          <section
-            id="tabpanel-reviews"
-            role="tabpanel"
-            aria-labelledby="tab-reviews"
-            class="tab-panel"
-          >
+          <section class="tab-panel">
             <div class="empty">
-              <app-icon name="star" [size]="32" aria-hidden="true"></app-icon>
+              <app-icon name="star" [size]="32"></app-icon>
               <p>Reviews coming soon</p>
             </div>
           </section>
@@ -266,36 +371,59 @@
       </div>
 
       <aside aria-label="Entry specifications">
-        <div class="aside-card">
+        @if (isServer()) {
+          <app-sensitivity-panel [level]="entry()!.sensitivity"></app-sensitivity-panel>
+        }
+        @if (isSkill()) {
+          <app-sensitivity-panel
+            [level]="skillEffectiveSensitivity()"
+            [hasCustomFootnote]="true"
+          >
+            <span sens-footnote>
+              @if (skillHasReaches()) {
+                A skill holds no credential. This ceiling is set by the tools it reaches for — the data tier flows from the <b>server</b>, not the skill.
+              } @else {
+                This skill reaches for no tools. It reads and reasons over only the data already in the agent's context.
+              }
+            </span>
+          </app-sensitivity-panel>
+        }
+        @if (isAgent()) {
+          <app-sensitivity-panel [level]="entry()!.sensitivity" [hasCustomFootnote]="true">
+            <span sens-footnote>
+              An agent's ceiling is the <b>highest tier</b> of any server it composes. It can only ever touch data through the governed servers an admin exposed to it.
+            </span>
+          </app-sensitivity-panel>
+        }
+        @if (isApi()) {
+          <app-sensitivity-panel [level]="entry()!.sensitivity" [hasCustomFootnote]="true">
+            <span sens-footnote>
+              A raw API can't be governed by the gateway. Wrapping it as an MCP server is what lets an admin <b>pin this ceiling</b> and enforce it.
+            </span>
+          </app-sensitivity-panel>
+        }
+
+        <div class="aside-card" [style.margin-top]="isServer() || isSkill() || isAgent() || isApi() ? '16px' : '0'">
           <h2 class="section-title">Details</h2>
           <div class="spec">
             <div class="spec-row">
               <span class="spec-k">Type</span>
               <span class="spec-v">{{ entry()!.type }}</span>
             </div>
-
             @if (entry()!.version) {
               <div class="spec-row">
                 <span class="spec-k">Version</span>
                 <span class="spec-v"><code>{{ entry()!.version }}</code></span>
               </div>
             }
-
-            <div class="spec-row">
-              <span class="spec-k">Sensitivity</span>
-              <span class="spec-v"><app-sensitivity-badge [level]="entry()!.sensitivity"></app-sensitivity-badge></span>
-            </div>
-
             <div class="spec-row">
               <span class="spec-k">Updated</span>
               <span class="spec-v">{{ entry()!.updatedAt | date:'mediumDate' }}</span>
             </div>
-
             <div class="spec-row">
               <span class="spec-k">Published</span>
               <span class="spec-v">{{ entry()!.createdAt | date:'mediumDate' }}</span>
             </div>
-
             @if (asServer(); as srv) {
               <div class="spec-row">
                 <span class="spec-k">Auth</span>
@@ -305,45 +433,17 @@
                 <span class="spec-k">License</span>
                 <span class="spec-v">{{ srv.license }}</span>
               </div>
-              @if (srv.source) {
-                <div class="spec-row">
-                  <span class="spec-k">Source</span>
-                  <span class="spec-v">
-                    <a [href]="srv.source" target="_blank" rel="noopener noreferrer" class="external-link">
-                      View source
-                      <app-icon name="external" [size]="12" aria-hidden="true"></app-icon>
-                    </a>
-                  </span>
-                </div>
-              }
               <div class="spec-row">
                 <span class="spec-k">Rating</span>
                 <span class="spec-v">{{ srv.rating }}/5</span>
               </div>
             }
-
-            @if (asTool(); as tool) {
-              <div class="spec-row">
-                <span class="spec-k">Parent Server</span>
-                <span class="spec-v">{{ tool.parentServer }}</span>
-              </div>
-              <div class="spec-row">
-                <span class="spec-k">Returns</span>
-                <span class="spec-v"><code>{{ tool.returns }}</code></span>
-              </div>
-              <div class="spec-row">
-                <span class="spec-k">Read-only</span>
-                <span class="spec-v">{{ tool.readOnly ? 'Yes' : 'No' }}</span>
-              </div>
-            }
-
             @if (asSkill(); as skill) {
               <div class="spec-row">
                 <span class="spec-k">Token budget</span>
                 <span class="spec-v">{{ skill.tokens | number }}</span>
               </div>
             }
-
             @if (asAgent(); as agent) {
               <div class="spec-row">
                 <span class="spec-k">Model</span>
@@ -354,18 +454,11 @@
                 <span class="spec-v">{{ agent.autonomy }}</span>
               </div>
             }
-
             @if (asApi(); as api) {
               <div class="spec-row">
                 <span class="spec-k">Style</span>
                 <span class="spec-v">{{ api.style }}</span>
               </div>
-              @if (api.endpoint) {
-                <div class="spec-row">
-                  <span class="spec-k">Endpoint</span>
-                  <span class="spec-v"><code class="endpoint">{{ api.endpoint }}</code></span>
-                </div>
-              }
             }
           </div>
         </div>

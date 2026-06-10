@@ -13,27 +13,28 @@ import {
 } from '@angular/core';
 import { RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { AsyncPipe, NgClass, DatePipe } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subject, debounceTime } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
 import { ThemeService } from '../../../core/services/theme.service';
 import { RegistryService } from '../../../core/services/registry.service';
 import { IconComponent } from '../icon/icon.component';
+import { AvatarComponent } from '../avatar/avatar.component';
 import { AuthenticatedUser, Notification } from '../../types';
 
 @Component({
   selector: 'app-header',
   standalone: true,
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
-  imports: [RouterLink, RouterLinkActive, AsyncPipe, NgClass, FormsModule, IconComponent, DatePipe],
+  imports: [RouterLink, RouterLinkActive, FormsModule, IconComponent, AvatarComponent, DatePipe],
   templateUrl: './header.component.html',
 })
 export class HeaderComponent implements OnInit, OnDestroy {
   readonly auth = inject(AuthService);
   readonly themeService = inject(ThemeService);
   private readonly registryService = inject(RegistryService);
-  readonly router = inject(Router);
+  private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
   @ViewChild('notifBtn') notifBtn!: ElementRef<HTMLButtonElement>;
@@ -57,8 +58,15 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   /** Notifications state */
   readonly notificationsOpen = signal(false);
+  readonly notifTab = signal<'all' | 'unread'>('all');
   readonly notifications = signal<Notification[]>([]);
   readonly unreadCount = computed(() => this.notifications().filter(n => !n.read).length);
+  readonly filteredNotifications = computed(() =>
+    this.notifTab() === 'unread'
+      ? this.notifications().filter(n => !n.read)
+      : this.notifications(),
+  );
+  readonly displayName = computed(() => this.currentUser()?.name ?? 'You');
 
   /** Search */
   searchQuery = '';
@@ -82,6 +90,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
       .subscribe(user => {
         this.currentUser.set(user);
         this.isAuthenticated.set(user !== null);
+        this.loadNotifications();
       });
 
     this.themeService.theme$
@@ -98,8 +107,10 @@ export class HeaderComponent implements OnInit, OnDestroy {
     document.addEventListener('interop:open-search', () => {
       this.focusSearch();
     });
+  }
 
-    this.loadNotifications();
+  setNotifTab(tab: 'all' | 'unread'): void {
+    this.notifTab.set(tab);
   }
 
   ngOnDestroy(): void {}
@@ -184,8 +195,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
     });
   }
 
-  markRead(id: string, event: MouseEvent): void {
-    event.stopPropagation();
+  markRead(id: string): void {
     this.registryService.markNotificationRead(id).subscribe({
       next: () => {
         this.notifications.update(notifs =>

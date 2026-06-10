@@ -1,9 +1,9 @@
 <div class="container page">
-  <div class="page-head" style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+  <div class="page-head" style="display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:16px;">
     <div>
       <div class="eyebrow">Governance</div>
-      <h1 class="h1">Moderation Queue</h1>
-      <p class="lede">Review and moderate pending registry submissions.</p>
+      <h1 class="h1">Moderation queue</h1>
+      <p class="lede">Review what publishers want to add. Approve, request changes, or reject — least privilege is the default.</p>
     </div>
     <a routerLink="/admin/policy" class="btn btn-secondary btn-sm">
       <app-icon name="shield" [size]="14" aria-hidden="true"></app-icon>
@@ -12,61 +12,35 @@
   </div>
 
   <div class="admin-stats" role="list" aria-label="Queue statistics">
-    <div class="kpi" role="listitem">
-      <div class="kpi-n" aria-live="polite">{{ kpi().awaiting }}</div>
-      <div class="kpi-l">Awaiting review</div>
-    </div>
-    <div class="kpi" role="listitem">
-      <div class="kpi-n" aria-live="polite">{{ kpi().published }}</div>
-      <div class="kpi-l">Published</div>
-    </div>
-    <div class="kpi" role="listitem">
-      <div class="kpi-n" aria-live="polite">{{ kpi().highRisk }}</div>
-      <div class="kpi-l">High-risk entries</div>
-    </div>
-    <div class="kpi" role="listitem">
-      <div class="kpi-n" aria-live="polite">{{ total() }}</div>
-      <div class="kpi-l">Total submissions</div>
-    </div>
-  </div>
-
-  <div class="tabs" role="tablist" aria-label="Filter by status">
-    @for (tab of statusTabs; track tab.value) {
-      <button
-        class="tab"
-        [class.on]="statusFilter() === tab.value"
-        type="button"
-        role="tab"
-        [attr.aria-selected]="statusFilter() === tab.value"
-        (click)="setStatusFilter(tab.value)"
-      >{{ tab.label }}</button>
-    }
-  </div>
-
-  <div class="tabs" role="tablist" aria-label="Filter by type" style="margin-top:-18px;">
-    @for (tab of typeTabs; track tab.value) {
-      <button
-        class="tab"
-        [class.on]="typeFilter() === tab.value"
-        type="button"
-        role="tab"
-        [attr.aria-selected]="typeFilter() === tab.value"
-        (click)="setTypeFilter(tab.value)"
-      >{{ tab.label }}</button>
-    }
-    <div style="margin-left:auto;padding:8px 0;">
-      <label for="risk-select" class="sr-only">Filter by risk level</label>
-      <select
-        id="risk-select"
-        class="select"
-        [value]="riskFilter()"
-        (change)="setRiskFilter($any($event.target).value)"
-      >
-        @for (opt of riskOptions; track opt.value) {
-          <option [value]="opt.value">{{ opt.label }}</option>
+    @for (kpi of kpis(); track kpi.label) {
+      <div class="kpi" role="listitem">
+        <div
+          class="kpi-n"
+          [style.color]="kpi.danger && +kpi.value > 0 ? 'var(--danger)' : null"
+        >
+          {{ kpi.value }}@if (kpi.suffix) {
+            <span style="font-size:14px;color:var(--muted);font-weight:500;"> {{ kpi.suffix }}</span>
+          }
+        </div>
+        <div class="kpi-l">{{ kpi.label }}</div>
+        @if (kpi.trend) {
+          <div class="kpi-trend" [style.color]="kpi.up ? 'var(--ok)' : 'var(--muted)'">{{ kpi.trend }}</div>
         }
-      </select>
-    </div>
+      </div>
+    }
+  </div>
+
+  <div class="tabs" style="margin-bottom:20px;" role="tablist" aria-label="Filter queue">
+    @for (tab of filterTabs; track tab.id) {
+      <button
+        type="button"
+        class="tab"
+        [class.on]="filter() === tab.id"
+        role="tab"
+        [attr.aria-selected]="filter() === tab.id"
+        (click)="setFilter(tab.id)"
+      >{{ tabLabel(tab) }}</button>
+    }
   </div>
 
   @if (error()) {
@@ -79,99 +53,130 @@
 
   @if (loading()) {
     <div aria-busy="true" aria-label="Loading submissions">
-      @for (n of [1,2,3,4,5]; track n) {
-        <div class="skeleton" style="height:92px;margin-bottom:10px;" aria-hidden="true"></div>
+      @for (n of [1, 2, 3]; track n) {
+        <div class="skeleton" style="height:120px;margin-bottom:12px;" aria-hidden="true"></div>
+      }
+    </div>
+  } @else if (filteredItems().length === 0) {
+    <div class="empty" role="status">
+      <div class="empty-ic">
+        <app-icon name="check" [size]="22" aria-hidden="true"></app-icon>
+      </div>
+      <div style="font-weight:600;color:var(--ink);font-size:16px;">Queue clear</div>
+      <div style="margin-top:6px;">Nothing waiting for review. Nicely done.</div>
+    </div>
+  } @else {
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      @for (item of filteredItems(); track item.id) {
+        <div class="queue-item fade-up">
+          <div [class]="'risk-bar ' + riskBarClass(item.risk)"></div>
+
+          <div class="ec-logo" style="width:42px;height:42px;">
+            <app-icon [name]="typeIcon(item.entry)" [size]="20" aria-hidden="true"></app-icon>
+          </div>
+
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <span style="font-weight:600;font-size:16px;">{{ item.entry.name || 'Untitled' }}</span>
+              @if (entrySlug(item.entry)) {
+                <span class="mono" style="font-size:12.5px;color:var(--muted);">{{ entrySlug(item.entry) }}</span>
+              }
+              <app-type-badge [type]="entryType(item.entry)"></app-type-badge>
+              <span class="badge" [class]="'badge-' + riskBadgeTone(item.risk)">
+                {{ riskLabel(item.risk) }} risk
+              </span>
+            </div>
+
+            @if (entrySummary(item.entry)) {
+              <div class="ec-summary" style="margin-top:7px;">{{ entrySummary(item.entry) }}</div>
+            }
+
+            <div style="display:flex;gap:16px;margin-top:10px;flex-wrap:wrap;">
+              <span class="stat">
+                <app-icon name="user" [size]="14" aria-hidden="true"></app-icon>
+                <span class="stat-val">{{ entryPublisher(item.entry) }}</span>
+              </span>
+              <span class="stat">
+                <app-icon name="clock" [size]="14" aria-hidden="true"></app-icon>
+                <span class="stat-val">{{ timeAgo(item.submittedAt) }}</span>
+              </span>
+              @if (entryParent(item.entry); as parent) {
+                <span class="stat">
+                  <app-icon name="server" [size]="14" aria-hidden="true"></app-icon>
+                  <span class="stat-val">{{ parent }}</span>
+                  <span class="stat-label">server</span>
+                </span>
+              }
+              @if (entryTransports(item.entry).length > 0) {
+                <span style="display:flex;gap:5px;">
+                  @for (t of entryTransports(item.entry); track t) {
+                    <span class="transport mono">{{ t }}</span>
+                  }
+                </span>
+              }
+              @if (entryToolCount(item.entry) > 0) {
+                <span class="stat">
+                  <app-icon name="tool" [size]="14" aria-hidden="true"></app-icon>
+                  <span class="stat-val">{{ entryToolCount(item.entry) }}</span>
+                  <span class="stat-label">tools</span>
+                </span>
+              }
+              @if (entryAuth(item.entry); as auth) {
+                <span class="stat">
+                  <span class="stat-val">{{ auth }}</span>
+                </span>
+              }
+            </div>
+
+            @if (item.flags.length > 0) {
+              <div class="flag-list">
+                @for (flag of item.flags; track flag) {
+                  <div class="flag" [class.high]="item.risk === 'high' || item.risk === 'critical'">
+                    <app-icon name="warning" [size]="14" aria-hidden="true"></app-icon>
+                    {{ flag }}
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:8px;flex:none;width:150px;">
+            <button
+              class="btn btn-accent btn-sm btn-full"
+              type="button"
+              [disabled]="actionInProgress() === item.id"
+              (click)="approve(item)"
+            >
+              <app-icon name="check" [size]="14" aria-hidden="true"></app-icon>
+              Approve
+            </button>
+            <button
+              class="btn btn-secondary btn-sm btn-full"
+              type="button"
+              [disabled]="actionInProgress() === item.id"
+              (click)="requestChanges(item)"
+            >
+              <app-icon name="flag" [size]="14" aria-hidden="true"></app-icon>
+              Request changes
+            </button>
+            <button
+              class="btn btn-danger btn-sm btn-full"
+              type="button"
+              [disabled]="actionInProgress() === item.id"
+              (click)="openRejectModal(item)"
+            >
+              <app-icon name="close" [size]="14" aria-hidden="true"></app-icon>
+              Reject
+            </button>
+          </div>
+        </div>
       }
     </div>
   }
-
-  @if (!loading() && !error()) {
-    @if (pending().length === 0) {
-      <div class="empty" role="status">
-        <div class="empty-ic">
-          <app-icon name="check" [size]="28" aria-hidden="true"></app-icon>
-        </div>
-        <div>No submissions match the current filters.</div>
-      </div>
-    } @else {
-      <div style="display:flex;flex-direction:column;gap:12px;">
-        @for (entry of pending(); track entry.id) {
-          <div class="queue-item" [class.fade-up]="actionInProgress() !== entry.id">
-            <div
-              class="risk-bar"
-              [ngClass]="{
-                'risk-low': entry.risk === 'low',
-                'risk-medium': entry.risk === 'medium',
-                'risk-high': entry.risk === 'high' || entry.risk === 'critical'
-              }"
-            ></div>
-
-            <div style="flex:1;min-width:0;">
-              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-                <span class="badge badge-default">{{ entry.entry.type }}</span>
-                <strong>{{ entry.entry.name || 'Untitled' }}</strong>
-                <span class="mono" style="font-size:12px;color:var(--muted);">{{ entry.entry.publisher }}</span>
-              </div>
-
-              <div style="display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap;">
-                <span class="badge" [class.badge-ok]="entry.risk === 'low'" [class.badge-warn]="entry.risk === 'medium'" [class.badge-danger]="entry.risk === 'high' || entry.risk === 'critical'">
-                  {{ entry.risk }} risk
-                </span>
-                <span class="stat">
-                  <app-icon name="clock" [size]="13" aria-hidden="true"></app-icon>
-                  <span>{{ entry.submittedAt | slice:0:10 }}</span>
-                </span>
-                <span class="stat">{{ entry.submittedBy }}</span>
-              </div>
-
-              @if (entry.flags.length > 0) {
-                <div class="flag-list" [attr.aria-label]="entry.flags.length + ' flags'">
-                  @for (flag of entry.flags; track flag) {
-                    <div class="flag" [class.high]="entry.risk === 'high' || entry.risk === 'critical'">
-                      <app-icon name="flag" [size]="11" aria-hidden="true"></app-icon>
-                      {{ flag }}
-                    </div>
-                  }
-                </div>
-              }
-            </div>
-
-            <div style="display:flex;flex-direction:column;gap:8px;width:150px;">
-              @if (entry.status === 'pending') {
-                <button
-                  class="btn btn-accent btn-sm"
-                  type="button"
-                  [disabled]="actionInProgress() === entry.id"
-                  (click)="approve(entry)"
-                  [attr.aria-label]="'Approve ' + entry.entry.name"
-                >
-                  <app-icon name="check" [size]="13" aria-hidden="true"></app-icon>
-                  Approve
-                </button>
-                <button
-                  class="btn btn-danger btn-sm"
-                  type="button"
-                  [disabled]="actionInProgress() === entry.id"
-                  (click)="openRejectModal(entry)"
-                  [attr.aria-label]="'Reject ' + entry.entry.name"
-                >
-                  <app-icon name="close" [size]="13" aria-hidden="true"></app-icon>
-                  Reject
-                </button>
-              } @else {
-                <span class="badge badge-default">{{ entry.status }}</span>
-              }
-            </div>
-          </div>
-        }
-      </div>
-    }
-  }
 </div>
 
-<!-- Reject Modal -->
 @if (rejectModalEntry()) {
-  <div class="scrim" role="dialog" aria-modal="true" [attr.aria-labelledby]="'reject-modal-title'">
+  <div class="scrim" role="dialog" aria-modal="true" aria-labelledby="reject-modal-title">
     <div class="drawer">
       <div class="drawer-head">
         <h2 id="reject-modal-title">Reject submission</h2>
@@ -199,7 +204,7 @@
         <button
           class="btn btn-danger btn-sm"
           type="button"
-          [disabled]="!rejectReason().trim() || actionInProgress() !== null"
+          [disabled]="rejectReason().trim().length < 10 || actionInProgress() !== null"
           (click)="confirmReject()"
         >
           Confirm rejection
@@ -209,21 +214,23 @@
   </div>
 }
 
-<!-- Toast notifications -->
-<div role="status" aria-live="polite" aria-label="Notifications" style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:95;display:flex;flex-direction:column;gap:8px;">
-  @for (toast of toasts(); track toast.id) {
-    <div class="savebar">
-      <span class="savebar-dot"></span>
-      <app-icon [name]="toast.type === 'success' ? 'check' : 'warning'" [size]="14" aria-hidden="true"></app-icon>
-      {{ toast.message }}
-      <button
-        class="btn btn-secondary btn-sm"
-        type="button"
-        (click)="dismissToast(toast.id)"
-        aria-label="Dismiss notification"
-      >
-        Dismiss
-      </button>
-    </div>
-  }
-</div>
+@if (toast()) {
+  <div
+    class="fade-up"
+    role="status"
+    aria-live="polite"
+    style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:95;background:var(--ink);color:white;padding:12px 18px;border-radius:11px;box-shadow:var(--shadow-lg);display:flex;align-items:center;gap:10px;font-size:14px;"
+  >
+    <span
+      [style.color]="toast()!.verdict === 'rejected' ? '#ff9b91' : '#86efac'"
+      style="display:inline-flex;"
+    >
+      <app-icon
+        [name]="toast()!.verdict === 'rejected' ? 'close' : 'check'"
+        [size]="16"
+        aria-hidden="true"
+      ></app-icon>
+    </span>
+    <span><b>{{ toast()!.name }}</b> {{ toast()!.verdict }}</span>
+  </div>
+}

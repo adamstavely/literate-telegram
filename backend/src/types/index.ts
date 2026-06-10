@@ -138,3 +138,28 @@ export interface AppStats {
   verifiedCount: number;
   totalEntries: number;
 }
+
+export type CollectionMemberKind = 'server' | 'skill' | 'agent' | 'api';
+
+export interface CollectionMember {
+  kind: CollectionMemberKind;
+  id: string;
+}
+
+export interface CollectionDefinition {
+  id: string;
+  title: string;
+  desc: string;
+  blurb: string;
+  icon: string;
+  curator: string;
+  accent: string;
+  members: CollectionMember[];
+}
+
+export interface Collection extends CollectionDefinition {
+  entries: RegistryEntry[];
+  count: number;
+  installs: number;
+  sensitivity: SensitivityLevel;
+}

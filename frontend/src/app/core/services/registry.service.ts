@@ -11,6 +11,7 @@ import {
   SearchParams,
   SearchResult,
   AppStats,
+  Collection,
 } from '../../shared/types/index';
 
 export type { AppStats as RegistryStats } from '../../shared/types/index';
@@ -46,6 +47,18 @@ export class RegistryService {
   getStats(): Observable<AppStats> {
     return this.http
       .get<AppStats>(`${this.base}/entries/stats`)
+      .pipe(retry({ count: 1, delay: 1000, resetOnSuccess: true }));
+  }
+
+  getCollections(): Observable<Collection[]> {
+    return this.http
+      .get<Collection[]>(`${this.base}/collections`)
+      .pipe(retry({ count: 1, delay: 1000, resetOnSuccess: true }));
+  }
+
+  getCollection(id: string): Observable<Collection> {
+    return this.http
+      .get<Collection>(`${this.base}/collections/${id}`)
       .pipe(retry({ count: 1, delay: 1000, resetOnSuccess: true }));
   }
 

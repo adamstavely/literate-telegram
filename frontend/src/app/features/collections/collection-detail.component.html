@@ -1,0 +1,132 @@
+<div class="container page">
+  @if (loading()) {
+    <div class="skeleton" style="height: 240px"></div>
+  }
+
+  @if (error()) {
+    <div class="empty" role="alert">
+      <p>{{ error() }}</p>
+      <a routerLink="/collections" class="btn btn-secondary btn-sm">Back to collections</a>
+    </div>
+  }
+
+  @if (collection(); as col) {
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <a routerLink="/">Browse</a>
+      <app-icon name="chevron-right" [size]="14"></app-icon>
+      <a routerLink="/collections">Collections</a>
+      <app-icon name="chevron-right" [size]="14"></app-icon>
+      <span aria-current="page">{{ col.title }}</span>
+    </nav>
+
+    <header class="detail-head">
+      <div class="detail-head-main">
+        <div
+          class="detail-logo"
+          [style.color]="col.accent"
+          [style.background]="'color-mix(in oklch, ' + col.accent + ' 10%, var(--cm))'"
+          [style.border-color]="'color-mix(in oklch, ' + col.accent + ' 22%, var(--cm))'"
+        >
+          <app-icon [name]="col.icon" [size]="30"></app-icon>
+        </div>
+        <div class="entry-meta">
+          <div class="entry-name-row">
+            <h1 class="detail-title">{{ col.title }}</h1>
+            <span class="entry-type-chip">Collection</span>
+            <app-sensitivity-badge [level]="col.sensitivity"></app-sensitivity-badge>
+          </div>
+          <p class="detail-slug">Curated by {{ col.curator }} · {{ col.count }} items</p>
+          <p class="detail-summary">{{ col.blurb }}</p>
+          <div class="entry-chips" style="margin-top: 12px">
+            <span class="entry-stat"><app-icon name="box" [size]="14"></app-icon> {{ col.count }} items</span>
+            <span class="entry-stat"><app-icon name="install" [size]="14"></app-icon> {{ formatInstalls(col.installs) }} combined installs</span>
+          </div>
+        </div>
+        <div class="detail-cta">
+          <button class="btn btn-accent btn-md" type="button" style="width: 100%" (click)="installStack()">
+            <app-icon [name]="added() ? 'check' : 'install'" [size]="14"></app-icon>
+            {{ added() ? 'Stack installed' : 'Install stack' }}
+          </button>
+          <button class="btn btn-secondary btn-md" type="button" style="width: 100%; margin-top: 8px" (click)="reviewGovernance()">
+            <app-icon name="shield" [size]="14"></app-icon> Review governance
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <div class="detail-grid">
+      <div>
+        <div class="callout accent" style="margin-bottom: 22px">
+          <app-icon name="box" [size]="16"></app-icon>
+          <div>
+            Installing a collection connects every item below in one pass, under your org's policy.
+            The stack's data ceiling is the <b>highest tier</b> any member holds.
+          </div>
+        </div>
+
+        @for (kind of kindOrder; track kind) {
+          @if (entriesByKind(kind).length > 0) {
+            <div class="section">
+              <h2 class="section-title" style="display: flex; align-items: center; gap: 7px">
+                <app-icon [name]="kindMeta[kind].icon" [size]="15" [style.color]="kindMeta[kind].color"></app-icon>
+                {{ kindMeta[kind].label }} · {{ entriesByKind(kind).length }}
+              </h2>
+              <p class="field-hint" style="margin-top: -6px; margin-bottom: 12px">{{ kindMeta[kind].note }}</p>
+              <div style="display: flex; flex-direction: column; gap: 10px">
+                @for (entry of entriesByKind(kind); track entry.id) {
+                  <div class="compose-card" (click)="openEntry(entry)" role="button" tabindex="0">
+                    <div class="ec-logo" [style.color]="kindMeta[kind].color">
+                      <app-icon [name]="kindMeta[kind].icon" [size]="17"></app-icon>
+                    </div>
+                    <div style="flex: 1; min-width: 0">
+                      <div class="compose-name">
+                        {{ entry.name }}
+                        @if (entry.verified) {
+                          <app-verified-mark></app-verified-mark>
+                        }
+                        <span class="compose-slug mono">{{ entry.slug }}</span>
+                      </div>
+                      <div class="compose-sum">{{ entry.summary }}</div>
+                    </div>
+                    <div class="compose-meta">
+                      <app-sensitivity-badge [level]="entry.sensitivity" [compact]="true"></app-sensitivity-badge>
+                      <app-icon name="chevron-right" [size]="15" style="color: var(--faint)"></app-icon>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        }
+      </div>
+
+      <aside>
+        <app-sensitivity-panel [level]="col.sensitivity" [hasCustomFootnote]="true">
+          <span sens-footnote>
+            This is the <b>highest tier</b> across the {{ col.count }} items. Installing the stack means accepting this ceiling for the set.
+          </span>
+        </app-sensitivity-panel>
+        <div class="aside-card" style="margin-top: 16px">
+          <h2 class="section-title">What's inside</h2>
+          <div class="spec">
+            @for (kind of kindOrder; track kind) {
+              @if (entriesByKind(kind).length > 0) {
+                <div class="spec-row">
+                  <span class="spec-k" style="display: flex; align-items: center; gap: 7px">
+                    <app-icon [name]="kindMeta[kind].icon" [size]="14" [style.color]="kindMeta[kind].color"></app-icon>
+                    {{ kindMeta[kind].label }}
+                  </span>
+                  <span class="spec-v mono">{{ entriesByKind(kind).length }}</span>
+                </div>
+              }
+            }
+            <div class="spec-row">
+              <span class="spec-k">Curator</span>
+              <span class="spec-v">{{ col.curator }}</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  }
+</div>

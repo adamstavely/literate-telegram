@@ -150,3 +150,25 @@ export interface AppTheme {
   mode: ThemeMode;
   accent: AccentColor;
 }
+
+export type CollectionMemberKind = 'server' | 'skill' | 'agent' | 'api';
+
+export interface CollectionMember {
+  kind: CollectionMemberKind;
+  id: string;
+}
+
+export interface Collection {
+  id: string;
+  title: string;
+  desc: string;
+  blurb: string;
+  icon: string;
+  curator: string;
+  accent: string;
+  members: CollectionMember[];
+  entries: RegistryEntry[];
+  count: number;
+  installs: number;
+  sensitivity: SensitivityLevel;
+}

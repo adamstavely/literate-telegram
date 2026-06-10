@@ -12,9 +12,10 @@ import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { debounceTime, distinctUntilChanged, Subject, switchMap, catchError, of } from 'rxjs';
 import { RegistryService, RegistryStats } from '../../core/services/registry.service';
-import { RegistryEntry, SearchParams, EntryType } from '../../shared/types';
+import { RegistryEntry, SearchParams, EntryType, Collection } from '../../shared/types';
 import { EntryCardComponent } from '../../shared/components/entry-card/entry-card.component';
 import { IconComponent } from '../../shared/components/icon/icon.component';
+import { CollectionCardComponent } from '../../shared/components/collection-card/collection-card.component';
 
 interface ActiveFilter {
   key: string;
@@ -25,7 +26,7 @@ interface ActiveFilter {
 @Component({
   selector: 'app-browse',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, EntryCardComponent, IconComponent],
+  imports: [CommonModule, FormsModule, RouterLink, EntryCardComponent, IconComponent, CollectionCardComponent],
   templateUrl: './browse.component.html',
 })
 export class BrowseComponent implements OnInit {
@@ -39,6 +40,7 @@ export class BrowseComponent implements OnInit {
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
   readonly stats = signal<RegistryStats | null>(null);
+  readonly featuredCollections = signal<Collection[]>([]);
 
   readonly searchQuery = signal('');
   readonly activeType = signal<EntryType | ''>('');
@@ -51,6 +53,14 @@ export class BrowseComponent implements OnInit {
   readonly pageSize = 12;
   readonly totalPages = computed(() => Math.ceil(this.total() / this.pageSize));
   readonly skeletonItems = Array.from({ length: 12 }, (_, i) => i);
+
+  readonly showFeaturedStrip = computed(
+    () =>
+      !this.activeType() &&
+      !this.activeCategory() &&
+      !this.activeClient() &&
+      !this.searchQuery().trim(),
+  );
 
   readonly activeFilters = computed<ActiveFilter[]>(() => {
     const filters: ActiveFilter[] = [];
@@ -85,6 +95,11 @@ export class BrowseComponent implements OnInit {
     // Load stats
     this.registry.getStats().subscribe({
       next: s => this.stats.set(s),
+      error: () => {},
+    });
+
+    this.registry.getCollections().subscribe({
+      next: cols => this.featuredCollections.set(cols.slice(0, 4)),
       error: () => {},
     });
 

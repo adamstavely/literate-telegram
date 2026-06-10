@@ -4,6 +4,7 @@ import entriesRouter from './routes/entries.js';
 import pendingRouter from './routes/pending.js';
 import notificationsRouter from './routes/notifications.js';
 import auditRouter from './routes/audit.js';
+import collectionsRouter from './routes/collections.js';
 
 const router = Router();
 
@@ -30,6 +31,7 @@ router.get('/health', async (_req: Request, res: Response, next: NextFunction): 
 
 // Mount sub-routers
 router.use('/entries', entriesRouter);
+router.use('/collections', collectionsRouter);
 router.use('/pending', pendingRouter);
 router.use('/notifications', notificationsRouter);
 router.use('/audit', auditRouter);

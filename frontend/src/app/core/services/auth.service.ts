@@ -25,6 +25,7 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { BehaviorSubject, Observable, fromEvent, Subscription } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { environment } from '../../../environments/environment';
 import { AuthenticatedUser } from '../../shared/types';
 
 interface MockAuthPayload extends AuthenticatedUser {
@@ -102,11 +103,22 @@ export class AuthService implements OnDestroy {
    * Replace with `oauthService.initLoginFlow()` for real OIDC.
    */
   login(): void {
-    // PLACEHOLDER: In a real app this would redirect to the OIDC provider.
-    // e.g. this.oauthService.initLoginFlow();
-    console.warn(
-      '[AuthService] login() called — wire a real OIDC library to enable authentication.',
-    );
+    if (environment.production) {
+      // PLACEHOLDER: In a real app this would redirect to the OIDC provider.
+      // e.g. this.oauthService.initLoginFlow();
+      console.warn(
+        '[AuthService] login() called — wire a real OIDC library to enable authentication.',
+      );
+      return;
+    }
+
+    this._setMockUser({
+      sub: 'dev-user-1',
+      email: 'dev@example.com',
+      name: 'Dev User',
+      roles: ['admin'],
+      accessToken: 'mock-token',
+    });
   }
 
   /**
@@ -121,19 +133,37 @@ export class AuthService implements OnDestroy {
   // ── Internals ──────────────────────────────────────────────────────────────
 
   private _readStoredUser(): AuthenticatedUser | null {
-    const raw = localStorage.getItem(this.STORAGE_KEY);
+    let raw = localStorage.getItem(this.STORAGE_KEY);
+    if (!raw && !environment.production) {
+      this._setMockUser({
+        sub: 'dev-user-1',
+        email: 'dev@example.com',
+        name: 'Dev User',
+        roles: ['admin'],
+        accessToken: 'mock-token',
+      });
+      raw = localStorage.getItem(this.STORAGE_KEY);
+    }
     if (!raw) return null;
     try {
       const payload = JSON.parse(raw) as MockAuthPayload;
-      // Return only the AuthenticatedUser fields, stripping internal fields.
-      return {
-        sub: payload.sub,
-        email: payload.email,
-        name: payload.name,
-        roles: payload.roles,
-      };
+      return this._toUser(payload);
     } catch {
       return null;
     }
+  }
+
+  private _setMockUser(payload: MockAuthPayload): void {
+    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(payload));
+    this._user$.next(this._toUser(payload));
+  }
+
+  private _toUser(payload: MockAuthPayload): AuthenticatedUser {
+    return {
+      sub: payload.sub,
+      email: payload.email,
+      name: payload.name,
+      roles: payload.roles,
+    };
   }
 }

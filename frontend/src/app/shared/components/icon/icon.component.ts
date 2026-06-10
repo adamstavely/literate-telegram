@@ -50,6 +50,7 @@ export const ICON_CONTENT: Record<string, string> = {
   info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/>',
   arrowRight: '<path d="M5 12h14M13 6l6 6-6 6"/>',
   arrowLeft: '<path d="M19 12H5M11 18l-6-6 6-6"/>',
+  inbox: '<path d="M4 6h16v12H4z"/><path d="M4 8l8 5 8-5"/>',
 };
 
 @Component({

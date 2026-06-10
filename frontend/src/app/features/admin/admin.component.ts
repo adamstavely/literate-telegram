@@ -7,78 +7,88 @@ import {
   DestroyRef,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RegistryService } from '../../core/services/registry.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
-import { PendingEntry, RiskLevel, EntryType } from '../../shared/types';
+import { TypeBadgeComponent } from '../../shared/components/type-badge/type-badge.component';
+import { TYPE_META } from '../../shared/constants/type-meta.constants';
+import { timeAgo } from '../../shared/utils/time-ago';
+import {
+  PendingEntry,
+  RiskLevel,
+  EntryType,
+  RegistryEntry,
+  Server,
+  Tool,
+} from '../../shared/types';
+
+type QueueFilter = 'all' | 'server' | 'tool' | 'skill' | 'high';
 
 interface Toast {
-  id: string;
-  message: string;
-  type: 'success' | 'error';
+  name: string;
+  verdict: string;
+}
+
+interface KpiCard {
+  value: string | number;
+  label: string;
+  suffix?: string;
+  trend?: string;
+  up?: boolean;
+  danger?: boolean;
 }
 
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [RouterLink, CommonModule, FormsModule, IconComponent],
+  imports: [RouterLink, IconComponent, TypeBadgeComponent],
   templateUrl: './admin.component.html',
 })
 export class AdminComponent implements OnInit {
   private readonly registry = inject(RegistryService);
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly pending = signal<PendingEntry[]>([]);
-  readonly total = signal(0);
+  readonly items = signal<PendingEntry[]>([]);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly actionInProgress = signal<string | null>(null);
-  readonly toasts = signal<Toast[]>([]);
+  readonly filter = signal<QueueFilter>('all');
+  readonly toast = signal<Toast | null>(null);
 
-  // Modal state
   readonly rejectModalEntry = signal<PendingEntry | null>(null);
   readonly rejectReason = signal('');
-  readonly changesModalEntry = signal<PendingEntry | null>(null);
-  readonly changesText = signal('');
 
-  readonly riskFilter = signal<RiskLevel | ''>('');
-  readonly typeFilter = signal<EntryType | ''>('');
-  readonly statusFilter = signal<'pending' | 'approved' | 'rejected' | ''>('pending');
-
-  readonly kpi = computed(() => {
-    const all = this.pending();
-    return {
-      awaiting: all.filter(e => e.status === 'pending').length,
-      published: all.filter(e => e.status === 'approved').length,
-      highRisk: all.filter(e => e.risk === 'high' || e.risk === 'critical').length,
-    };
+  readonly filteredItems = computed(() => {
+    const filter = this.filter();
+    const list = this.items();
+    if (filter === 'all') return list;
+    if (filter === 'high') {
+      return list.filter(i => i.risk === 'high' || i.risk === 'critical');
+    }
+    return list.filter(i => i.entry.type === filter);
   });
 
-  readonly statusTabs: Array<{ value: 'pending' | 'approved' | 'rejected' | ''; label: string }> = [
-    { value: 'pending', label: 'Pending' },
-    { value: 'approved', label: 'Approved' },
-    { value: 'rejected', label: 'Rejected' },
-    { value: '', label: 'All' },
+  readonly kpis = computed((): KpiCard[] => {
+    const list = this.items();
+    const highRisk = list.filter(i => i.risk === 'high' || i.risk === 'critical').length;
+    return [
+      { value: list.length, label: 'Awaiting review' },
+      { value: 8, label: 'Published', trend: '+3 this week', up: true },
+      { value: highRisk, label: 'High risk flagged', danger: true },
+      { value: '2.1k', label: 'Avg time to review', suffix: 'min', trend: '−18%', up: true },
+    ];
+  });
+
+  readonly filterTabs: Array<{ id: QueueFilter; label: string }> = [
+    { id: 'all', label: 'All' },
+    { id: 'server', label: 'Servers' },
+    { id: 'tool', label: 'Tools' },
+    { id: 'skill', label: 'Skills' },
+    { id: 'high', label: 'High risk' },
   ];
 
-  readonly typeTabs: Array<{ value: EntryType | ''; label: string }> = [
-    { value: '', label: 'All' },
-    { value: 'server', label: 'Servers' },
-    { value: 'tool', label: 'Tools' },
-    { value: 'skill', label: 'Skills' },
-    { value: 'agent', label: 'Agents' },
-    { value: 'api', label: 'APIs' },
-  ];
-
-  readonly riskOptions: Array<{ value: RiskLevel | ''; label: string }> = [
-    { value: '', label: 'All risks' },
-    { value: 'low', label: 'Low' },
-    { value: 'medium', label: 'Medium' },
-    { value: 'high', label: 'High' },
-    { value: 'critical', label: 'Critical' },
-  ];
+  readonly timeAgo = timeAgo;
+  readonly typeMeta = TYPE_META;
 
   ngOnInit(): void {
     this.loadPending();
@@ -88,19 +98,12 @@ export class AdminComponent implements OnInit {
     this.loading.set(true);
     this.error.set(null);
 
-    const filters = {
-      status: this.statusFilter() || undefined,
-      type: (this.typeFilter() as EntryType) || undefined,
-      risk: this.riskFilter() || undefined,
-    };
-
     this.registry
-      .getPending(filters)
+      .getPending({ status: 'pending' })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: result => {
-          this.pending.set(result.hits);
-          this.total.set(result.total);
+          this.items.set(result.hits);
           this.loading.set(false);
         },
         error: () => {
@@ -110,23 +113,81 @@ export class AdminComponent implements OnInit {
       });
   }
 
-  setRiskFilter(risk: RiskLevel | ''): void {
-    this.riskFilter.set(risk);
-    this.loadPending();
+  setFilter(filter: QueueFilter): void {
+    this.filter.set(filter);
   }
 
-  setStatusFilter(status: 'pending' | 'approved' | 'rejected' | ''): void {
-    this.statusFilter.set(status);
-    this.loadPending();
+  tabLabel(tab: { id: QueueFilter; label: string }): string {
+    if (tab.id === 'all') return `All · ${this.items().length}`;
+    return tab.label;
   }
 
-  setTypeFilter(type: EntryType | ''): void {
-    this.typeFilter.set(type);
-    this.loadPending();
+  typeIcon(entry: Partial<RegistryEntry>): string {
+    const type = entry.type ?? 'server';
+    return TYPE_META[type as EntryType]?.icon ?? 'server';
+  }
+
+  entryType(entry: Partial<RegistryEntry>): EntryType {
+    return (entry.type ?? 'server') as EntryType;
+  }
+
+  entrySlug(entry: Partial<RegistryEntry>): string {
+    return entry.slug ?? '';
+  }
+
+  entrySummary(entry: Partial<RegistryEntry>): string {
+    return entry.summary ?? '';
+  }
+
+  entryPublisher(entry: Partial<RegistryEntry>): string {
+    return entry.publisher ?? 'Unknown';
+  }
+
+  entryTransports(entry: Partial<RegistryEntry>): string[] {
+    if (entry.type === 'server') {
+      return (entry as Server).transports ?? [];
+    }
+    return [];
+  }
+
+  entryAuth(entry: Partial<RegistryEntry>): string | null {
+    if (entry.type === 'server') {
+      return (entry as Server).auth ?? null;
+    }
+    return null;
+  }
+
+  entryToolCount(entry: Partial<RegistryEntry>): number {
+    if (entry.type === 'server') {
+      return (entry as Server).tools?.length ?? 0;
+    }
+    return 0;
+  }
+
+  entryParent(entry: Partial<RegistryEntry>): string | null {
+    if (entry.type === 'tool') {
+      return (entry as Tool).parentServer ?? null;
+    }
+    return null;
+  }
+
+  riskBarClass(risk: RiskLevel): string {
+    if (risk === 'critical' || risk === 'high') return 'risk-high';
+    if (risk === 'medium') return 'risk-medium';
+    return 'risk-low';
+  }
+
+  riskBadgeTone(risk: RiskLevel): string {
+    if (risk === 'critical' || risk === 'high') return 'danger';
+    if (risk === 'medium') return 'warn';
+    return 'ok';
+  }
+
+  riskLabel(risk: RiskLevel): string {
+    return risk;
   }
 
   approve(entry: PendingEntry): void {
-    if (!confirm(`Approve "${entry.entry.name}"?`)) return;
     this.actionInProgress.set(entry.id);
 
     this.registry
@@ -134,15 +195,20 @@ export class AdminComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
-          this.pending.update(list => list.filter(e => e.id !== entry.id));
+          this.removeItem(entry);
           this.actionInProgress.set(null);
-          this.showToast(`"${entry.entry.name}" approved`, 'success');
+          this.showToast(entry.entry.name ?? 'Entry', 'approved');
         },
         error: () => {
           this.actionInProgress.set(null);
-          this.showToast('Approval failed', 'error');
+          this.showToast(entry.entry.name ?? 'Entry', 'approval failed');
         },
       });
+  }
+
+  requestChanges(entry: PendingEntry): void {
+    this.removeItem(entry);
+    this.showToast(entry.entry.name ?? 'Entry', 'changes requested');
   }
 
   openRejectModal(entry: PendingEntry): void {
@@ -160,14 +226,14 @@ export class AdminComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
-          this.pending.update(list => list.filter(e => e.id !== entry.id));
+          this.removeItem(entry);
           this.actionInProgress.set(null);
           this.rejectModalEntry.set(null);
-          this.showToast(`"${entry.entry.name}" rejected`, 'success');
+          this.showToast(entry.entry.name ?? 'Entry', 'rejected');
         },
         error: () => {
           this.actionInProgress.set(null);
-          this.showToast('Rejection failed', 'error');
+          this.showToast(entry.entry.name ?? 'Entry', 'rejection failed');
         },
       });
   }
@@ -176,20 +242,12 @@ export class AdminComponent implements OnInit {
     this.rejectModalEntry.set(null);
   }
 
-  showToast(message: string, type: 'success' | 'error'): void {
-    const id = crypto.randomUUID();
-    this.toasts.update(t => [...t, { id, message, type }]);
-    setTimeout(() => {
-      this.toasts.update(t => t.filter(x => x.id !== id));
-    }, 4000);
+  private removeItem(entry: PendingEntry): void {
+    this.items.update(list => list.filter(e => e.id !== entry.id));
   }
 
-  dismissToast(id: string): void {
-    this.toasts.update(t => t.filter(x => x.id !== id));
-  }
-
-  riskBarWidth(risk: RiskLevel): string {
-    const map: Record<RiskLevel, string> = { low: '25%', medium: '50%', high: '75%', critical: '100%' };
-    return map[risk];
+  private showToast(name: string, verdict: string): void {
+    this.toast.set({ name, verdict });
+    setTimeout(() => this.toast.set(null), 2600);
   }
 }

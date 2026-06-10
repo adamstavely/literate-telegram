@@ -2,13 +2,7 @@ import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IconComponent } from '../icon/icon.component';
 import { SensitivityLevel } from '../../types';
-
-const SENSITIVITY_TIPS: Record<SensitivityLevel, string> = {
-  public: 'Approved for public, non-sensitive data only.',
-  internal: 'Approved for internal business data.',
-  confidential: 'Approved for confidential data — restricted access.',
-  restricted: 'Approved for restricted data: PII, secrets, financial.',
-};
+import { SENSITIVITY } from '../../constants/sensitivity.constants';
 
 @Component({
   selector: 'app-sensitivity-badge',
@@ -22,34 +16,22 @@ const SENSITIVITY_TIPS: Record<SensitivityLevel, string> = {
       [class.sens-internal]="level === 'internal'"
       [class.sens-confidential]="level === 'confidential'"
       [class.sens-restricted]="level === 'restricted'"
-      [attr.title]="tip"
-      [attr.aria-label]="'Sensitivity: ' + label"
+      [attr.title]="meta.tip"
+      [attr.aria-label]="'Sensitivity: ' + meta.label"
       role="img"
     >
-      <app-icon [name]="icon" [size]="12"></app-icon>
-      <span>{{ label }}</span>
+      <app-icon [name]="meta.icon" [size]="12"></app-icon>
+      @if (!compact) {
+        <span>{{ meta.label }}</span>
+      }
     </span>
   `,
 })
 export class SensitivityBadgeComponent {
   @Input() level: SensitivityLevel = 'public';
+  @Input() compact = false;
 
-  private readonly config: Record<SensitivityLevel, { icon: string; label: string }> = {
-    public: { icon: 'globe', label: 'Public' },
-    internal: { icon: 'shield', label: 'Internal' },
-    confidential: { icon: 'lock', label: 'Confidential' },
-    restricted: { icon: 'lock', label: 'Restricted' },
-  };
-
-  get icon(): string {
-    return this.config[this.level]?.icon ?? 'shield';
-  }
-
-  get label(): string {
-    return this.config[this.level]?.label ?? 'Internal';
-  }
-
-  get tip(): string {
-    return SENSITIVITY_TIPS[this.level] ?? SENSITIVITY_TIPS.internal;
+  get meta() {
+    return SENSITIVITY[this.level] ?? SENSITIVITY.internal;
   }
 }

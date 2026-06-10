@@ -115,6 +115,24 @@
       </aside>
 
       <main id="main-content">
+        @if (showFeaturedStrip() && featuredCollections().length > 0) {
+          <section class="feat-collections" aria-label="Curated collections">
+            <div class="feat-head">
+              <h2 class="feat-title">Curated collections</h2>
+              <div style="flex: 1"></div>
+              <a class="feat-all" routerLink="/collections">
+                View all
+                <app-icon name="arrowRight" [size]="14" aria-hidden="true"></app-icon>
+              </a>
+            </div>
+            <div class="feat-row">
+              @for (col of featuredCollections(); track col.id) {
+                <app-collection-card [collection]="col"></app-collection-card>
+              }
+            </div>
+          </section>
+        }
+
         <div class="results-bar">
           <div class="results-count" aria-live="polite" aria-atomic="true">
             @if (!loading()) {

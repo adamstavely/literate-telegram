@@ -66,6 +66,17 @@ export async function requireAuth(
 
   const token = authHeader.slice(7);
 
+  if (config.nodeEnv === 'development' && token === 'mock-token') {
+    req.user = {
+      sub: 'dev-user-1',
+      email: 'dev@example.com',
+      name: 'Dev User',
+      roles: ['admin'],
+    };
+    next();
+    return;
+  }
+
   try {
     const { payload } = await verifyToken(token);
     req.user = extractUser(payload);

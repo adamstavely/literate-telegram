@@ -37,6 +37,17 @@ export const routes: Routes = [
     canActivate: [adminGuard],
   },
   {
+    path: 'collections',
+    loadComponent: () =>
+      import('./features/collections/collections.component').then(m => m.CollectionsComponent),
+    title: 'Collections — Interop',
+  },
+  {
+    path: 'collections/:id',
+    loadComponent: () =>
+      import('./features/collections/collection-detail.component').then(m => m.CollectionDetailComponent),
+  },
+  {
     path: 'docs',
     loadComponent: () =>
       import('./features/docs/docs.component').then(m => m.DocsComponent),

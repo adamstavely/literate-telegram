@@ -11,6 +11,8 @@ import {
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { RegistryService } from '../../core/services/registry.service';
 import {
   RegistryEntry,
@@ -20,10 +22,14 @@ import {
   Skill,
   Agent,
   Api,
+  SensitivityLevel,
 } from '../../shared/types';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { VerifiedMarkComponent } from '../../shared/components/verified-mark/verified-mark.component';
 import { SensitivityBadgeComponent } from '../../shared/components/sensitivity-badge/sensitivity-badge.component';
+import { SensitivityPanelComponent } from '../../shared/components/sensitivity-panel/sensitivity-panel.component';
+import { computeSkillSensitivity } from '../../shared/utils/skill-sensitivity';
+import { buildToolExample } from '../../shared/utils/tool-example';
 
 type TabId = 'overview' | 'install' | 'tools' | 'reviews';
 
@@ -36,11 +42,11 @@ type TabId = 'overview' | 'install' | 'tools' | 'reviews';
     IconComponent,
     VerifiedMarkComponent,
     SensitivityBadgeComponent,
+    SensitivityPanelComponent,
   ],
   templateUrl: './detail.component.html',
 })
 export class DetailComponent implements OnInit {
-  /** Bound via withComponentInputBinding() from route params. */
   @Input() type!: string;
   @Input() slug!: string;
 
@@ -49,10 +55,15 @@ export class DetailComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly entry = signal<RegistryEntry | null>(null);
+  readonly parentServer = signal<Server | null>(null);
+  readonly allServers = signal<Server[]>([]);
+  readonly relatedSkills = signal<Skill[]>([]);
+  readonly relatedAgents = signal<Agent[]>([]);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly activeTab = signal<TabId>('overview');
   readonly copied = signal(false);
+  readonly openToolId = signal<string | null>(null);
 
   readonly isServer = computed(() => this.entry()?.type === 'server');
   readonly isTool = computed(() => this.entry()?.type === 'tool');
@@ -75,6 +86,30 @@ export class DetailComponent implements OnInit {
   readonly asApi = computed(() =>
     this.isApi() ? (this.entry() as Api) : null,
   );
+
+  readonly skillEffectiveSensitivity = computed((): SensitivityLevel => {
+    const skill = this.asSkill();
+    if (!skill) return 'public';
+    const derived = computeSkillSensitivity(skill, this.allServers());
+    return derived ?? 'public';
+  });
+
+  readonly skillHasReaches = computed(() => {
+    const skill = this.asSkill();
+    return (skill?.reaches?.length ?? 0) > 0;
+  });
+
+  readonly toolExample = computed(() => {
+    const tool = this.asTool();
+    return tool ? buildToolExample(tool) : null;
+  });
+
+  readonly toolSignature = computed(() => {
+    const tool = this.asTool();
+    if (!tool) return '';
+    const params = tool.params.map((p) => p.name).join(', ');
+    return `(${params}) → ${tool.returns}`;
+  });
 
   readonly typeIcon = computed(() => {
     const icons: Record<string, string> = {
@@ -108,12 +143,17 @@ export class DetailComponent implements OnInit {
 
   readonly visibleTabs = computed(() => {
     const e = this.entry();
+    if (e?.type === 'tool') return [];
     return [
       { id: 'overview' as TabId, label: 'Overview', show: true },
       { id: 'install' as TabId, label: 'Install / Connect', show: true },
-      { id: 'tools' as TabId, label: `Tools${e?.type === 'server' ? ` (${(e as Server).tools?.length ?? 0})` : ''}`, show: e?.type === 'server' },
+      {
+        id: 'tools' as TabId,
+        label: `Tools${e?.type === 'server' ? ` (${(e as Server).tools?.length ?? 0})` : ''}`,
+        show: e?.type === 'server',
+      },
       { id: 'reviews' as TabId, label: 'Reviews', show: true },
-    ].filter(t => t.show);
+    ].filter((t) => t.show);
   });
 
   @HostListener('document:keydown', ['$event'])
@@ -125,15 +165,20 @@ export class DetailComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.loadEntry();
+  }
+
+  private loadEntry(): void {
+    this.loading.set(true);
+    this.error.set(null);
     this.registry
       .getEntry(this.type as EntryType, this.slug)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: entry => {
+        next: (entry) => {
           this.entry.set(entry);
-          this.loading.set(false);
-          // Update the page title dynamically.
           document.title = `${entry.name} — Interop`;
+          this.loadRelated(entry);
         },
         error: (err: unknown) => {
           this.error.set('Entry not found or failed to load.');
@@ -143,12 +188,85 @@ export class DetailComponent implements OnInit {
       });
   }
 
+  private loadRelated(entry: RegistryEntry): void {
+    if (entry.type === 'skill') {
+      this.registry.searchEntries({ type: 'server', size: 100 }).subscribe({
+        next: (res) => {
+          this.allServers.set(res.hits.filter((e): e is Server => e.type === 'server'));
+          this.loading.set(false);
+        },
+        error: () => this.loading.set(false),
+      });
+      return;
+    }
+
+    if (entry.type !== 'tool') {
+      this.loading.set(false);
+      return;
+    }
+
+    const tool = entry as Tool;
+    forkJoin({
+      parent: this.registry
+        .getEntry('server', tool.parentServer)
+        .pipe(catchError(() => of(null))),
+      catalog: this.registry.searchEntries({ size: 200 }),
+    }).subscribe({
+      next: ({ parent, catalog }) => {
+        const server = parent?.type === 'server' ? parent : null;
+        if (server) this.parentServer.set(server);
+        if (server) {
+          const reachKeys = [
+            `${server.slug} / ${tool.name}`,
+            `${server.slug} / ${tool.slug}`,
+          ];
+          this.relatedSkills.set(
+            catalog.hits.filter(
+              (e): e is Skill =>
+                e.type === 'skill' &&
+                (e as Skill).reaches?.some((r) =>
+                  reachKeys.some((k) => r.toLowerCase().includes(k.toLowerCase())),
+                ),
+            ),
+          );
+          this.relatedAgents.set(
+            catalog.hits.filter(
+              (e): e is Agent =>
+                e.type === 'agent' &&
+                (e as Agent).servers?.includes(server.slug),
+            ),
+          );
+        }
+        this.loading.set(false);
+      },
+      error: () => this.loading.set(false),
+    });
+  }
+
   setTab(tab: TabId): void {
     this.activeTab.set(tab);
   }
 
+  toggleToolExpand(toolId: string, event?: Event): void {
+    event?.stopPropagation();
+    this.openToolId.set(this.openToolId() === toolId ? null : toolId);
+  }
+
+  openToolPage(slug: string, event: Event): void {
+    event.stopPropagation();
+    void this.router.navigate(['/entry', 'tool', slug]);
+  }
+
   goBack(): void {
     void this.router.navigate(['/']);
+  }
+
+  openServer(slug: string): void {
+    void this.router.navigate(['/entry', 'server', slug]);
+  }
+
+  runToolStub(): void {
+    // Sandbox invoke — future modal
   }
 
   copyConfig(): void {
