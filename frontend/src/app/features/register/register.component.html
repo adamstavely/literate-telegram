@@ -1,5 +1,11 @@
 <div class="container page">
     @if (!submitted()) {
+      <div class="page-head">
+        <div class="eyebrow">Publish</div>
+        <h1 class="h1">Register a new entry</h1>
+        <p class="lede">Add a server, its tools, or a skill to the registry. Submissions are reviewed before they go live.</p>
+      </div>
+
       <div class="wizard">
         <!-- Step rail (left) -->
         <nav class="steps-rail" aria-label="Registration steps">
@@ -25,7 +31,7 @@
         </nav>
 
         <!-- Wizard form -->
-        <div style="min-width: 0">
+        <div class="wizard-main">
           <div aria-live="polite" class="sr-only" id="step-announce"></div>
 
           <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
@@ -45,7 +51,7 @@
                       [attr.aria-pressed]="selectedType === opt.value"
                     >
                       <div class="choice-ic">
-                        <app-icon [name]="opt.icon" [size]="24" aria-hidden="true"></app-icon>
+                        <app-icon [name]="opt.icon" [size]="19" aria-hidden="true"></app-icon>
                       </div>
                       <div>
                         <div class="choice-t">{{ opt.label }}</div>
@@ -63,7 +69,7 @@
                 <h2 id="step2-title" class="h2">Identity</h2>
                 <p class="field-hint">Basic information about your {{ selectedType }}.</p>
 
-                <div class="pick-grid">
+                <div class="field-grid">
                   <div class="field">
                     <label class="field-label" for="reg-name">
                       Name <span class="req-star" aria-hidden="true">*</span>
@@ -137,7 +143,7 @@
                   }
                 </div>
 
-                <div class="pick-grid">
+                <div class="field-grid">
                   <div class="field">
                     <label class="field-label" for="reg-version">Version</label>
                     <input id="reg-version" class="input" type="text" formControlName="version" placeholder="1.0.0" />
@@ -164,22 +170,23 @@
 
                 @if (isServer) {
                   <div class="field">
-                    <fieldset style="border: none; padding: 0; margin: 0">
-                      <legend class="field-label">Transports</legend>
-                      @for (t of ['stdio', 'http', 'sse']; track t) {
-                        <label style="display: inline-flex; align-items: center; gap: 6px; margin-right: 12px; margin-bottom: 6px">
-                          <input
-                            type="checkbox"
-                            [checked]="hasTransport(t)"
-                            (change)="toggleTransport(t)"
-                            [attr.aria-label]="'Enable ' + t + ' transport'"
-                          />
-                          <code>{{ t }}</code>
-                        </label>
+                    <div class="field-label">Transport</div>
+                    <div class="choice-grid">
+                      @for (tr of transportOptions; track tr.id) {
+                        <button
+                          type="button"
+                          class="choice"
+                          [class.on]="hasTransport(tr.id)"
+                          (click)="toggleTransport(tr.id)"
+                          [attr.aria-pressed]="hasTransport(tr.id)"
+                        >
+                          <div class="choice-t mono">{{ tr.t }}</div>
+                          <div class="choice-d">{{ tr.d }}</div>
+                        </button>
                       }
-                    </fieldset>
+                    </div>
                   </div>
-                  <div class="pick-grid">
+                  <div class="field-grid">
                     <div class="field">
                       <label class="field-label" for="reg-auth">Auth method</label>
                       <select id="reg-auth" class="input" formControlName="auth">
@@ -211,7 +218,7 @@
                     <input id="reg-returns" class="input" type="text" formControlName="returns" placeholder="string | object | array" />
                   </div>
                   <div class="field">
-                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px">
+                    <div class="param-head">
                       <span class="field-label">Parameters</span>
                       <button class="btn btn-ghost btn-sm" type="button" (click)="addParam()">
                         <app-icon name="plus" [size]="13" aria-hidden="true"></app-icon>
@@ -220,11 +227,11 @@
                     </div>
                     <div formArrayName="params">
                       @for (param of params.controls; track param; let i = $index) {
-                        <div [formGroupName]="i" style="display: grid; grid-template-columns: 1fr 1fr 2fr auto auto; gap: 8px; align-items: center; margin-top: 8px">
+                        <div [formGroupName]="i" class="param-row">
                           <input class="input" type="text" formControlName="name" placeholder="name" aria-label="Parameter name" />
                           <input class="input" type="text" formControlName="type" placeholder="type" aria-label="Parameter type" />
                           <input class="input" type="text" formControlName="description" placeholder="description" aria-label="Parameter description" />
-                          <label style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; white-space: nowrap">
+                          <label class="chk-inline">
                             <input type="checkbox" formControlName="required" aria-label="Required" />
                             Required
                           </label>
@@ -256,7 +263,7 @@
                 }
 
                 @if (isAgent) {
-                  <div class="pick-grid">
+                  <div class="field-grid">
                     <div class="field">
                       <label class="field-label" for="reg-model">Model</label>
                       <select id="reg-model" class="input" formControlName="model">
@@ -286,18 +293,26 @@
                 }
 
                 @if (isApi) {
-                  <div class="pick-grid">
-                    <div class="field">
-                      <label class="field-label" for="reg-style">API style</label>
-                      <select id="reg-style" class="input" formControlName="style">
-                        <option value="REST">REST</option>
-                        <option value="GraphQL">GraphQL</option>
-                      </select>
+                  <div class="field">
+                    <div class="field-label">Style</div>
+                    <div class="choice-grid choice-grid-2">
+                      @for (st of [{ id: 'REST', d: 'Resource-oriented HTTP' }, { id: 'GraphQL', d: 'Single typed endpoint' }]; track st.id) {
+                        <button
+                          type="button"
+                          class="choice"
+                          [class.on]="form.get('style')?.value === st.id"
+                          (click)="form.patchValue({ style: st.id })"
+                          [attr.aria-pressed]="form.get('style')?.value === st.id"
+                        >
+                          <div class="choice-t mono">{{ st.id }}</div>
+                          <div class="choice-d">{{ st.d }}</div>
+                        </button>
+                      }
                     </div>
-                    <div class="field">
-                      <label class="field-label" for="reg-endpoint">Endpoint URL</label>
-                      <input id="reg-endpoint" class="input" type="url" formControlName="endpoint" placeholder="https://api.example.com/v1" />
-                    </div>
+                  </div>
+                  <div class="field">
+                    <label class="field-label" for="reg-endpoint">Endpoint URL</label>
+                    <input id="reg-endpoint" class="input mono" type="url" formControlName="endpoint" placeholder="https://api.example.com/v1" />
                   </div>
                   <div class="field">
                     <label class="field-label" for="reg-wrapped-by">Wrapped by server (optional)</label>
@@ -331,7 +346,7 @@
                       <span class="tr-t">Read-only default</span>
                       <span class="tr-d">Prevent write operations by default</span>
                     </div>
-                    <input type="checkbox" formControlName="readOnly" style="display: none" />
+                    <input type="checkbox" class="switch-input" formControlName="readOnly" />
                     <div
                       class="switch"
                       [class.on]="form.get('readOnly')?.value"
@@ -347,7 +362,7 @@
                       <span class="tr-t">Require approval</span>
                       <span class="tr-d">Each connection requires admin approval</span>
                     </div>
-                    <input type="checkbox" formControlName="approvalRequired" style="display: none" />
+                    <input type="checkbox" class="switch-input" formControlName="approvalRequired" />
                     <div
                       class="switch"
                       [class.on]="form.get('approvalRequired')?.value"
@@ -378,7 +393,7 @@
                 <div class="summary-card">
                   <div class="summary-row">
                     <span class="summary-k">Type</span>
-                    <span class="summary-v" style="text-transform: capitalize">{{ selectedType }}</span>
+                    <span class="summary-v capitalize">{{ selectedType }}</span>
                   </div>
                   <div class="summary-row">
                     <span class="summary-k">Name</span>
@@ -416,22 +431,22 @@
             <!-- Navigation -->
             <div class="wizard-foot">
               @if (currentStep() > 1) {
-                <button class="btn btn-secondary" type="button" (click)="prevStep()">
-                  <app-icon name="chevron-right" [size]="14" style="transform: rotate(180deg)" aria-hidden="true"></app-icon>
+                <button class="btn btn-ghost btn-md" type="button" (click)="prevStep()">
+                  <app-icon name="arrowLeft" [size]="16" aria-hidden="true"></app-icon>
                   Back
                 </button>
               }
 
               @if (currentStep() < 5) {
                 <div class="spacer"></div>
-                <button class="btn btn-primary" type="button" (click)="nextStep()">
+                <button class="btn btn-primary btn-md" type="button" (click)="nextStep()">
                   Continue
-                  <app-icon name="chevron-right" [size]="14" aria-hidden="true"></app-icon>
+                  <app-icon name="arrowRight" [size]="16" aria-hidden="true"></app-icon>
                 </button>
               } @else {
                 <div class="spacer"></div>
                 <button
-                  class="btn btn-primary"
+                  class="btn btn-accent btn-md"
                   type="submit"
                   [disabled]="form.invalid || submitting()"
                   [attr.aria-busy]="submitting()"
@@ -439,8 +454,8 @@
                   @if (submitting()) {
                     Submitting…
                   } @else {
+                    <app-icon name="check" [size]="16" aria-hidden="true"></app-icon>
                     Submit for review
-                    <app-icon name="chevron-right" [size]="14" aria-hidden="true"></app-icon>
                   }
                 </button>
               }
@@ -452,23 +467,20 @@
 
     <!-- Success state -->
     @if (submitted()) {
-      <div role="status" aria-live="polite" style="max-width: 520px; margin: 60px auto; text-align: center" class="fade-up">
-        <div aria-hidden="true" style="width: 64px; height: 64px; border-radius: 18px; background: var(--accent-wash); border: 1px solid var(--accent-line); display: grid; place-items: center; margin: 0 auto 22px; color: var(--accent)">
-          <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
-            <circle cx="32" cy="32" r="31" fill="var(--ok-wash)" stroke="var(--ok)" stroke-width="2"/>
-            <path d="M20 32l8 8 16-16" stroke="var(--ok)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
+      <div role="status" aria-live="polite" class="submit-success fade-up">
+        <div class="submit-success-icon" aria-hidden="true">
+          <app-icon name="check" [size]="30" aria-hidden="true"></app-icon>
         </div>
-        <h1 class="h1" style="margin-bottom: 10px">Submission received!</h1>
-        <p class="lede" style="margin: 0 auto 26px">Your entry has been queued for review. You'll be notified once it's approved.</p>
-        <div class="summary-card" style="text-align: left; margin-bottom: 26px">
+        <h1 class="h1">Submitted for review</h1>
+        <p class="lede"><b>{{ form.get('name')?.value }}</b> is now in the moderation queue. An admin will review the requested scopes and publish it to the registry.</p>
+        <div class="summary-card">
           <div class="summary-row">
             <span class="summary-k">Name</span>
             <span class="summary-v">{{ form.get('name')?.value || '—' }}</span>
           </div>
           <div class="summary-row">
             <span class="summary-k">Type</span>
-            <span class="summary-v" style="text-transform: capitalize">{{ selectedType }}</span>
+            <span class="summary-v capitalize">{{ selectedType }}</span>
           </div>
         @if (submittedId()) {
             <div class="summary-row">
@@ -477,7 +489,7 @@
             </div>
         }
         </div>
-        <button class="btn btn-primary" type="button" (click)="startOver()">Back to Registry</button>
+        <button class="btn btn-primary btn-md" type="button" (click)="startOver()">Back to Registry</button>
       </div>
     }
 </div>

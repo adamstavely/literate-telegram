@@ -608,6 +608,21 @@ button.facet-item { border: none; background: none; width: 100%; text-align: lef
 .input::placeholder, .textarea::placeholder { color: var(--faint); }
 
 .choice-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.choice-grid-2 { grid-template-columns: 1fr 1fr; }
+.field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 560px) { .field-grid { grid-template-columns: 1fr; } }
+.wizard .h2 { margin-bottom: 6px; }
+.wizard .h2 + .field-hint { margin-bottom: 20px; }
+.wizard-main { min-width: 0; }
+.param-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.param-row { display: grid; grid-template-columns: 1fr 1fr 2fr auto auto; gap: 8px; align-items: center; margin-top: 8px; }
+.chk-inline { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; white-space: nowrap; }
+.submit-success { max-width: 520px; margin: 60px auto; text-align: center; }
+.submit-success-icon { width: 64px; height: 64px; border-radius: 18px; background: var(--accent-wash); border: 1px solid var(--accent-line); display: grid; place-items: center; margin: 0 auto 22px; color: var(--accent); }
+.submit-success .h1 { margin-bottom: 10px; }
+.submit-success .lede { margin: 0 auto 26px; }
+.submit-success .summary-card { text-align: left; margin-bottom: 26px; }
+.capitalize { text-transform: capitalize; }
 .choice {
   border: 1px solid var(--line); border-radius: 12px; padding: 16px; cursor: pointer; transition: .13s;
   background: var(--bg); box-shadow: var(--shadow-sm); text-align: left;
@@ -642,6 +657,7 @@ button.facet-item { border: none; background: none; width: 100%; text-align: lef
 }
 .switch.on { background: var(--accent); }
 .switch.on::after { transform: translateX(16px); }
+.switch-input { display: none; }
 
 .wizard-foot { display: flex; align-items: center; gap: 12px; margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--line); }
 .wizard-foot .spacer { flex: 1; }

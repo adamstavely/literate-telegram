@@ -58,6 +58,12 @@ export class RegisterComponent implements OnInit {
     'gpt-4o', 'gpt-4o-mini', 'gemini-2.0-flash', 'gemini-1.5-pro',
   ];
 
+  readonly transportOptions = [
+    { id: 'http', t: 'HTTP', d: 'Streamable HTTP endpoint' },
+    { id: 'sse', t: 'SSE', d: 'Server-sent events' },
+    { id: 'stdio', t: 'stdio', d: 'Local subprocess' },
+  ];
+
   form!: FormGroup;
 
   get selectedType(): EntryType {
