@@ -220,7 +220,7 @@
                       </button>
                     </div>
                     <div formArrayName="params">
-                      @for (param of params.controls; track $index; let i = $index) {
+                      @for (param of params.controls; track param; let i = $index) {
                         <div class="param-row" [formGroupName]="i">
                           <input class="form-input" type="text" formControlName="name" placeholder="name" aria-label="Parameter name" />
                           <input class="form-input" type="text" formControlName="type" placeholder="type" aria-label="Parameter type" />

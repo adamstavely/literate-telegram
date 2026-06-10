@@ -84,7 +84,7 @@
             (click)="toggleNotifications()"
             [attr.aria-expanded]="notificationsOpen()"
             aria-haspopup="true"
-            aria-label="Notifications{{ unreadCount() > 0 ? ' (' + unreadCount() + ' unread)' : '' }}"
+            [attr.aria-label]="'Notifications' + (unreadCount() > 0 ? ' (' + unreadCount() + ' unread)' : '')"
           >
             <app-icon name="bell" [size]="18" aria-hidden="true" />
             @if (unreadCount() > 0) {

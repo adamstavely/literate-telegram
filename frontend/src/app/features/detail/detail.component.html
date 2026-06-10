@@ -52,7 +52,7 @@
             <p class="entry-publisher">by <strong>{{ entry()!.publisher }}</strong></p>
             <div class="entry-chips">
               @if (entry()!.version) {
-                <span class="entry-version" aria-label="Version {{ entry()!.version }}">v{{ entry()!.version }}</span>
+                <span class="entry-version" [attr.aria-label]="'Version ' + entry()!.version">v{{ entry()!.version }}</span>
               }
               <span class="entry-type-chip" [attr.data-type]="entry()!.type">{{ entry()!.type }}</span>
               @for (cat of entry()!.categories; track cat) {
@@ -226,7 +226,7 @@
                       </div>
                       <p class="tool-summary">{{ tool.summary }}</p>
                       @if (tool.params.length > 0) {
-                        <table class="params-table" aria-label="Parameters for {{ tool.name }}">
+                        <table class="params-table" [attr.aria-label]="'Parameters for ' + tool.name">
                           <thead>
                             <tr>
                               <th scope="col">Name</th>

@@ -88,28 +88,28 @@
                   <div class="toggle-label">Read-only default</div>
                   <div class="toggle-desc">All connections default to read-only access</div>
                 </div>
-                <input type="checkbox" role="switch" [checked]="readOnlyDefault()" (change)="readOnlyDefault.update(v => !v); markDirty()" aria-label="Read-only default" />
+                <input type="checkbox" role="switch" [checked]="readOnlyDefault()" (change)="toggleReadOnlyDefault()" aria-label="Read-only default" />
               </label>
               <label class="toggle-row">
                 <div>
                   <div class="toggle-label">Per-tool approval</div>
                   <div class="toggle-desc">Require approval before each tool invocation</div>
                 </div>
-                <input type="checkbox" role="switch" [checked]="perToolApproval()" (change)="perToolApproval.update(v => !v); markDirty()" aria-label="Per-tool approval" />
+                <input type="checkbox" role="switch" [checked]="perToolApproval()" (change)="togglePerToolApproval()" aria-label="Per-tool approval" />
               </label>
               <label class="toggle-row">
                 <div>
                   <div class="toggle-label">Block write operations</div>
                   <div class="toggle-desc">Prevent any write or mutation operations globally</div>
                 </div>
-                <input type="checkbox" role="switch" [checked]="blockWrites()" (change)="blockWrites.update(v => !v); markDirty()" aria-label="Block write operations" />
+                <input type="checkbox" role="switch" [checked]="blockWrites()" (change)="toggleBlockWrites()" aria-label="Block write operations" />
               </label>
               <label class="toggle-row">
                 <div>
                   <div class="toggle-label">Quarantine high-risk entries</div>
                   <div class="toggle-desc">Isolate high and critical risk entries until reviewed</div>
                 </div>
-                <input type="checkbox" role="switch" [checked]="quarantineHighRisk()" (change)="quarantineHighRisk.update(v => !v); markDirty()" aria-label="Quarantine high-risk entries" />
+                <input type="checkbox" role="switch" [checked]="quarantineHighRisk()" (change)="toggleQuarantineHighRisk()" aria-label="Quarantine high-risk entries" />
               </label>
             </div>
           </section>
@@ -126,14 +126,14 @@
                   <div class="toggle-label">Auto-approve verified publishers</div>
                   <div class="toggle-desc">Skip review for entries from allowlisted publishers</div>
                 </div>
-                <input type="checkbox" role="switch" [checked]="autoApproveVerified()" (change)="autoApproveVerified.update(v => !v); markDirty()" aria-label="Auto-approve verified publishers" />
+                <input type="checkbox" role="switch" [checked]="autoApproveVerified()" (change)="toggleAutoApproveVerified()" aria-label="Auto-approve verified publishers" />
               </label>
               <label class="toggle-row">
                 <div>
                   <div class="toggle-label">Require two approvers</div>
                   <div class="toggle-desc">High-risk entries need approval from two admins</div>
                 </div>
-                <input type="checkbox" role="switch" [checked]="requireTwoApprovers()" (change)="requireTwoApprovers.update(v => !v); markDirty()" aria-label="Require two approvers" />
+                <input type="checkbox" role="switch" [checked]="requireTwoApprovers()" (change)="toggleRequireTwoApprovers()" aria-label="Require two approvers" />
               </label>
             </div>
 
@@ -144,7 +144,7 @@
                 type="number"
                 class="form-input"
                 [ngModel]="reviewWindowDays()"
-                (ngModelChange)="reviewWindowDays.set($event); markDirty()"
+                (ngModelChange)="setReviewWindowDays($event)"
                 min="1"
                 max="90"
               />
@@ -297,14 +297,14 @@
                   <div class="toggle-label">Enable skill triggers</div>
                   <div class="toggle-desc">Allow skills to be invoked by event triggers</div>
                 </div>
-                <input type="checkbox" role="switch" [checked]="enabledSkillTriggers()" (change)="enabledSkillTriggers.update(v => !v); markDirty()" aria-label="Enable skill triggers" />
+                <input type="checkbox" role="switch" [checked]="enabledSkillTriggers()" (change)="toggleEnabledSkillTriggers()" aria-label="Enable skill triggers" />
               </label>
               <label class="toggle-row">
                 <div>
                   <div class="toggle-label">Require SKILL.md</div>
                   <div class="toggle-desc">Skills must include a valid SKILL.md manifest</div>
                 </div>
-                <input type="checkbox" role="switch" [checked]="requireSkillMd()" (change)="requireSkillMd.update(v => !v); markDirty()" aria-label="Require SKILL.md" />
+                <input type="checkbox" role="switch" [checked]="requireSkillMd()" (change)="toggleRequireSkillMd()" aria-label="Require SKILL.md" />
               </label>
             </div>
 
@@ -315,7 +315,7 @@
                 type="number"
                 class="form-input"
                 [ngModel]="maxTokenBudget()"
-                (ngModelChange)="maxTokenBudget.set($event); markDirty()"
+                (ngModelChange)="setMaxTokenBudget($event)"
                 min="100"
                 max="128000"
                 step="100"

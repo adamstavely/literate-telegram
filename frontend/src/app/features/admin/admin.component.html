@@ -172,7 +172,7 @@
                 <!-- Flags -->
                 <div class="queue-cell" role="cell">
                   @if (entry.flags.length > 0) {
-                    <ul class="flag-list" aria-label="{{ entry.flags.length }} flags">
+                    <ul class="flag-list" [attr.aria-label]="entry.flags.length + ' flags'">
                       @for (flag of entry.flags; track flag) {
                         <li class="flag-item">
                           <app-icon name="flag" [size]="11" aria-hidden="true"></app-icon>

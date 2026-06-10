@@ -227,6 +227,17 @@ export class PolicyComponent {
     this.dirty.set(true);
   }
 
+  toggleReadOnlyDefault(): void { this.readOnlyDefault.update(v => !v); this.dirty.set(true); }
+  togglePerToolApproval(): void { this.perToolApproval.update(v => !v); this.dirty.set(true); }
+  toggleBlockWrites(): void { this.blockWrites.update(v => !v); this.dirty.set(true); }
+  toggleQuarantineHighRisk(): void { this.quarantineHighRisk.update(v => !v); this.dirty.set(true); }
+  toggleAutoApproveVerified(): void { this.autoApproveVerified.update(v => !v); this.dirty.set(true); }
+  toggleRequireTwoApprovers(): void { this.requireTwoApprovers.update(v => !v); this.dirty.set(true); }
+  toggleEnabledSkillTriggers(): void { this.enabledSkillTriggers.update(v => !v); this.dirty.set(true); }
+  toggleRequireSkillMd(): void { this.requireSkillMd.update(v => !v); this.dirty.set(true); }
+  setReviewWindowDays(val: number): void { this.reviewWindowDays.set(val); this.dirty.set(true); }
+  setMaxTokenBudget(val: number): void { this.maxTokenBudget.set(val); this.dirty.set(true); }
+
   markDirty(): void {
     this.dirty.set(true);
   }
