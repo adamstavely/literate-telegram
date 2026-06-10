@@ -1,4 +1,5 @@
 import { ICON_CONTENT } from '../../shared/components/icon/icon.component';
+import { SKILLS_NAV, SKILLS_ARTICLES } from './skills-articles';
 
 export interface DocSection {
   id: string;
@@ -177,6 +178,11 @@ const NAV: { group: string; sectionId: string; items: { id: string; label: strin
       { id: 'transports', label: 'Transports & auth' },
       { id: 'compatibility', label: 'Client compatibility' },
     ],
+  },
+  {
+    group: SKILLS_NAV.group,
+    sectionId: SKILLS_NAV.sectionId,
+    items: [...SKILLS_NAV.items],
   },
 ];
 
@@ -611,18 +617,25 @@ export const DOC_SECTIONS: DocSection[] = NAV.map(g => ({
   label: g.group,
 }));
 
-export const DOC_ARTICLES: DocArticle[] = NAV.flatMap(g =>
-  g.items.map(item => {
-    const def = ARTICLES[item.id];
-    return {
-      id: item.id,
-      section: g.sectionId,
-      title: def.title,
-      navLabel: def.navLabel ?? item.label,
-      readTime: def.read,
-      updatedAt: def.updated,
-      lead: def.desc,
-      body: renderBlocks(def.blocks),
-    };
-  }),
+const BUILT_IN_ARTICLES: DocArticle[] = NAV.flatMap(g =>
+  g.items
+    .filter(item => item.id in ARTICLES)
+    .map(item => {
+      const def = ARTICLES[item.id];
+      return {
+        id: item.id,
+        section: g.sectionId,
+        title: def.title,
+        navLabel: def.navLabel ?? item.label,
+        readTime: def.read,
+        updatedAt: def.updated,
+        lead: def.desc,
+        body: renderBlocks(def.blocks),
+      };
+    }),
 );
+
+export const DOC_ARTICLES: DocArticle[] = [
+  ...BUILT_IN_ARTICLES,
+  ...SKILLS_ARTICLES,
+];

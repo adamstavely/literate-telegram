@@ -8,6 +8,7 @@ import {
   HostListener,
 } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { Router } from '@angular/router';
 import { DOC_SECTIONS, DOC_ARTICLES, DocArticle } from './docs-content';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 
@@ -24,6 +25,7 @@ export interface DocTocHeading {
 })
 export class DocsComponent implements OnInit {
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly router = inject(Router);
 
   /** Bound via withComponentInputBinding() from route params. */
   @Input() articleId?: string;
@@ -74,10 +76,25 @@ export class DocsComponent implements OnInit {
     this.resetToc();
   }
 
-  selectArticle(article: DocArticle): void {
+  selectArticle(article: DocArticle, hash?: string): void {
     this.activeArticle.set(article);
     this.resetToc();
+    void this.router.navigate(['/docs', article.id], { replaceUrl: true });
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (hash) {
+      queueMicrotask(() => document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    }
+  }
+
+  onBodyClick(event: MouseEvent): void {
+    const anchor = (event.target as HTMLElement).closest('a.doc-link, a.doc-card');
+    if (!anchor) return;
+    const href = anchor.getAttribute('href');
+    if (!href?.startsWith('/docs/')) return;
+    event.preventDefault();
+    const [path, hash] = href.slice('/docs/'.length).split('#');
+    const article = this.articles().find(a => a.id === path);
+    if (article) this.selectArticle(article, hash || undefined);
   }
 
   renderContent(body: string): SafeHtml {
