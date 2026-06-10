@@ -68,7 +68,7 @@ export class DocsComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    const id = this.articleId ?? 'introduction';
+    const id = this.articleId ?? 'overview';
     const found = this.articles().find(a => a.id === id);
     this.activeArticle.set(found ?? this.articles()[0] ?? null);
     this.resetToc();

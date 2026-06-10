@@ -12,7 +12,7 @@
                 type="button"
                 (click)="selectArticle(article)"
                 [attr.aria-current]="activeArticle()?.id === article.id ? 'page' : null"
-              >{{ article.title }}</button>
+              >{{ article.navLabel ?? article.title }}</button>
             }
           </div>
         }

@@ -81,6 +81,10 @@ export interface PendingEntry {
   risk: RiskLevel;
   flags: string[];
   rejectReason?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  rejectedBy?: string;
+  rejectedAt?: string;
 }
 
 export interface AuditEvent {
@@ -137,6 +141,60 @@ export interface AppStats {
   totalInstalls: number;
   verifiedCount: number;
   totalEntries: number;
+}
+
+export type RuleAction = 'flag' | 'review' | 'block' | 'reject';
+export type RuleSeverity = 'high' | 'medium' | 'low';
+
+export interface PolicyState {
+  readOnlyDefault: boolean;
+  perToolApproval: boolean;
+  blockWriteUntilReview: boolean;
+  quarantineHighRisk: boolean;
+  requireReview: boolean;
+  autoApproveVerified: boolean;
+  autoApproveSkills: boolean;
+  twoApproversHighRisk: boolean;
+  republishAfterDays: number;
+  defaultVisibility: 'private' | 'org' | 'public';
+  transports: Record<string, boolean>;
+  auth: Record<string, boolean>;
+  scanInjection: boolean;
+  requireTriggers: boolean;
+  tokenCap: boolean;
+}
+
+export interface PolicyRule {
+  id: string;
+  name: string;
+  cond: string;
+  desc: string;
+  severity: RuleSeverity;
+  action: RuleAction;
+  enabled: boolean;
+  flag: string | null;
+}
+
+export interface TrustDomain {
+  d: string;
+  verified: boolean;
+}
+
+export interface PolicyDocument {
+  id: string;
+  policy: PolicyState;
+  rules: PolicyRule[];
+  domains: TrustDomain[];
+  updatedAt: string;
+  updatedBy: string;
+}
+
+export interface PendingStats {
+  pendingCount: number;
+  approvedCount: number;
+  approvedThisWeek: number;
+  avgReviewTimeMinutes: number | null;
+  highRiskPending: number;
 }
 
 export type CollectionMemberKind = 'server' | 'skill' | 'agent' | 'api';

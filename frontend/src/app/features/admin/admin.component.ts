@@ -14,7 +14,9 @@ import { TypeBadgeComponent } from '../../shared/components/type-badge/type-badg
 import { TYPE_META } from '../../shared/constants/type-meta.constants';
 import { timeAgo } from '../../shared/utils/time-ago';
 import {
+  AppStats,
   PendingEntry,
+  PendingStats,
   RiskLevel,
   EntryType,
   RegistryEntry,
@@ -54,6 +56,8 @@ export class AdminComponent implements OnInit {
   readonly actionInProgress = signal<string | null>(null);
   readonly filter = signal<QueueFilter>('all');
   readonly toast = signal<Toast | null>(null);
+  readonly registryStats = signal<AppStats | null>(null);
+  readonly pendingStats = signal<PendingStats | null>(null);
 
   readonly filteredItems = computed(() => {
     const filter = this.filter();
@@ -67,12 +71,27 @@ export class AdminComponent implements OnInit {
 
   readonly kpis = computed((): KpiCard[] => {
     const list = this.items();
-    const highRisk = list.filter(i => i.risk === 'high').length;
+    const stats = this.registryStats();
+    const pending = this.pendingStats();
+    const highRisk = pending?.highRiskPending ?? list.filter(i => i.risk === 'high' || i.risk === 'critical').length;
+    const published = stats?.totalEntries ?? 0;
+    const approvedThisWeek = pending?.approvedThisWeek ?? 0;
+    const avgReview = pending?.avgReviewTimeMinutes;
+
     return [
-      { value: list.length, label: 'Awaiting review' },
-      { value: 8, label: 'Published', trend: '+3 this week', up: true },
+      { value: pending?.pendingCount ?? list.length, label: 'Awaiting review' },
+      {
+        value: published,
+        label: 'Published',
+        trend: approvedThisWeek > 0 ? `+${approvedThisWeek} this week` : undefined,
+        up: approvedThisWeek > 0,
+      },
       { value: highRisk, label: 'High risk flagged', danger: true },
-      { value: '2.1k', label: 'Avg time to review', suffix: 'min', trend: '−18%', up: true },
+      {
+        value: avgReview ?? '—',
+        label: 'Avg time to review',
+        suffix: avgReview != null ? 'min' : undefined,
+      },
     ];
   });
 
@@ -88,7 +107,20 @@ export class AdminComponent implements OnInit {
   readonly typeMeta = TYPE_META;
 
   ngOnInit(): void {
+    this.loadStats();
     this.loadPending();
+  }
+
+  loadStats(): void {
+    this.registry
+      .getStats()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({ next: s => this.registryStats.set(s) });
+
+    this.registry
+      .getPendingStats()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({ next: s => this.pendingStats.set(s) });
   }
 
   loadPending(): void {
@@ -198,6 +230,7 @@ export class AdminComponent implements OnInit {
           this.removeItem(entry);
           this.actionInProgress.set(null);
           this.showToast(entry.entry.name ?? 'Entry', 'approved');
+          this.loadStats();
         },
         error: () => {
           this.actionInProgress.set(null);
@@ -207,13 +240,39 @@ export class AdminComponent implements OnInit {
   }
 
   requestChanges(entry: PendingEntry): void {
-    this.removeItem(entry);
-    this.showToast(entry.entry.name ?? 'Entry', 'changes requested');
+    const details = window.prompt(
+      'Describe the changes required (min 10 characters):',
+    );
+    if (!details || details.trim().length < 10) return;
+    this.rejectEntry(entry, `Changes requested: ${details.trim()}`, 'changes requested');
   }
 
   reject(entry: PendingEntry): void {
-    this.removeItem(entry);
-    this.showToast(entry.entry.name ?? 'Entry', 'rejected');
+    const reason = window.prompt(
+      'Reason for rejection (min 10 characters):',
+    );
+    if (!reason || reason.trim().length < 10) return;
+    this.rejectEntry(entry, reason.trim(), 'rejected');
+  }
+
+  private rejectEntry(entry: PendingEntry, reason: string, verdict: string): void {
+    this.actionInProgress.set(entry.id);
+
+    this.registry
+      .rejectPending(entry.id, reason)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.removeItem(entry);
+          this.actionInProgress.set(null);
+          this.showToast(entry.entry.name ?? 'Entry', verdict);
+          this.loadStats();
+        },
+        error: () => {
+          this.actionInProgress.set(null);
+          this.showToast(entry.entry.name ?? 'Entry', `${verdict} failed`);
+        },
+      });
   }
 
   private removeItem(entry: PendingEntry): void {

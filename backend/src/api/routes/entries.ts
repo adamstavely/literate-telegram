@@ -12,9 +12,9 @@ import {
   SearchParams,
   SearchResult,
   EntryType,
-  RiskLevel,
 } from '../../types/index.js';
 import { logger } from '../../logger/logger.js';
+import { assessEntryRisk } from '../../services/policy.js';
 
 const router = Router();
 
@@ -31,31 +31,6 @@ function buildSortClause(sort?: string): Array<Record<string, { order: SortOrder
     default:
       return [{ installs: { order: 'desc' } }, { updatedAt: { order: 'desc' } }];
   }
-}
-
-function assessRisk(entry: Partial<RegistryEntry>): { risk: RiskLevel; flags: string[] } {
-  const flags: string[] = [];
-  let riskScore = 0;
-
-  if (entry.type === 'agent') {
-    const agent = entry as { autonomy?: string };
-    if (agent.autonomy === 'full') { riskScore += 3; flags.push('full-autonomy'); }
-    if (agent.autonomy === 'high') { riskScore += 2; flags.push('high-autonomy'); }
-  }
-
-  if (entry.sensitivity === 'restricted') { riskScore += 3; flags.push('restricted-data'); }
-  if (entry.sensitivity === 'confidential') { riskScore += 2; flags.push('confidential-data'); }
-
-  const server = entry as { auth?: string };
-  if (server.auth === 'none') { riskScore += 1; flags.push('no-auth'); }
-
-  let risk: RiskLevel;
-  if (riskScore >= 4) risk = 'critical';
-  else if (riskScore >= 3) risk = 'high';
-  else if (riskScore >= 1) risk = 'medium';
-  else risk = 'low';
-
-  return { risk, flags };
 }
 
 // GET /api/entries - search and list
@@ -282,7 +257,7 @@ router.post(
         updatedAt: now,
       };
 
-      const { risk, flags } = assessRisk(partialEntry);
+      const { risk, flags } = await assessEntryRisk(partialEntry);
 
       const pending: PendingEntry = {
         id: uuidv4(),

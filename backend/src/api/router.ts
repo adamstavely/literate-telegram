@@ -5,6 +5,8 @@ import pendingRouter from './routes/pending.js';
 import notificationsRouter from './routes/notifications.js';
 import auditRouter from './routes/audit.js';
 import collectionsRouter from './routes/collections.js';
+import logsRouter from './routes/logs.js';
+import policyRouter from './routes/policy.js';
 
 const router = Router();
 
@@ -35,5 +37,7 @@ router.use('/collections', collectionsRouter);
 router.use('/pending', pendingRouter);
 router.use('/notifications', notificationsRouter);
 router.use('/audit', auditRouter);
+router.use('/logs', logsRouter);
+router.use('/policy', policyRouter);
 
 export default router;

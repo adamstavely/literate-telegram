@@ -4,13 +4,86 @@ import { esClient } from '../../elasticsearch/client.js';
 import { INDEX_NAMES } from '../../elasticsearch/indices.js';
 import { requireAuth, requireAdmin } from '../../middleware/auth.js';
 import { auditAction } from '../../middleware/audit.js';
-import { PendingEntry, RegistryEntry, RiskLevel } from '../../types/index.js';
+import { PendingEntry, PendingStats, RegistryEntry, RiskLevel } from '../../types/index.js';
 import { logger } from '../../logger/logger.js';
 
 const router = Router();
 
 // All routes require authentication + admin role
 router.use(requireAuth, requireAdmin);
+
+// GET /api/pending/stats - moderation KPIs
+router.get('/stats', async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    const [pendingRes, approvedRes, weekRes, highRiskRes, reviewRes] = await Promise.all([
+      esClient.count({
+        index: INDEX_NAMES.PENDING,
+        query: { term: { status: 'pending' } },
+      }),
+      esClient.count({
+        index: INDEX_NAMES.PENDING,
+        query: { term: { status: 'approved' } },
+      }),
+      esClient.count({
+        index: INDEX_NAMES.PENDING,
+        query: {
+          bool: {
+            filter: [
+              { term: { status: 'approved' } },
+              { range: { approvedAt: { gte: weekAgo } } },
+            ],
+          },
+        },
+      }),
+      esClient.count({
+        index: INDEX_NAMES.PENDING,
+        query: {
+          bool: {
+            filter: [
+              { term: { status: 'pending' } },
+              { terms: { risk: ['high', 'critical'] } },
+            ],
+          },
+        },
+      }),
+      esClient.search<PendingEntry>({
+        index: INDEX_NAMES.PENDING,
+        size: 200,
+        _source: ['submittedAt', 'approvedAt'],
+        query: { term: { status: 'approved' } },
+        sort: [{ approvedAt: { order: 'desc' } }],
+      }),
+    ]);
+
+    let avgReviewTimeMinutes: number | null = null;
+    const durations: number[] = [];
+    for (const hit of reviewRes.hits.hits) {
+      const src = hit._source;
+      if (src?.submittedAt && src.approvedAt) {
+        const ms = new Date(src.approvedAt).getTime() - new Date(src.submittedAt).getTime();
+        if (ms > 0) durations.push(ms);
+      }
+    }
+    if (durations.length > 0) {
+      const avgMs = durations.reduce((a, b) => a + b, 0) / durations.length;
+      avgReviewTimeMinutes = Math.round(avgMs / 60_000);
+    }
+
+    const stats: PendingStats = {
+      pendingCount: pendingRes.count,
+      approvedCount: approvedRes.count,
+      approvedThisWeek: weekRes.count,
+      avgReviewTimeMinutes,
+      highRiskPending: highRiskRes.count,
+    };
+
+    res.json(stats);
+  } catch (err) {
+    next(err);
+  }
+});
 
 // GET /api/pending - list pending submissions
 router.get(

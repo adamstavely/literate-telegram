@@ -466,7 +466,7 @@
       <span class="savebar-dot"></span>
       <span class="savebar-txt">Unsaved policy changes</span>
       <button class="btn btn-ghost btn-sm" type="button" (click)="discard()">Discard</button>
-      <button class="btn btn-accent btn-sm" type="button" (click)="save()">
+      <button class="btn btn-accent btn-sm" type="button" [disabled]="saving()" (click)="save()">
         <app-icon name="check" [size]="14" aria-hidden="true"></app-icon>
         Save policy
       </button>

@@ -1,12 +1,14 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { retry } from 'rxjs/operators';
+import { map, retry } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import {
   EntryType,
   Notification,
   PendingEntry,
+  PendingStats,
+  PolicyDocument,
   RegistryEntry,
   SearchParams,
   SearchResult,
@@ -93,8 +95,29 @@ export class RegistryService {
 
   getNotifications(): Observable<Notification[]> {
     return this.http
-      .get<Notification[]>(`${this.base}/notifications`)
+      .get<SearchResult<Notification>>(`${this.base}/notifications`)
+      .pipe(
+        map(result => result.hits),
+        retry({ count: 1, delay: 1000, resetOnSuccess: true }),
+      );
+  }
+
+  getPendingStats(): Observable<PendingStats> {
+    return this.http
+      .get<PendingStats>(`${this.base}/pending/stats`)
       .pipe(retry({ count: 1, delay: 1000, resetOnSuccess: true }));
+  }
+
+  getPolicy(): Observable<PolicyDocument> {
+    return this.http
+      .get<PolicyDocument>(`${this.base}/policy`)
+      .pipe(retry({ count: 1, delay: 1000, resetOnSuccess: true }));
+  }
+
+  savePolicy(
+    doc: Pick<PolicyDocument, 'policy' | 'rules' | 'domains'>,
+  ): Observable<PolicyDocument> {
+    return this.http.put<PolicyDocument>(`${this.base}/policy`, doc);
   }
 
   markNotificationRead(id: string): Observable<void> {

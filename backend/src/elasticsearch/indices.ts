@@ -5,6 +5,7 @@ const PENDING_INDEX = 'interop-pending';
 const AUDIT_INDEX = 'interop-audit';
 const LOGS_INDEX = 'interop-logs';
 const NOTIFICATIONS_INDEX = 'interop-notifications';
+const POLICY_INDEX = 'interop-policy';
 
 export const INDEX_NAMES = {
   REGISTRY: REGISTRY_INDEX,
@@ -12,6 +13,7 @@ export const INDEX_NAMES = {
   AUDIT: AUDIT_INDEX,
   LOGS: LOGS_INDEX,
   NOTIFICATIONS: NOTIFICATIONS_INDEX,
+  POLICY: POLICY_INDEX,
 } as const;
 
 async function createILMPolicy(policyName: string, maxAgeDays: number): Promise<void> {
@@ -147,6 +149,10 @@ async function createPendingIndex(): Promise<void> {
         risk: { type: 'keyword' },
         flags: { type: 'keyword' },
         rejectReason: { type: 'text' },
+        approvedBy: { type: 'keyword' },
+        approvedAt: { type: 'date' },
+        rejectedBy: { type: 'keyword' },
+        rejectedAt: { type: 'date' },
         entry: {
           type: 'object',
           dynamic: true,
@@ -255,6 +261,29 @@ async function createNotificationsIndex(): Promise<void> {
   });
 }
 
+async function createPolicyIndex(): Promise<void> {
+  if (await indexExists(POLICY_INDEX)) return;
+
+  await esClient.indices.create({
+    index: POLICY_INDEX,
+    mappings: {
+      dynamic: false,
+      properties: {
+        id: { type: 'keyword' },
+        policy: { type: 'object', dynamic: true },
+        rules: { type: 'object', dynamic: true },
+        domains: { type: 'object', dynamic: true },
+        updatedAt: { type: 'date' },
+        updatedBy: { type: 'keyword' },
+      },
+    },
+    settings: {
+      number_of_shards: 1,
+      number_of_replicas: 1,
+    },
+  });
+}
+
 export async function setupIndices(): Promise<void> {
   await Promise.all([
     createRegistryIndex(),
@@ -262,5 +291,6 @@ export async function setupIndices(): Promise<void> {
     createAuditIndex(),
     createLogsIndex(),
     createNotificationsIndex(),
+    createPolicyIndex(),
   ]);
 }

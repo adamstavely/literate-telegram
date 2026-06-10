@@ -1,0 +1,47 @@
+import { PolicyDocument } from '../types/index.js';
+
+export const DEFAULT_POLICY_DOCUMENT: PolicyDocument = {
+  id: 'default',
+  policy: {
+    readOnlyDefault: true,
+    perToolApproval: true,
+    blockWriteUntilReview: true,
+    quarantineHighRisk: true,
+    requireReview: true,
+    autoApproveVerified: false,
+    autoApproveSkills: false,
+    twoApproversHighRisk: true,
+    republishAfterDays: 90,
+    defaultVisibility: 'org',
+    transports: { http: true, sse: true, stdio: false },
+    auth: {
+      'OAuth 2.1': true,
+      'API key': true,
+      'Bot token': true,
+      'Connection string': true,
+      None: false,
+    },
+    scanInjection: true,
+    requireTriggers: true,
+    tokenCap: true,
+  },
+  rules: [
+    { id: 'arbitrary-exec', name: 'Arbitrary code execution', cond: 'tool runs shell / eval', desc: 'A tool can execute unbounded commands on the host.', severity: 'high', action: 'block', enabled: true, flag: 'Arbitrary code execution' },
+    { id: 'no-sandbox', name: 'No sandbox declared', cond: 'sandbox: none', desc: 'Server performs writes or exec without declaring an isolation boundary.', severity: 'high', action: 'block', enabled: true, flag: 'No sandbox declared' },
+    { id: 'write-default', name: 'Write tools on by default', cond: 'write && !readOnly', desc: 'Mutating tools are exposed before an admin opts in.', severity: 'medium', action: 'review', enabled: true, flag: 'Write tools enabled by default' },
+    { id: 'broad-scope', name: 'Broad scope request', cond: 'scope ⊇ {file:read, admin:*}', desc: 'Requests a wide credential scope.', severity: 'medium', action: 'review', enabled: true, flag: 'Requests file:read scope' },
+    { id: 'unverified-domain', name: 'Unverified publisher domain', cond: '!domain ∈ allowlist', desc: "Publisher's domain isn't on the trusted allowlist.", severity: 'medium', action: 'flag', enabled: true, flag: 'New publisher — unverified domain' },
+    { id: 'destructive-verbs', name: 'Destructive verbs, no confirm', cond: 'name ~ /^(delete|drop|purge)_/', desc: 'Tool names imply irreversible actions.', severity: 'high', action: 'review', enabled: true, flag: 'Destructive verbs, no confirm' },
+    { id: 'internal-visibility', name: 'Internal-only not restricted', cond: 'internal && visibility = public', desc: 'An entry tagged internal is still publicly visible.', severity: 'low', action: 'flag', enabled: true, flag: 'Internal only — restrict visibility' },
+    { id: 'injection', name: 'Prompt-injection patterns in SKILL.md', cond: 'skill body ~ injection heuristics', desc: 'Skill text contains prompt-injection patterns.', severity: 'medium', action: 'flag', enabled: true, flag: 'Prompt-injection patterns detected' },
+  ],
+  domains: [
+    { d: 'anthropic.com', verified: true },
+    { d: 'stripe.com', verified: true },
+    { d: 'linear.app', verified: true },
+    { d: 'sentry.io', verified: true },
+    { d: 'acme.internal', verified: false },
+  ],
+  updatedAt: new Date(0).toISOString(),
+  updatedBy: 'system',
+};

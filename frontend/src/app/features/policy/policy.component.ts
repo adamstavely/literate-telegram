@@ -3,44 +3,14 @@ import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { RegistryService } from '../../core/services/registry.service';
-import { PendingEntry } from '../../shared/types';
-
-type RuleAction = 'flag' | 'review' | 'block' | 'reject';
-type RuleSeverity = 'high' | 'medium' | 'low';
-
-interface PolicyState {
-  readOnlyDefault: boolean;
-  perToolApproval: boolean;
-  blockWriteUntilReview: boolean;
-  quarantineHighRisk: boolean;
-  requireReview: boolean;
-  autoApproveVerified: boolean;
-  autoApproveSkills: boolean;
-  twoApproversHighRisk: boolean;
-  republishAfterDays: number;
-  defaultVisibility: 'private' | 'org' | 'public';
-  transports: Record<string, boolean>;
-  auth: Record<string, boolean>;
-  scanInjection: boolean;
-  requireTriggers: boolean;
-  tokenCap: boolean;
-}
-
-interface PolicyRule {
-  id: string;
-  name: string;
-  cond: string;
-  desc: string;
-  severity: RuleSeverity;
-  action: RuleAction;
-  enabled: boolean;
-  flag: string | null;
-}
-
-interface TrustDomain {
-  d: string;
-  verified: boolean;
-}
+import {
+  PendingEntry,
+  PolicyRule,
+  PolicyState,
+  RuleAction,
+  RuleSeverity,
+  TrustDomain,
+} from '../../shared/types';
 
 interface PolicyPreset {
   id: string;
@@ -205,6 +175,9 @@ export class PolicyComponent implements OnInit {
   readonly newDomain = signal('');
   readonly toast = signal<string | null>(null);
   readonly pending = signal<PendingEntry[]>([]);
+  readonly loading = signal(true);
+  readonly saving = signal(false);
+  readonly loadError = signal<string | null>(null);
 
   private snap = '';
 
@@ -246,7 +219,27 @@ export class PolicyComponent implements OnInit {
   readonly republishOptions = [30, 60, 90, 180, 365];
 
   ngOnInit(): void {
-    this.snap = this.serialize();
+    this.registry
+      .getPolicy()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: doc => {
+          this.policy.set({ ...doc.policy });
+          this.rules.set(doc.rules.map(r => ({ ...r })));
+          this.domains.set(doc.domains.map(d => ({ ...d })));
+          this.snap = this.serialize();
+          this.loading.set(false);
+        },
+        error: () => {
+          this.policy.set({ ...DEFAULT_POLICY });
+          this.rules.set(DEFAULT_RULES.map(r => ({ ...r })));
+          this.domains.set(SEED_DOMAINS.map(d => ({ ...d })));
+          this.snap = this.serialize();
+          this.loadError.set('Could not load policy from server — showing defaults.');
+          this.loading.set(false);
+        },
+      });
+
     this.registry
       .getPending({ status: 'pending' })
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -329,9 +322,30 @@ export class PolicyComponent implements OnInit {
   }
 
   save(): void {
-    this.snap = this.serialize();
-    this.toast.set('Policy saved · applies to new submissions immediately');
-    setTimeout(() => this.toast.set(null), 2800);
+    this.saving.set(true);
+    this.registry
+      .savePolicy({
+        policy: this.policy(),
+        rules: this.rules(),
+        domains: this.domains(),
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: doc => {
+          this.policy.set({ ...doc.policy });
+          this.rules.set(doc.rules.map(r => ({ ...r })));
+          this.domains.set(doc.domains.map(d => ({ ...d })));
+          this.snap = this.serialize();
+          this.saving.set(false);
+          this.toast.set('Policy saved · applies to new submissions immediately');
+          setTimeout(() => this.toast.set(null), 2800);
+        },
+        error: () => {
+          this.saving.set(false);
+          this.toast.set('Failed to save policy — please try again');
+          setTimeout(() => this.toast.set(null), 2800);
+        },
+      });
   }
 
   severityTone(sev: RuleSeverity): string {
