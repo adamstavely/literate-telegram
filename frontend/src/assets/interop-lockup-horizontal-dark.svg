@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="380" height="160" viewBox="0 0 380 160" role="img" aria-label="Interop">
+  <g transform="rotate(38 70 80)">
+    <rect x="31" y="57" width="46" height="46" rx="14" fill="none" stroke="#3b5bff" stroke-width="8"/>
+    <rect x="63" y="57" width="46" height="46" rx="14" fill="none" stroke="#8a9dff" stroke-width="8"/>
+    <path d="M63 57 Q77 57 77 71 L77 83" fill="none" stroke="#3b5bff" stroke-width="8"/>
+  </g>
+  <text x="150" y="93" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="46" font-weight="500" letter-spacing="-1" fill="#ffffff">interop</text>
+</svg>
