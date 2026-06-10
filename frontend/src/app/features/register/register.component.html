@@ -332,15 +332,15 @@
                       <span class="tr-d">Prevent write operations by default</span>
                     </div>
                     <input type="checkbox" formControlName="readOnly" style="display: none" />
-                    <button
-                      type="button"
+                    <div
                       class="switch"
                       [class.on]="form.get('readOnly')?.value"
                       aria-label="Read-only default"
                       [attr.aria-checked]="form.get('readOnly')?.value"
                       role="switch"
+                      tabindex="0"
                       (click)="form.patchValue({ readOnly: !form.get('readOnly')?.value })"
-                    ></button>
+                    ></div>
                   </label>
                   <label class="toggle-row">
                     <div class="tr-text">
@@ -348,15 +348,15 @@
                       <span class="tr-d">Each connection requires admin approval</span>
                     </div>
                     <input type="checkbox" formControlName="approvalRequired" style="display: none" />
-                    <button
-                      type="button"
+                    <div
                       class="switch"
                       [class.on]="form.get('approvalRequired')?.value"
                       aria-label="Require approval for each connection"
                       [attr.aria-checked]="form.get('approvalRequired')?.value"
                       role="switch"
+                      tabindex="0"
                       (click)="form.patchValue({ approvalRequired: !form.get('approvalRequired')?.value })"
-                    ></button>
+                    ></div>
                   </label>
                 </div>
               </div>

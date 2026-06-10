@@ -1,262 +1,357 @@
-import { Component, signal, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, signal, computed, inject, DestroyRef } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { FormsModule } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { IconComponent } from '../../shared/components/icon/icon.component';
+import { RegistryService } from '../../core/services/registry.service';
+import { PendingEntry } from '../../shared/types';
 
-type RuleAction = 'flag' | 'require-review' | 'block' | 'auto-reject';
-type PosturePreset = 'strict' | 'balanced' | 'open';
+type RuleAction = 'flag' | 'review' | 'block' | 'reject';
+type RuleSeverity = 'high' | 'medium' | 'low';
+
+interface PolicyState {
+  readOnlyDefault: boolean;
+  perToolApproval: boolean;
+  blockWriteUntilReview: boolean;
+  quarantineHighRisk: boolean;
+  requireReview: boolean;
+  autoApproveVerified: boolean;
+  autoApproveSkills: boolean;
+  twoApproversHighRisk: boolean;
+  republishAfterDays: number;
+  defaultVisibility: 'private' | 'org' | 'public';
+  transports: Record<string, boolean>;
+  auth: Record<string, boolean>;
+  scanInjection: boolean;
+  requireTriggers: boolean;
+  tokenCap: boolean;
+}
 
 interface PolicyRule {
   id: string;
   name: string;
-  description: string;
-  enabled: boolean;
-  severity: 'info' | 'warn' | 'critical';
+  cond: string;
+  desc: string;
+  severity: RuleSeverity;
   action: RuleAction;
+  enabled: boolean;
+  flag: string | null;
 }
 
-interface TransportToggle {
-  id: string;
-  label: string;
-  enabled: boolean;
+interface TrustDomain {
+  d: string;
+  verified: boolean;
 }
 
-interface AuthToggle {
+interface PolicyPreset {
   id: string;
-  label: string;
-  enabled: boolean;
+  name: string;
+  icon: string;
+  desc: string;
+  values: Partial<PolicyState>;
 }
+
+const DEFAULT_POLICY: PolicyState = {
+  readOnlyDefault: true,
+  perToolApproval: true,
+  blockWriteUntilReview: true,
+  quarantineHighRisk: true,
+  requireReview: true,
+  autoApproveVerified: false,
+  autoApproveSkills: false,
+  twoApproversHighRisk: true,
+  republishAfterDays: 90,
+  defaultVisibility: 'org',
+  transports: { http: true, sse: true, stdio: false },
+  auth: {
+    'OAuth 2.1': true,
+    'API key': true,
+    'Bot token': true,
+    'Connection string': true,
+    None: false,
+  },
+  scanInjection: true,
+  requireTriggers: true,
+  tokenCap: true,
+};
+
+const DEFAULT_RULES: PolicyRule[] = [
+  { id: 'arbitrary-exec', name: 'Arbitrary code execution', cond: 'tool runs shell / eval', desc: 'A tool can execute unbounded commands on the host. The single highest-blast-radius capability.', severity: 'high', action: 'block', enabled: true, flag: 'Arbitrary code execution' },
+  { id: 'no-sandbox', name: 'No sandbox declared', cond: 'sandbox: none', desc: 'Server performs writes or exec without declaring an isolation boundary.', severity: 'high', action: 'block', enabled: true, flag: 'No sandbox declared' },
+  { id: 'write-default', name: 'Write tools on by default', cond: 'write && !readOnly', desc: 'Mutating tools are exposed before an admin opts in. Least privilege wants these off until reviewed.', severity: 'medium', action: 'review', enabled: true, flag: 'Write tools enabled by default' },
+  { id: 'broad-scope', name: 'Broad scope request', cond: 'scope ⊇ {file:read, admin:*}', desc: 'Requests a wide credential scope rather than the minimum the tools need.', severity: 'medium', action: 'review', enabled: true, flag: 'Requests file:read scope' },
+  { id: 'unverified-domain', name: 'Unverified publisher domain', cond: '!domain ∈ allowlist', desc: "Publisher's domain isn't on the trusted allowlist and hasn't completed verification.", severity: 'medium', action: 'flag', enabled: true, flag: 'New publisher — unverified domain' },
+  { id: 'destructive-verbs', name: 'Destructive verbs, no confirm', cond: 'name ~ /^(delete|drop|purge)_/', desc: 'Tool names imply irreversible actions but declare no confirmation step.', severity: 'high', action: 'review', enabled: true, flag: 'Destructive verbs, no confirm' },
+  { id: 'internal-visibility', name: 'Internal-only not restricted', cond: 'internal && visibility = public', desc: 'An entry tagged internal is still publicly visible. Tighten before publish.', severity: 'low', action: 'flag', enabled: true, flag: 'Internal only — restrict visibility' },
+  { id: 'injection', name: 'Prompt-injection patterns in SKILL.md', cond: 'skill body ~ injection heuristics', desc: 'Skill text contains instructions that could hijack the agent ("ignore previous", tool-call coercion).', severity: 'medium', action: 'flag', enabled: true, flag: null },
+];
+
+const SEED_DOMAINS: TrustDomain[] = [
+  { d: 'anthropic.com', verified: true },
+  { d: 'stripe.com', verified: true },
+  { d: 'linear.app', verified: true },
+  { d: 'sentry.io', verified: true },
+  { d: 'acme.internal', verified: false },
+];
+
+const PRESETS: PolicyPreset[] = [
+  {
+    id: 'strict',
+    name: 'Strict',
+    icon: 'shield',
+    desc: 'Lock everything down. Every entry is human-reviewed; nothing auto-approves.',
+    values: {
+      readOnlyDefault: true,
+      perToolApproval: true,
+      blockWriteUntilReview: true,
+      quarantineHighRisk: true,
+      requireReview: true,
+      autoApproveVerified: false,
+      autoApproveSkills: false,
+      twoApproversHighRisk: true,
+    },
+  },
+  {
+    id: 'balanced',
+    name: 'Balanced',
+    icon: 'check',
+    desc: 'Least privilege by default, but trusted publishers and credential-free skills flow through.',
+    values: {
+      readOnlyDefault: true,
+      perToolApproval: true,
+      blockWriteUntilReview: true,
+      quarantineHighRisk: true,
+      requireReview: true,
+      autoApproveVerified: true,
+      autoApproveSkills: true,
+      twoApproversHighRisk: false,
+    },
+  },
+  {
+    id: 'open',
+    name: 'Open',
+    icon: 'bolt',
+    desc: 'Optimize for velocity. Reviews are advisory; only high-risk submissions are held.',
+    values: {
+      readOnlyDefault: false,
+      perToolApproval: false,
+      blockWriteUntilReview: false,
+      quarantineHighRisk: true,
+      requireReview: false,
+      autoApproveVerified: true,
+      autoApproveSkills: true,
+      twoApproversHighRisk: false,
+    },
+  },
+];
+
+const ACTION_OPTS: Array<{ v: RuleAction; label: string }> = [
+  { v: 'flag', label: 'Flag only' },
+  { v: 'review', label: 'Require review' },
+  { v: 'block', label: 'Block publish' },
+  { v: 'reject', label: 'Auto-reject' },
+];
+
+const SEV_TONE: Record<RuleSeverity, string> = {
+  high: 'danger',
+  medium: 'warn',
+  low: 'default',
+};
+
+const PANE: Record<string, { title: string; desc: string }> = {
+  posture: {
+    title: 'Default posture',
+    desc: 'The baseline governance applied to every newly registered server before any human looks at it. Pick a preset or tune each control.',
+  },
+  review: {
+    title: 'Review & approval',
+    desc: 'Who has to look at a submission, and when it can skip the queue.',
+  },
+  rules: {
+    title: 'Risk rules',
+    desc: 'Conditions evaluated against every submission. Each produces a flag and an action — these are exactly what shows up in the moderation queue.',
+  },
+  publishers: {
+    title: 'Publisher trust',
+    desc: 'Domains you trust. Entries from an allowlisted, verified domain can take the fast path; everything else is treated as unverified.',
+  },
+  capabilities: {
+    title: 'Capabilities',
+    desc: 'Which transports and authentication methods are permitted on the registry at all.',
+  },
+  skills: {
+    title: 'Skill policy',
+    desc: 'Skills carry no credentials, so the risk is bad advice, not a bad action — these checks guard against prompt-injection and context bloat.',
+  },
+};
 
 @Component({
   selector: 'app-policy',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, IconComponent],
+  imports: [RouterLink, IconComponent],
   templateUrl: './policy.component.html',
 })
-export class PolicyComponent {
-  readonly activeSection = signal<string>('posture');
-  readonly dirty = signal(false);
-  readonly saving = signal(false);
-  readonly saved = signal(false);
+export class PolicyComponent implements OnInit {
+  private readonly registry = inject(RegistryService);
+  private readonly destroyRef = inject(DestroyRef);
 
-  readonly sections = [
-    { id: 'posture', label: 'Posture', icon: 'shield' },
-    { id: 'review', label: 'Review & Approval', icon: 'check' },
-    { id: 'risk-rules', label: 'Risk Rules', icon: 'warning' },
-    { id: 'publisher-trust', label: 'Publisher Trust', icon: 'user' },
-    { id: 'capabilities', label: 'Capabilities', icon: 'bolt' },
-    { id: 'skills', label: 'Skills', icon: 'skill' },
+  readonly presets = PRESETS;
+  readonly actionOpts = ACTION_OPTS;
+  readonly pane = PANE;
+
+  readonly activeSection = signal('posture');
+  readonly policy = signal<PolicyState>({ ...DEFAULT_POLICY });
+  readonly rules = signal<PolicyRule[]>(DEFAULT_RULES.map(r => ({ ...r })));
+  readonly domains = signal<TrustDomain[]>(SEED_DOMAINS.map(d => ({ ...d })));
+  readonly newDomain = signal('');
+  readonly toast = signal<string | null>(null);
+  readonly pending = signal<PendingEntry[]>([]);
+
+  private snap = '';
+
+  readonly sections = computed(() => {
+    const enabledRules = this.rules().filter(r => r.enabled).length;
+    return [
+      { id: 'posture', label: 'Default posture', icon: 'shield' },
+      { id: 'review', label: 'Review & approval', icon: 'flag' },
+      { id: 'rules', label: 'Risk rules', icon: 'warning', count: enabledRules },
+      { id: 'publishers', label: 'Publisher trust', icon: 'verified', count: this.domains().length },
+      { id: 'capabilities', label: 'Capabilities', icon: 'server' },
+      { id: 'skills', label: 'Skill policy', icon: 'skill' },
+    ];
+  });
+
+  readonly activePreset = computed(() => {
+    const p = this.policy();
+    return PRESETS.find(pr =>
+      Object.entries(pr.values).every(([k, v]) => p[k as keyof PolicyState] === v),
+    ) ?? null;
+  });
+
+  readonly dirty = computed(() => this.snap !== this.serialize());
+
+  readonly enabledRules = computed(() => this.rules().filter(r => r.enabled).length);
+
+  readonly totalFlags = computed(() =>
+    this.rules()
+      .filter(r => r.enabled)
+      .reduce((n, r) => n + this.flagCount(r.flag), 0),
+  );
+
+  readonly transportRows = [
+    { id: 'http', label: 'Streamable HTTP', d: 'Remote endpoint over HTTP.' },
+    { id: 'sse', label: 'Server-sent events', d: 'Long-lived remote stream.' },
+    { id: 'stdio', label: 'stdio (local subprocess)', d: 'Runs a process on the host. Highest blast radius.' },
   ];
 
-  readonly activePreset = signal<PosturePreset>('balanced');
+  readonly republishOptions = [30, 60, 90, 180, 365];
 
-  // Access toggles
-  readonly readOnlyDefault = signal(false);
-  readonly perToolApproval = signal(false);
-  readonly blockWrites = signal(false);
-  readonly quarantineHighRisk = signal(true);
-
-  // Review settings
-  readonly autoApproveVerified = signal(true);
-  readonly requireTwoApprovers = signal(false);
-  readonly reviewWindowDays = signal(7);
-
-  readonly rules = signal<PolicyRule[]>([
-    {
-      id: 'no-shell-exec',
-      name: 'Prohibit shell execution',
-      description: 'Block entries that expose unrestricted shell execution.',
-      enabled: true,
-      severity: 'critical',
-      action: 'block',
-    },
-    {
-      id: 'require-auth',
-      name: 'Require authentication',
-      description: 'Flag entries without a declared auth method.',
-      enabled: true,
-      severity: 'warn',
-      action: 'flag',
-    },
-    {
-      id: 'license-required',
-      name: 'Require license declaration',
-      description: 'Servers must declare an open source license.',
-      enabled: false,
-      severity: 'warn',
-      action: 'require-review',
-    },
-    {
-      id: 'sensitivity-review',
-      name: 'Review restricted entries',
-      description: 'Entries marked "restricted" require manual admin approval.',
-      enabled: true,
-      severity: 'critical',
-      action: 'require-review',
-    },
-    {
-      id: 'source-required',
-      name: 'Require source URL',
-      description: 'MCP servers must link to a source repository.',
-      enabled: false,
-      severity: 'info',
-      action: 'flag',
-    },
-    {
-      id: 'high-autonomy-review',
-      name: 'Review high-autonomy agents',
-      description: 'Agents with "high" or "full" autonomy require additional review.',
-      enabled: true,
-      severity: 'critical',
-      action: 'require-review',
-    },
-    {
-      id: 'no-pii-tool',
-      name: 'Detect PII-accessing tools',
-      description: 'Flag tools with patterns suggesting PII access.',
-      enabled: true,
-      severity: 'warn',
-      action: 'flag',
-    },
-    {
-      id: 'verified-publisher',
-      name: 'Unverified publisher warning',
-      description: 'Warn when publisher is not on the allowlist.',
-      enabled: false,
-      severity: 'info',
-      action: 'flag',
-    },
-  ]);
-
-  readonly transports = signal<TransportToggle[]>([
-    { id: 'http', label: 'HTTP', enabled: true },
-    { id: 'sse', label: 'SSE', enabled: true },
-    { id: 'stdio', label: 'stdio', enabled: true },
-  ]);
-
-  readonly authMethods = signal<AuthToggle[]>([
-    { id: 'none', label: 'None (anonymous)', enabled: true },
-    { id: 'api-key', label: 'API Key', enabled: true },
-    { id: 'oauth2', label: 'OAuth 2.0', enabled: true },
-    { id: 'jwt', label: 'JWT', enabled: true },
-    { id: 'basic', label: 'Basic Auth', enabled: false },
-  ]);
-
-  readonly allowlistDomains = signal<string[]>([
-    'anthropic.com',
-    'openai.com',
-    'github.com',
-    'microsoft.com',
-    'google.com',
-  ]);
-
-  readonly newDomain = signal('');
-
-  readonly enabledSkillTriggers = signal(true);
-  readonly maxTokenBudget = signal(8000);
-  readonly requireSkillMd = signal(true);
+  ngOnInit(): void {
+    this.snap = this.serialize();
+    this.registry
+      .getPending({ status: 'pending' })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: result => this.pending.set(result.hits),
+        error: () => {},
+      });
+  }
 
   setSection(id: string): void {
     this.activeSection.set(id);
   }
 
-  applyPreset(preset: PosturePreset): void {
-    this.activePreset.set(preset);
-    this.dirty.set(true);
-    if (preset === 'strict') {
-      this.readOnlyDefault.set(true);
-      this.perToolApproval.set(true);
-      this.blockWrites.set(true);
-      this.quarantineHighRisk.set(true);
-      this.rules.update(list => list.map(r => ({ ...r, enabled: true })));
-    } else if (preset === 'balanced') {
-      this.readOnlyDefault.set(false);
-      this.perToolApproval.set(false);
-      this.blockWrites.set(false);
-      this.quarantineHighRisk.set(true);
-    } else {
-      this.readOnlyDefault.set(false);
-      this.perToolApproval.set(false);
-      this.blockWrites.set(false);
-      this.quarantineHighRisk.set(false);
-      this.rules.update(list => list.map(r => ({ ...r, enabled: false })));
-    }
+  applyPreset(preset: PolicyPreset): void {
+    this.policy.update(p => ({ ...p, ...preset.values }));
   }
 
-  toggleRule(id: string): void {
-    this.rules.update(list =>
-      list.map(r => r.id === id ? { ...r, enabled: !r.enabled } : r)
-    );
-    this.dirty.set(true);
+  setPolicy<K extends keyof PolicyState>(key: K, value: PolicyState[K]): void {
+    this.policy.update(p => ({ ...p, [key]: value }));
   }
 
-  setRuleAction(id: string, action: RuleAction): void {
-    this.rules.update(list =>
-      list.map(r => r.id === id ? { ...r, action } : r)
-    );
-    this.dirty.set(true);
+  setTransport(id: string, enabled: boolean): void {
+    this.policy.update(p => ({
+      ...p,
+      transports: { ...p.transports, [id]: enabled },
+    }));
   }
 
-  toggleTransport(id: string): void {
-    this.transports.update(list =>
-      list.map(t => t.id === id ? { ...t, enabled: !t.enabled } : t)
-    );
-    this.dirty.set(true);
+  setAuth(method: string, enabled: boolean): void {
+    this.policy.update(p => ({
+      ...p,
+      auth: { ...p.auth, [method]: enabled },
+    }));
   }
 
-  toggleAuth(id: string): void {
-    this.authMethods.update(list =>
-      list.map(a => a.id === id ? { ...a, enabled: !a.enabled } : a)
-    );
-    this.dirty.set(true);
+  setRule(id: string, patch: Partial<PolicyRule>): void {
+    this.rules.update(rs => rs.map(r => (r.id === id ? { ...r, ...patch } : r)));
+  }
+
+  addCustomRule(): void {
+    this.rules.update(rs => [
+      ...rs,
+      {
+        id: `custom-${Date.now()}`,
+        name: 'Custom rule',
+        cond: 'edit condition',
+        desc: 'Describe what this rule matches.',
+        severity: 'medium',
+        action: 'flag',
+        enabled: true,
+        flag: null,
+      },
+    ]);
   }
 
   addDomain(): void {
-    const domain = this.newDomain().trim().toLowerCase();
-    if (domain && !this.allowlistDomains().includes(domain)) {
-      this.allowlistDomains.update(d => [...d, domain]);
-      this.newDomain.set('');
-      this.dirty.set(true);
-    }
+    const d = this.newDomain()
+      .trim()
+      .toLowerCase()
+      .replace(/^https?:\/\//, '')
+      .replace(/\/.*$/, '');
+    if (!d || this.domains().some(x => x.d === d)) return;
+    this.domains.update(list => [...list, { d, verified: false }]);
+    this.newDomain.set('');
   }
 
   removeDomain(domain: string): void {
-    this.allowlistDomains.update(d => d.filter(x => x !== domain));
-    this.dirty.set(true);
-  }
-
-  toggleReadOnlyDefault(): void { this.readOnlyDefault.update(v => !v); this.dirty.set(true); }
-  togglePerToolApproval(): void { this.perToolApproval.update(v => !v); this.dirty.set(true); }
-  toggleBlockWrites(): void { this.blockWrites.update(v => !v); this.dirty.set(true); }
-  toggleQuarantineHighRisk(): void { this.quarantineHighRisk.update(v => !v); this.dirty.set(true); }
-  toggleAutoApproveVerified(): void { this.autoApproveVerified.update(v => !v); this.dirty.set(true); }
-  toggleRequireTwoApprovers(): void { this.requireTwoApprovers.update(v => !v); this.dirty.set(true); }
-  toggleEnabledSkillTriggers(): void { this.enabledSkillTriggers.update(v => !v); this.dirty.set(true); }
-  toggleRequireSkillMd(): void { this.requireSkillMd.update(v => !v); this.dirty.set(true); }
-  setReviewWindowDays(val: number): void { this.reviewWindowDays.set(val); this.dirty.set(true); }
-  setMaxTokenBudget(val: number): void { this.maxTokenBudget.set(val); this.dirty.set(true); }
-
-  markDirty(): void {
-    this.dirty.set(true);
+    this.domains.update(list => list.filter(x => x.d !== domain));
   }
 
   discard(): void {
-    this.dirty.set(false);
-    // In a real app: reload from API
+    const s = JSON.parse(this.snap) as {
+      policy: PolicyState;
+      rules: PolicyRule[];
+      domains: TrustDomain[];
+    };
+    this.policy.set(s.policy);
+    this.rules.set(s.rules);
+    this.domains.set(s.domains);
   }
 
   save(): void {
-    this.saving.set(true);
-    setTimeout(() => {
-      this.saving.set(false);
-      this.saved.set(true);
-      this.dirty.set(false);
-      setTimeout(() => this.saved.set(false), 3000);
-    }, 800);
+    this.snap = this.serialize();
+    this.toast.set('Policy saved · applies to new submissions immediately');
+    setTimeout(() => this.toast.set(null), 2800);
   }
 
-  severityColor(sev: PolicyRule['severity']): string {
-    return { info: 'var(--accent)', warn: 'var(--warn)', critical: 'var(--danger)' }[sev];
+  severityTone(sev: RuleSeverity): string {
+    return SEV_TONE[sev];
+  }
+
+  flagCount(flag: string | null): number {
+    if (!flag) return 0;
+    return this.pending().filter(p => p.flags.includes(flag)).length;
+  }
+
+  authMethods(): string[] {
+    return Object.keys(this.policy().auth);
+  }
+
+  private serialize(): string {
+    return JSON.stringify({
+      policy: this.policy(),
+      rules: this.rules(),
+      domains: this.domains(),
+    });
   }
 }

@@ -32,14 +32,16 @@
 
   <div class="tabs" style="margin-bottom:20px;" role="tablist" aria-label="Filter queue">
     @for (tab of filterTabs; track tab.id) {
-      <button
-        type="button"
+      <div
         class="tab"
         [class.on]="filter() === tab.id"
         role="tab"
         [attr.aria-selected]="filter() === tab.id"
+        tabindex="0"
         (click)="setFilter(tab.id)"
-      >{{ tabLabel(tab) }}</button>
+        (keydown.enter)="setFilter(tab.id)"
+        (keydown.space)="$event.preventDefault(); setFilter(tab.id)"
+      >{{ tabLabel(tab) }}</div>
     }
   </div>
 
@@ -131,7 +133,7 @@
             @if (item.flags.length > 0) {
               <div class="flag-list">
                 @for (flag of item.flags; track flag) {
-                  <div class="flag" [class.high]="item.risk === 'high' || item.risk === 'critical'">
+                  <div class="flag" [class.high]="flagHighClass(item.risk)">
                     <app-icon name="warning" [size]="14" aria-hidden="true"></app-icon>
                     {{ flag }}
                   </div>
@@ -163,7 +165,7 @@
               class="btn btn-danger btn-sm btn-full"
               type="button"
               [disabled]="actionInProgress() === item.id"
-              (click)="openRejectModal(item)"
+              (click)="reject(item)"
             >
               <app-icon name="close" [size]="14" aria-hidden="true"></app-icon>
               Reject
@@ -174,45 +176,6 @@
     </div>
   }
 </div>
-
-@if (rejectModalEntry()) {
-  <div class="scrim" role="dialog" aria-modal="true" aria-labelledby="reject-modal-title">
-    <div class="drawer">
-      <div class="drawer-head">
-        <h2 id="reject-modal-title">Reject submission</h2>
-        <button class="iconbtn" type="button" (click)="closeRejectModal()" aria-label="Close dialog">
-          <app-icon name="close" [size]="16" aria-hidden="true"></app-icon>
-        </button>
-      </div>
-      <div class="drawer-body">
-        <p>Rejecting: <strong>{{ rejectModalEntry()!.entry.name }}</strong></p>
-        <label class="field-label" for="reject-reason">
-          Reason for rejection <span aria-hidden="true">*</span>
-        </label>
-        <textarea
-          id="reject-reason"
-          class="textarea"
-          rows="4"
-          placeholder="Describe why this submission is being rejected…"
-          [value]="rejectReason()"
-          (input)="rejectReason.set($any($event.target).value)"
-          aria-required="true"
-        ></textarea>
-      </div>
-      <div class="drawer-foot">
-        <button class="btn btn-secondary btn-sm" type="button" (click)="closeRejectModal()">Cancel</button>
-        <button
-          class="btn btn-danger btn-sm"
-          type="button"
-          [disabled]="rejectReason().trim().length < 10 || actionInProgress() !== null"
-          (click)="confirmReject()"
-        >
-          Confirm rejection
-        </button>
-      </div>
-    </div>
-  </div>
-}
 
 @if (toast()) {
   <div

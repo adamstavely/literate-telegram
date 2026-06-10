@@ -1,316 +1,487 @@
 <div class="container page">
   <nav class="crumbs" aria-label="Breadcrumb">
     <a routerLink="/admin">Admin</a>
-    <app-icon name="chevron-right" [size]="13" aria-hidden="true"></app-icon>
-    <span aria-current="page" style="color:var(--ink);">Policy settings</span>
+    <app-icon name="chevron-right" [size]="14" aria-hidden="true"></app-icon>
+    <span style="color:var(--ink);">Policy settings</span>
   </nav>
 
-  <div class="page-head">
-    <div class="eyebrow">Governance</div>
-    <h1 class="h1">Governance Policy</h1>
-    <p class="lede">Configure automated rules applied when entries are submitted.</p>
-  </div>
-
-  @if (saved()) {
-    <div class="callout accent" role="status" aria-live="polite" style="margin-bottom:14px;">
-      <app-icon name="check" [size]="14" aria-hidden="true"></app-icon>
-      Policy saved successfully.
+  <div class="page-head" style="display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+    <div>
+      <div class="eyebrow">Governance</div>
+      <h1 class="h1">Policy settings</h1>
+      <p class="lede">The rules that decide what reaches an agent. Set the default blast radius, the review bar, and the checks that auto-flag risky submissions.</p>
     </div>
-  }
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span style="font-size:13px;color:var(--muted);">Posture</span>
+      <span class="badge" [class.badge-accent]="!!activePreset()" [class.badge-default]="!activePreset()">
+        {{ activePreset()?.name ?? 'Custom' }}
+      </span>
+    </div>
+  </div>
 
   <div class="policy-layout">
     <nav class="policy-nav" aria-label="Policy sections">
-      @for (sec of sections; track sec.id) {
+      @for (sec of sections(); track sec.id) {
         <button
+          type="button"
           class="facet-item"
           [class.on]="activeSection() === sec.id"
-          type="button"
           (click)="setSection(sec.id)"
           [attr.aria-current]="activeSection() === sec.id ? 'true' : null"
         >
-          <span class="fi-icon"><app-icon [name]="sec.icon" [size]="15" aria-hidden="true"></app-icon></span>
+          <span class="fi-icon"><app-icon [name]="sec.icon" [size]="16" aria-hidden="true"></app-icon></span>
           {{ sec.label }}
+          @if (sec.count != null) {
+            <span class="count">{{ sec.count }}</span>
+          }
         </button>
       }
     </nav>
 
     <div class="policy-pane">
-      <div class="policy-pane-head">
-        <div class="policy-pane-title">
-          @if (activeSection() === 'posture') { Security Posture }
-          @if (activeSection() === 'review') { Review & Approval }
-          @if (activeSection() === 'risk-rules') { Risk Rules }
-          @if (activeSection() === 'publisher-trust') { Publisher Trust }
-          @if (activeSection() === 'capabilities') { Capabilities }
-          @if (activeSection() === 'skills') { Skills Policy }
-        </div>
-        <div class="policy-pane-desc">
-          @if (activeSection() === 'posture') { Choose a preset or customize individual controls. }
-          @if (activeSection() === 'review') { Configure approval thresholds and review windows. }
-          @if (activeSection() === 'risk-rules') { Automated checks applied to incoming submissions. }
-          @if (activeSection() === 'publisher-trust') { Allowlisted domains are automatically trusted. }
-          @if (activeSection() === 'capabilities') { Define which transports and auth methods are allowed. }
-          @if (activeSection() === 'skills') { Configure how skill manifests and triggers are governed. }
-        </div>
+      <div class="policy-pane-head fade-up">
+        <div class="policy-pane-title">{{ pane[activeSection()].title }}</div>
+        <div class="policy-pane-desc">{{ pane[activeSection()].desc }}</div>
       </div>
 
-      @if (activeSection() === 'posture') {
-        <section>
-          <div class="preset-grid" role="group" aria-label="Security posture preset">
-            @for (preset of ['strict', 'balanced', 'open']; track preset) {
-              <button
-                class="preset"
-                type="button"
-                [class.on]="activePreset() === preset"
-                (click)="applyPreset($any(preset))"
-                [attr.aria-pressed]="activePreset() === preset"
-              >
-                <div class="preset-t">{{ preset | titlecase }}</div>
-                <div class="preset-d">
-                  @if (preset === 'strict') { Maximum security, all rules on }
-                  @if (preset === 'balanced') { Recommended defaults }
-                  @if (preset === 'open') { Minimal restrictions }
-                </div>
-              </button>
-            }
+      <div class="fade-up">
+        @if (activeSection() === 'posture') {
+          <div style="margin-bottom:18px;">
+            <div class="preset-grid" role="group" aria-label="Security posture preset">
+              @for (pr of presets; track pr.id) {
+                <button
+                  type="button"
+                  class="preset"
+                  [class.on]="activePreset()?.id === pr.id"
+                  (click)="applyPreset(pr)"
+                  [attr.aria-pressed]="activePreset()?.id === pr.id"
+                >
+                  <div class="preset-t">
+                    <app-icon [name]="pr.icon" [size]="16" style="color:var(--accent);" aria-hidden="true"></app-icon>
+                    {{ pr.name }}
+                  </div>
+                  <div class="preset-d">{{ pr.desc }}</div>
+                </button>
+              }
+            </div>
           </div>
 
-          <div class="pcard" style="margin-top:14px;">
+          <div class="pcard">
             <div class="pcard-head">
-              <div class="pcard-title">Access Controls</div>
+              <div class="pcard-title">
+                <app-icon name="shield" [size]="16" aria-hidden="true"></app-icon>
+                Access defaults
+              </div>
+              <div class="pcard-desc">Applied to every server the moment it's registered.</div>
             </div>
             <div class="pcard-body">
               <div class="set-row">
                 <div class="set-text">
-                  <div class="set-t">Read-only default</div>
-                  <div class="set-d">All connections default to read-only access.</div>
+                  <div class="set-t">Read-only by default</div>
+                  <div class="set-d">Write tools stay disabled until an admin explicitly enables them.</div>
                 </div>
-                <button class="switch" [class.on]="readOnlyDefault()" type="button" role="switch" [attr.aria-checked]="readOnlyDefault()" (click)="toggleReadOnlyDefault()"></button>
+                <div class="set-control">
+                  <div class="switch" [class.on]="policy().readOnlyDefault" role="switch" tabindex="0" [attr.aria-checked]="policy().readOnlyDefault" (click)="setPolicy('readOnlyDefault', !policy().readOnlyDefault)"></div>
+                </div>
               </div>
               <div class="set-row">
                 <div class="set-text">
                   <div class="set-t">Per-tool approval</div>
-                  <div class="set-d">Require approval before each tool invocation.</div>
+                  <div class="set-d">Each tool must be individually allowlisted into a virtual server before any caller sees it.</div>
                 </div>
-                <button class="switch" [class.on]="perToolApproval()" type="button" role="switch" [attr.aria-checked]="perToolApproval()" (click)="togglePerToolApproval()"></button>
+                <div class="set-control">
+                  <div class="switch" [class.on]="policy().perToolApproval" role="switch" tabindex="0" [attr.aria-checked]="policy().perToolApproval" (click)="setPolicy('perToolApproval', !policy().perToolApproval)"></div>
+                </div>
               </div>
               <div class="set-row">
                 <div class="set-text">
-                  <div class="set-t">Block write operations</div>
-                  <div class="set-d">Prevent any write or mutation operations globally.</div>
+                  <div class="set-t">Block writes until reviewed</div>
+                  <div class="set-d">Mutating tools are held even if the publisher shipped them enabled.</div>
                 </div>
-                <button class="switch" [class.on]="blockWrites()" type="button" role="switch" [attr.aria-checked]="blockWrites()" (click)="toggleBlockWrites()"></button>
+                <div class="set-control">
+                  <div class="switch" [class.on]="policy().blockWriteUntilReview" role="switch" tabindex="0" [attr.aria-checked]="policy().blockWriteUntilReview" (click)="setPolicy('blockWriteUntilReview', !policy().blockWriteUntilReview)"></div>
+                </div>
               </div>
               <div class="set-row">
                 <div class="set-text">
-                  <div class="set-t">Quarantine high-risk entries</div>
-                  <div class="set-d">Isolate high and critical risk entries until reviewed.</div>
+                  <div class="set-t">Quarantine high-risk submissions</div>
+                  <div class="set-d">Anything a high-severity rule blocks is held out of the catalog entirely until cleared.</div>
                 </div>
-                <button class="switch" [class.on]="quarantineHighRisk()" type="button" role="switch" [attr.aria-checked]="quarantineHighRisk()" (click)="toggleQuarantineHighRisk()"></button>
+                <div class="set-control">
+                  <div class="switch" [class.on]="policy().quarantineHighRisk" role="switch" tabindex="0" [attr.aria-checked]="policy().quarantineHighRisk" (click)="setPolicy('quarantineHighRisk', !policy().quarantineHighRisk)"></div>
+                </div>
               </div>
             </div>
           </div>
-        </section>
-      }
 
-      @if (activeSection() === 'review') {
-        <section>
+          <div class="callout accent" style="margin-top:16px;">
+            <app-icon name="shield" [size]="16" aria-hidden="true"></app-icon>
+            <div>Least privilege is the registry's default. An agent only ever sees the tools an admin has explicitly exposed through a virtual server.</div>
+          </div>
+        }
+
+        @if (activeSection() === 'review') {
           <div class="pcard">
-            <div class="pcard-head"><div class="pcard-title">Review & approval controls</div></div>
-            <div class="pcard-body">
-              <div class="toggle-row">
-                <div class="tr-text">
-                  <div class="tr-t">Auto-approve verified publishers</div>
-                  <div class="tr-d">Skip review for entries from allowlisted publishers.</div>
-                </div>
-                <button class="switch" [class.on]="autoApproveVerified()" type="button" role="switch" [attr.aria-checked]="autoApproveVerified()" (click)="toggleAutoApproveVerified()"></button>
+            <div class="pcard-head">
+              <div class="pcard-title">
+                <app-icon name="flag" [size]="16" aria-hidden="true"></app-icon>
+                When review is required
               </div>
-              <div class="toggle-row">
-                <div class="tr-text">
-                  <div class="tr-t">Require two approvers</div>
-                  <div class="tr-d">High-risk entries need approval from two admins.</div>
+            </div>
+            <div class="pcard-body">
+              <div class="set-row">
+                <div class="set-text">
+                  <div class="set-t">Require review before publish</div>
+                  <div class="set-d">Every submission lands in the moderation queue. Turn off only with auto-approve rules below.</div>
                 </div>
-                <button class="switch" [class.on]="requireTwoApprovers()" type="button" role="switch" [attr.aria-checked]="requireTwoApprovers()" (click)="toggleRequireTwoApprovers()"></button>
+                <div class="set-control">
+                  <div class="switch" [class.on]="policy().requireReview" role="switch" tabindex="0" [attr.aria-checked]="policy().requireReview" (click)="setPolicy('requireReview', !policy().requireReview)"></div>
+                </div>
               </div>
               <div class="set-row">
                 <div class="set-text">
-                  <div class="set-t">Review window (days)</div>
-                  <div class="set-d">Require review within this time window.</div>
-                </div>
-                <input
-                  id="review-window"
-                  type="number"
-                  class="input"
-                  [ngModel]="reviewWindowDays()"
-                  (ngModelChange)="setReviewWindowDays($event)"
-                  min="1"
-                  max="90"
-                  style="width:110px;"
-                />
-              </div>
-            </div>
-          </div>
-        </section>
-      }
-
-      @if (activeSection() === 'risk-rules') {
-        <section>
-          <div class="pcard">
-            <div class="pcard-head"><div class="pcard-title">Automated checks</div></div>
-            <div class="pcard-body">
-              @for (rule of rules(); track rule.id) {
-                <div class="rule-row">
-                  <div style="flex:1;min-width:0;">
-                    <div class="set-t">{{ rule.name }}</div>
-                    <div class="set-d">{{ rule.description }}</div>
+                  <div class="set-t">
+                    Auto-approve verified publishers
+                    <span class="badge badge-ok">fast path</span>
                   </div>
-                  <span class="badge" [style.color]="severityColor(rule.severity)" [style.background]="severityColor(rule.severity) + '1a'">
-                    {{ rule.severity }}
-                  </span>
-                  <label [for]="'action-' + rule.id" class="sr-only">Action for {{ rule.name }}</label>
+                  <div class="set-d">Servers from an allowlisted, verified domain skip the queue when no rule flags them.</div>
+                </div>
+                <div class="set-control">
+                  <div class="switch" [class.on]="policy().autoApproveVerified" role="switch" tabindex="0" [attr.aria-checked]="policy().autoApproveVerified" (click)="setPolicy('autoApproveVerified', !policy().autoApproveVerified)"></div>
+                </div>
+              </div>
+              <div class="set-row">
+                <div class="set-text">
+                  <div class="set-t">Auto-approve skills</div>
+                  <div class="set-d">Skills request no credentials, so they can publish without review unless a content rule flags them.</div>
+                </div>
+                <div class="set-control">
+                  <div class="switch" [class.on]="policy().autoApproveSkills" role="switch" tabindex="0" [attr.aria-checked]="policy().autoApproveSkills" (click)="setPolicy('autoApproveSkills', !policy().autoApproveSkills)"></div>
+                </div>
+              </div>
+              <div class="set-row">
+                <div class="set-text">
+                  <div class="set-t">Two approvers for high risk</div>
+                  <div class="set-d">High-severity submissions need a second admin to sign off before going live.</div>
+                </div>
+                <div class="set-control">
+                  <div class="switch" [class.on]="policy().twoApproversHighRisk" role="switch" tabindex="0" [attr.aria-checked]="policy().twoApproversHighRisk" (click)="setPolicy('twoApproversHighRisk', !policy().twoApproversHighRisk)"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pcard">
+            <div class="pcard-head">
+              <div class="pcard-title">
+                <app-icon name="clock" [size]="16" aria-hidden="true"></app-icon>
+                Lifecycle
+              </div>
+            </div>
+            <div class="pcard-body">
+              <div class="set-row">
+                <div class="set-text">
+                  <div class="set-t">Re-verify after inactivity</div>
+                  <div class="set-d">A published entry that goes untouched is re-queued for review past this window.</div>
+                </div>
+                <div class="set-control">
                   <select
-                    [id]="'action-' + rule.id"
-                    class="select select-sm"
-                    [value]="rule.action"
-                    (change)="setRuleAction(rule.id, $any($event.target).value)"
+                    class="select"
+                    [value]="policy().republishAfterDays"
+                    (change)="setPolicy('republishAfterDays', +$any($event.target).value)"
                   >
-                    <option value="flag">Flag</option>
-                    <option value="require-review">Require review</option>
-                    <option value="block">Block</option>
-                    <option value="auto-reject">Auto-reject</option>
+                    @for (d of republishOptions; track d) {
+                      <option [value]="d">{{ d }} days</option>
+                    }
                   </select>
-                  <button class="switch" [class.on]="rule.enabled" type="button" role="switch" [attr.aria-checked]="rule.enabled" (click)="toggleRule(rule.id)"></button>
+                </div>
+              </div>
+              <div class="set-row">
+                <div class="set-text">
+                  <div class="set-t">Default visibility</div>
+                  <div class="set-d">Where a new entry shows up before an admin widens it.</div>
+                </div>
+                <div class="set-control">
+                  <select
+                    class="select"
+                    [value]="policy().defaultVisibility"
+                    (change)="setPolicy('defaultVisibility', $any($event.target).value)"
+                  >
+                    <option value="private">Private (publisher)</option>
+                    <option value="org">Organization</option>
+                    <option value="public">Public</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+
+        @if (activeSection() === 'rules') {
+          <div class="callout" style="margin-bottom:16px;">
+            <app-icon name="warning" [size]="15" aria-hidden="true"></app-icon>
+            <div>
+              Your enabled rules produced <b>{{ totalFlags() }} flag{{ totalFlags() === 1 ? '' : 's' }}</b>
+              across the <b>{{ pending().length }}</b> submissions currently in the queue.
+              <a routerLink="/admin" style="color:var(--accent-ink);cursor:pointer;font-weight:600;">Open queue →</a>
+            </div>
+          </div>
+
+          <div class="pcard">
+            <div class="pcard-head">
+              <div class="pcard-title">
+                <app-icon name="warning" [size]="16" aria-hidden="true"></app-icon>
+                Automated checks
+              </div>
+              <div class="pcard-desc">Evaluated top to bottom on every submission. The most severe matched action wins.</div>
+            </div>
+            <div class="pcard-body">
+              @for (r of rules(); track r.id) {
+                <div class="rule-row" [class.off]="!r.enabled">
+                  <div class="rule-main">
+                    <div class="rule-name">
+                      {{ r.name }}
+                      <span class="badge" [class]="'badge-' + severityTone(r.severity)">{{ r.severity }}</span>
+                      <span class="rule-cond mono">{{ r.cond }}</span>
+                    </div>
+                    <div class="rule-desc">{{ r.desc }}</div>
+                    @if (r.enabled) {
+                      <div class="rule-hint" [class.zero]="flagCount(r.flag) === 0">
+                        <app-icon [name]="flagCount(r.flag) === 0 ? 'check' : 'flag'" [size]="13" aria-hidden="true"></app-icon>
+                        @if (flagCount(r.flag) === 0) {
+                          No matches in current queue
+                        } @else {
+                          Flagged {{ flagCount(r.flag) }} item{{ flagCount(r.flag) === 1 ? '' : 's' }} in queue
+                        }
+                      </div>
+                    }
+                  </div>
+                  <div class="rule-ctrls">
+                    <select
+                      class="select select-sm"
+                      [value]="r.action"
+                      [disabled]="!r.enabled"
+                      (change)="setRule(r.id, { action: $any($event.target).value })"
+                    >
+                      @for (o of actionOpts; track o.v) {
+                        <option [value]="o.v">{{ o.label }}</option>
+                      }
+                    </select>
+                    <div class="switch" [class.on]="r.enabled" role="switch" tabindex="0" [attr.aria-checked]="r.enabled" (click)="setRule(r.id, { enabled: !r.enabled })"></div>
+                  </div>
                 </div>
               }
             </div>
           </div>
-        </section>
-      }
 
-      @if (activeSection() === 'publisher-trust') {
-        <section>
+          <div style="margin-top:12px;">
+            <button class="btn btn-secondary btn-sm" type="button" (click)="addCustomRule()">
+              <app-icon name="plus" [size]="14" aria-hidden="true"></app-icon>
+              Add custom rule
+            </button>
+          </div>
+        }
+
+        @if (activeSection() === 'publishers') {
           <div class="pcard">
-            <div class="pcard-head"><div class="pcard-title">Allowlisted domains</div></div>
+            <div class="pcard-head">
+              <div class="pcard-title">
+                <app-icon name="verified" [size]="16" aria-hidden="true"></app-icon>
+                Allowlisted domains
+              </div>
+              <div class="pcard-desc">Publishers whose domain matches one of these are eligible for the verified badge and the auto-approve fast path.</div>
+            </div>
             <div class="pcard-body">
-              <div style="display:flex;flex-wrap:wrap;gap:8px;">
-                @for (domain of allowlistDomains(); track domain) {
-                  <span class="domain-chip">
-                    {{ domain }}
-                    <button
-                      type="button"
-                      (click)="removeDomain(domain)"
-                      [attr.aria-label]="'Remove ' + domain + ' from allowlist'"
-                    >
-                      <app-icon name="close" [size]="12" aria-hidden="true"></app-icon>
+              <div class="domain-row">
+                @for (dm of domains(); track dm.d) {
+                  <span class="domain-chip" [class.verified]="dm.verified">
+                    @if (dm.verified) {
+                      <app-icon name="verified" [size]="13" aria-hidden="true"></app-icon>
+                    }
+                    {{ dm.d }}
+                    <button type="button" (click)="removeDomain(dm.d)" [attr.title]="'Remove ' + dm.d">
+                      <app-icon name="close" [size]="13" aria-hidden="true"></app-icon>
                     </button>
                   </span>
                 }
-              </div>
-              <div class="set-row">
-                <div class="set-text">
-                  <div class="set-t">Add domain</div>
-                  <div class="set-d">Domains in this list are treated as trusted publishers.</div>
-                </div>
-                <div style="display:flex;gap:8px;">
+                <span class="domain-add">
                   <input
-                    id="new-domain"
-                    type="text"
-                    class="input"
-                    placeholder="example.com"
-                    [ngModel]="newDomain()"
-                    (ngModelChange)="newDomain.set($event)"
+                    placeholder="add domain…"
+                    [value]="newDomain()"
+                    (input)="newDomain.set($any($event.target).value)"
                     (keydown.enter)="addDomain()"
-                    style="width:220px;"
                   />
-                  <button class="btn btn-secondary btn-sm" type="button" (click)="addDomain()">
-                    <app-icon name="plus" [size]="14" aria-hidden="true"></app-icon>
-                    Add
+                  <button type="button" [disabled]="!newDomain().trim()" (click)="addDomain()">
+                    <app-icon name="plus" [size]="13" aria-hidden="true"></app-icon>
                   </button>
-                </div>
+                </span>
               </div>
             </div>
           </div>
-        </section>
-      }
 
-      @if (activeSection() === 'capabilities') {
-        <section>
           <div class="pcard">
-            <div class="pcard-head"><div class="pcard-title">Allowed transports</div></div>
-            <div class="pcard-body">
-              @for (t of transports(); track t.id) {
-                <div class="set-row">
-                  <div class="set-text"><div class="set-t">{{ t.label }}</div></div>
-                  <button class="switch" [class.on]="t.enabled" type="button" role="switch" [attr.aria-checked]="t.enabled" [attr.aria-label]="'Allow ' + t.label + ' transport'" (click)="toggleTransport(t.id)"></button>
-                </div>
-              }
-            </div>
-          </div>
-          <div class="pcard" style="margin-top:14px;">
-            <div class="pcard-head"><div class="pcard-title">Allowed auth methods</div></div>
-            <div class="pcard-body">
-              @for (a of authMethods(); track a.id) {
-                <div class="set-row">
-                  <div class="set-text"><div class="set-t">{{ a.label }}</div></div>
-                  <button class="switch" [class.on]="a.enabled" type="button" role="switch" [attr.aria-checked]="a.enabled" [attr.aria-label]="'Allow ' + a.label + ' authentication'" (click)="toggleAuth(a.id)"></button>
-                </div>
-              }
-            </div>
-          </div>
-        </section>
-      }
-
-      @if (activeSection() === 'skills') {
-        <section>
-          <div class="pcard">
-            <div class="pcard-head"><div class="pcard-title">Skill controls</div></div>
-            <div class="pcard-body">
-              <div class="toggle-row">
-                <div class="tr-text">
-                  <div class="tr-t">Enable skill triggers</div>
-                  <div class="tr-d">Allow skills to be invoked by event triggers.</div>
-                </div>
-                <button class="switch" [class.on]="enabledSkillTriggers()" type="button" role="switch" [attr.aria-checked]="enabledSkillTriggers()" (click)="toggleEnabledSkillTriggers()"></button>
+            <div class="pcard-head">
+              <div class="pcard-title">
+                <app-icon name="shield" [size]="16" aria-hidden="true"></app-icon>
+                Verification
               </div>
-              <div class="toggle-row">
-                <div class="tr-text">
-                  <div class="tr-t">Require SKILL.md</div>
-                  <div class="tr-d">Skills must include a valid SKILL.md manifest.</div>
+            </div>
+            <div class="pcard-body">
+              <div class="set-row">
+                <div class="set-text">
+                  <div class="set-t">Require DNS verification</div>
+                  <div class="set-d">A domain isn't trusted until the publisher proves control with a TXT record.</div>
                 </div>
-                <button class="switch" [class.on]="requireSkillMd()" type="button" role="switch" [attr.aria-checked]="requireSkillMd()" (click)="toggleRequireSkillMd()"></button>
+                <div class="set-control">
+                  <div class="switch on" role="switch" tabindex="0" aria-checked="true"></div>
+                </div>
               </div>
               <div class="set-row">
                 <div class="set-text">
-                  <div class="set-t">Max token budget per skill</div>
-                  <div class="set-d">Upper bound for skill metadata and content size.</div>
+                  <div class="set-t">Show unverified publishers</div>
+                  <div class="set-d">Community entries from unlisted domains still appear in browse, marked unverified.</div>
                 </div>
-                <input
-                  id="max-tokens"
-                  type="number"
-                  class="input"
-                  [ngModel]="maxTokenBudget()"
-                  (ngModelChange)="setMaxTokenBudget($event)"
-                  min="100"
-                  max="128000"
-                  step="100"
-                  style="width:140px;"
-                />
+                <div class="set-control">
+                  <div class="switch on" role="switch" tabindex="0" aria-checked="true"></div>
+                </div>
               </div>
             </div>
           </div>
-        </section>
-      }
+
+          <div class="callout" style="margin-top:16px;">
+            <app-icon name="verified" [size]="15" aria-hidden="true"></app-icon>
+            <div>
+              The <b>unverified publisher domain</b> rule reads this list.
+              {{ flagCount('New publisher — unverified domain') }} submission in the queue currently trips it.
+            </div>
+          </div>
+        }
+
+        @if (activeSection() === 'capabilities') {
+          <div class="pcard">
+            <div class="pcard-head">
+              <div class="pcard-title">
+                <app-icon name="server" [size]="16" aria-hidden="true"></app-icon>
+                Allowed transports
+              </div>
+              <div class="pcard-desc">The wire protocols a server may use. stdio runs a local subprocess and carries the most host risk.</div>
+            </div>
+            <div class="pcard-body">
+              @for (tr of transportRows; track tr.id) {
+                <div class="set-row">
+                  <div class="set-text">
+                    <div class="set-t"><span class="mono" style="font-size:13.5px;">{{ tr.label }}</span></div>
+                    <div class="set-d">{{ tr.d }}</div>
+                  </div>
+                  <div class="set-control">
+                    <div class="switch" [class.on]="policy().transports[tr.id]" role="switch" tabindex="0" [attr.aria-checked]="policy().transports[tr.id]" (click)="setTransport(tr.id, !policy().transports[tr.id])"></div>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+
+          <div class="pcard">
+            <div class="pcard-head">
+              <div class="pcard-title">
+                <app-icon name="shield" [size]="16" aria-hidden="true"></app-icon>
+                Allowed authentication
+              </div>
+              <div class="pcard-desc">Credential schemes a server may declare. Disallowing None blocks anonymous servers.</div>
+            </div>
+            <div class="pcard-body">
+              @for (a of authMethods(); track a) {
+                <div class="set-row">
+                  <div class="set-text">
+                    <div class="set-t">
+                      {{ a }}
+                      @if (a === 'None') {
+                        <span class="badge badge-warn">anonymous</span>
+                      }
+                    </div>
+                  </div>
+                  <div class="set-control">
+                    <div class="switch" [class.on]="policy().auth[a]" role="switch" tabindex="0" [attr.aria-checked]="policy().auth[a]" (click)="setAuth(a, !policy().auth[a])"></div>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        @if (activeSection() === 'skills') {
+          <div class="pcard">
+            <div class="pcard-head">
+              <div class="pcard-title">
+                <app-icon name="skill" [size]="16" aria-hidden="true"></app-icon>
+                Content checks
+              </div>
+              <div class="pcard-desc">Run on the SKILL.md body when a skill is submitted or updated.</div>
+            </div>
+            <div class="pcard-body">
+              <div class="set-row">
+                <div class="set-text">
+                  <div class="set-t">
+                    Scan for prompt injection
+                    <span class="badge badge-ok">recommended</span>
+                  </div>
+                  <div class="set-d">Heuristics flag instructions that try to override the agent or coerce tool calls.</div>
+                </div>
+                <div class="set-control">
+                  <div class="switch" [class.on]="policy().scanInjection" role="switch" tabindex="0" [attr.aria-checked]="policy().scanInjection" (click)="setPolicy('scanInjection', !policy().scanInjection)"></div>
+                </div>
+              </div>
+              <div class="set-row">
+                <div class="set-text">
+                  <div class="set-t">Require trigger phrases</div>
+                  <div class="set-d">A skill must declare the phrases that load it, so progressive disclosure works.</div>
+                </div>
+                <div class="set-control">
+                  <div class="switch" [class.on]="policy().requireTriggers" role="switch" tabindex="0" [attr.aria-checked]="policy().requireTriggers" (click)="setPolicy('requireTriggers', !policy().requireTriggers)"></div>
+                </div>
+              </div>
+              <div class="set-row">
+                <div class="set-text">
+                  <div class="set-t">Enforce token budget</div>
+                  <div class="set-d">Reject a SKILL.md that would consume more than the agent's per-skill context allowance.</div>
+                </div>
+                <div class="set-control">
+                  <div class="switch" [class.on]="policy().tokenCap" role="switch" tabindex="0" [attr.aria-checked]="policy().tokenCap" (click)="setPolicy('tokenCap', !policy().tokenCap)"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="callout accent" style="margin-top:16px;">
+            <app-icon name="skill" [size]="16" aria-hidden="true"></app-icon>
+            <div>A skill is read, not called. The worst case is bad advice, not a bad action — so these checks target the text itself, not credentials or scopes.</div>
+          </div>
+        }
+      </div>
     </div>
   </div>
 
   @if (dirty()) {
-    <div class="savebar" role="alert" aria-live="polite">
+    <div class="savebar fade-up" role="alert" aria-live="polite">
       <span class="savebar-dot"></span>
       <span class="savebar-txt">Unsaved policy changes</span>
-      <button class="btn btn-secondary btn-sm" type="button" (click)="discard()">Discard</button>
-      <button class="btn btn-accent btn-sm" type="button" [disabled]="saving()" (click)="save()">
-        @if (saving()) { Saving… } @else { Save changes }
+      <button class="btn btn-ghost btn-sm" type="button" (click)="discard()">Discard</button>
+      <button class="btn btn-accent btn-sm" type="button" (click)="save()">
+        <app-icon name="check" [size]="14" aria-hidden="true"></app-icon>
+        Save policy
       </button>
+    </div>
+  }
+
+  @if (toast()) {
+    <div
+      class="fade-up"
+      role="status"
+      aria-live="polite"
+      style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:95;background:var(--ink);color:white;padding:12px 18px;border-radius:11px;box-shadow:var(--shadow-lg);display:flex;align-items:center;gap:10px;font-size:14px;"
+    >
+      <app-icon name="check" [size]="16" style="color:#86efac;" aria-hidden="true"></app-icon>
+      <span>{{ toast() }}</span>
     </div>
   }
 </div>

@@ -55,22 +55,19 @@ export class AdminComponent implements OnInit {
   readonly filter = signal<QueueFilter>('all');
   readonly toast = signal<Toast | null>(null);
 
-  readonly rejectModalEntry = signal<PendingEntry | null>(null);
-  readonly rejectReason = signal('');
-
   readonly filteredItems = computed(() => {
     const filter = this.filter();
     const list = this.items();
     if (filter === 'all') return list;
     if (filter === 'high') {
-      return list.filter(i => i.risk === 'high' || i.risk === 'critical');
+      return list.filter(i => i.risk === 'high');
     }
     return list.filter(i => i.entry.type === filter);
   });
 
   readonly kpis = computed((): KpiCard[] => {
     const list = this.items();
-    const highRisk = list.filter(i => i.risk === 'high' || i.risk === 'critical').length;
+    const highRisk = list.filter(i => i.risk === 'high').length;
     return [
       { value: list.length, label: 'Awaiting review' },
       { value: 8, label: 'Published', trend: '+3 this week', up: true },
@@ -154,7 +151,7 @@ export class AdminComponent implements OnInit {
     if (entry.type === 'server') {
       return (entry as Server).auth ?? null;
     }
-    return null;
+    return (entry as { auth?: string }).auth ?? null;
   }
 
   entryToolCount(entry: Partial<RegistryEntry>): number {
@@ -172,9 +169,12 @@ export class AdminComponent implements OnInit {
   }
 
   riskBarClass(risk: RiskLevel): string {
-    if (risk === 'critical' || risk === 'high') return 'risk-high';
-    if (risk === 'medium') return 'risk-medium';
-    return 'risk-low';
+    if (risk === 'critical') return 'risk-high';
+    return `risk-${risk}`;
+  }
+
+  flagHighClass(risk: RiskLevel): boolean {
+    return risk === 'high';
   }
 
   riskBadgeTone(risk: RiskLevel): string {
@@ -211,35 +211,9 @@ export class AdminComponent implements OnInit {
     this.showToast(entry.entry.name ?? 'Entry', 'changes requested');
   }
 
-  openRejectModal(entry: PendingEntry): void {
-    this.rejectModalEntry.set(entry);
-    this.rejectReason.set('');
-  }
-
-  confirmReject(): void {
-    const entry = this.rejectModalEntry();
-    if (!entry || !this.rejectReason().trim()) return;
-    this.actionInProgress.set(entry.id);
-
-    this.registry
-      .rejectPending(entry.id, this.rejectReason())
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => {
-          this.removeItem(entry);
-          this.actionInProgress.set(null);
-          this.rejectModalEntry.set(null);
-          this.showToast(entry.entry.name ?? 'Entry', 'rejected');
-        },
-        error: () => {
-          this.actionInProgress.set(null);
-          this.showToast(entry.entry.name ?? 'Entry', 'rejection failed');
-        },
-      });
-  }
-
-  closeRejectModal(): void {
-    this.rejectModalEntry.set(null);
+  reject(entry: PendingEntry): void {
+    this.removeItem(entry);
+    this.showToast(entry.entry.name ?? 'Entry', 'rejected');
   }
 
   private removeItem(entry: PendingEntry): void {
