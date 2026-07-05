@@ -39,12 +39,14 @@
         routerLinkActive="on"
         (click)="closeMenu()"
       >Docs</a>
-      <a
-        class="nav-item"
-        routerLink="/admin"
-        routerLinkActive="on"
-        (click)="closeMenu()"
-      >Admin</a>
+      @if (isAdmin()) {
+        <a
+          class="nav-item"
+          routerLink="/admin"
+          routerLinkActive="on"
+          (click)="closeMenu()"
+        >Admin</a>
+      }
     </nav>
 
     <div class="hdr-spacer"></div>

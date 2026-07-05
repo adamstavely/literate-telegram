@@ -157,6 +157,7 @@ async function createPendingIndex(): Promise<void> {
         rejectedAt: { type: 'date' },
         approvals: { type: 'keyword' },
         policyOverride: { type: 'boolean' },
+        overrideReason: { type: 'text' },
         entry: {
           type: 'object',
           dynamic: true,

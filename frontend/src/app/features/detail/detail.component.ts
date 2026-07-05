@@ -1,6 +1,7 @@
 import {
   Component,
-  OnInit,
+  OnChanges,
+  SimpleChanges,
   signal,
   computed,
   inject,
@@ -46,7 +47,7 @@ type TabId = 'overview' | 'install' | 'tools' | 'reviews';
   ],
   templateUrl: './detail.component.html',
 })
-export class DetailComponent implements OnInit {
+export class DetailComponent implements OnChanges {
   @Input() type!: string;
   @Input() slug!: string;
 
@@ -164,13 +165,25 @@ export class DetailComponent implements OnInit {
     }
   }
 
-  ngOnInit(): void {
-    this.loadEntry();
+  // withComponentInputBinding() re-binds type/slug when navigating between
+  // entries on the reused component instance. React to that, not just to first
+  // construction, or the page shows stale content after in-app navigation.
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['type'] || changes['slug']) {
+      this.loadEntry();
+    }
   }
 
   private loadEntry(): void {
     this.loading.set(true);
     this.error.set(null);
+    // Reset per-entry state so nothing bleeds across navigations.
+    this.entry.set(null);
+    this.parentServer.set(null);
+    this.relatedSkills.set([]);
+    this.relatedAgents.set([]);
+    this.activeTab.set('overview');
+    this.openToolId.set(null);
     this.registry
       .getEntry(this.type as EntryType, this.slug)
       .pipe(takeUntilDestroyed(this.destroyRef))

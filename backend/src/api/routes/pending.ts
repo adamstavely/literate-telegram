@@ -7,8 +7,15 @@ import { auditAction } from '../../middleware/audit.js';
 import { PendingEntry, PendingStats, RegistryEntry, RiskLevel } from '../../types/index.js';
 import { logger } from '../../logger/logger.js';
 import { getPolicy, evaluatePolicyEnforcement } from '../../services/policy.js';
+import { sanitizeSubmission } from '../../services/entry-dto.js';
 
 const router = Router();
+
+/** True if an Elasticsearch error is an optimistic-locking version conflict. */
+function isVersionConflict(err: unknown): boolean {
+  const e = err as { statusCode?: number; meta?: { statusCode?: number } };
+  return e?.statusCode === 409 || e?.meta?.statusCode === 409;
+}
 
 // All routes require authentication + admin role
 router.use(requireAuth, requireAdmin);
@@ -165,10 +172,13 @@ router.put(
     const { id } = req.params as { id: string };
 
     try {
-      // Fetch the pending entry
+      // Fetch the pending entry, requesting seq_no/primary_term so we can apply
+      // optimistic locking on the write and prevent two concurrent approvers
+      // from both publishing the same entry.
       const pendingResponse = await esClient.search<PendingEntry>({
         index: INDEX_NAMES.PENDING,
         size: 1,
+        seq_no_primary_term: true,
         query: { bool: { filter: [{ term: { id } }] } },
       });
 
@@ -183,6 +193,8 @@ router.put(
       }
 
       const pending = pendingHit._source;
+      const seqNo = pendingHit._seq_no;
+      const primaryTerm = pendingHit._primary_term;
 
       if (pending.status !== 'pending') {
         res.status(409).json({
@@ -196,7 +208,10 @@ router.put(
       const entry = pending.entry as RegistryEntry;
       const now = new Date().toISOString();
       const approver = req.user!.sub;
-      const override = (req.body as { override?: unknown } | undefined)?.override === true;
+      const body = (req.body ?? {}) as { override?: unknown; overrideReason?: unknown };
+      const override = body.override === true;
+      const overrideReason =
+        typeof body.overrideReason === 'string' ? body.overrideReason.trim() : '';
 
       // Enforce the active governance policy at approval time. Without this the
       // Policy page toggles and per-rule actions are purely cosmetic.
@@ -220,16 +235,28 @@ router.put(
         ...enforcement.blockRules,
         ...(enforcement.quarantined ? ['Quarantine: high-risk entry'] : []),
       ];
-      if (blockedReasons.length > 0 && !override) {
-        res.status(409).json({
-          error: 'Policy Block',
-          message:
-            'Approval is blocked by policy. Resubmit with { "override": true } to force-approve.',
-          blockedBy: blockedReasons,
-          risk: enforcement.risk,
-          correlationId: req.id,
-        });
-        return;
+      if (blockedReasons.length > 0) {
+        if (!override) {
+          res.status(409).json({
+            error: 'Policy Block',
+            message:
+              'Approval is blocked by policy. Resubmit with { "override": true, "overrideReason": "..." } to force-approve.',
+            blockedBy: blockedReasons,
+            risk: enforcement.risk,
+            correlationId: req.id,
+          });
+          return;
+        }
+        // A force-approve must be justified — no silent overrides.
+        if (overrideReason.length < 10) {
+          res.status(422).json({
+            error: 'Validation Error',
+            message: 'A policy override requires an overrideReason of at least 10 characters.',
+            blockedBy: blockedReasons,
+            correlationId: req.id,
+          });
+          return;
+        }
       }
 
       // Two-approver requirement for high/critical risk: record this approver's
@@ -238,12 +265,26 @@ router.put(
         const approvals = new Set(pending.approvals ?? []);
         approvals.add(approver);
         if (approvals.size < 2) {
-          await esClient.update({
-            index: INDEX_NAMES.PENDING,
-            id: pendingHit._id,
-            doc: { approvals: [...approvals] },
-            refresh: 'wait_for',
-          });
+          try {
+            await esClient.update({
+              index: INDEX_NAMES.PENDING,
+              id: pendingHit._id,
+              doc: { approvals: [...approvals] },
+              if_seq_no: seqNo,
+              if_primary_term: primaryTerm,
+              refresh: 'wait_for',
+            });
+          } catch (e) {
+            if (isVersionConflict(e)) {
+              res.status(409).json({
+                error: 'Conflict',
+                message: 'Entry was modified concurrently. Please retry.',
+                correlationId: req.id,
+              });
+              return;
+            }
+            throw e;
+          }
 
           await auditAction(req, 'APPROVE_ENTRY_VOTE', id, {
             entryId: entry.id,
@@ -265,30 +306,55 @@ router.put(
       const finalApprovals = enforcement.requiresTwoApprovers
         ? [...new Set([...(pending.approvals ?? []), approver])]
         : undefined;
+      const wasOverridden = blockedReasons.length > 0;
 
-      // Index into the registry
+      // Claim the approval first under an optimistic lock. If another approver
+      // won the race the version conflicts and we stop before touching the
+      // registry, so the entry is published exactly once.
+      try {
+        await esClient.update({
+          index: INDEX_NAMES.PENDING,
+          id: pendingHit._id,
+          doc: {
+            status: 'approved',
+            approvedBy: approver,
+            approvedAt: now,
+            policyOverride: wasOverridden,
+            ...(wasOverridden ? { overrideReason } : {}),
+            ...(finalApprovals ? { approvals: finalApprovals } : {}),
+          },
+          if_seq_no: seqNo,
+          if_primary_term: primaryTerm,
+          refresh: 'wait_for',
+        });
+      } catch (e) {
+        if (isVersionConflict(e)) {
+          res.status(409).json({
+            error: 'Conflict',
+            message: 'Entry was approved or modified concurrently. Please retry.',
+            correlationId: req.id,
+          });
+          return;
+        }
+        throw e;
+      }
+
+      // Re-sanitize the stored blob before publishing — never trust a pending
+      // document (it may predate the allowlist or have been tampered with).
+      const publishedEntry = {
+        ...sanitizeSubmission(entry as unknown as Record<string, unknown>),
+        id: entry.id,
+        verified: true,
+        installs: entry.installs ?? 0,
+        createdAt: entry.createdAt ?? now,
+        updatedAt: now,
+      };
+
+      // Publish to the registry.
       await esClient.index({
         index: INDEX_NAMES.REGISTRY,
         id: entry.id,
-        document: {
-          ...entry,
-          verified: true,
-          updatedAt: now,
-        },
-        refresh: 'wait_for',
-      });
-
-      // Update pending entry status
-      await esClient.update({
-        index: INDEX_NAMES.PENDING,
-        id: pendingHit._id,
-        doc: {
-          status: 'approved',
-          approvedBy: approver,
-          approvedAt: now,
-          policyOverride: blockedReasons.length > 0,
-          ...(finalApprovals ? { approvals: finalApprovals } : {}),
-        },
+        document: publishedEntry,
         refresh: 'wait_for',
       });
 
@@ -297,8 +363,9 @@ router.put(
         entryType: entry.type,
         entryName: entry.name,
         risk: enforcement.risk,
-        policyOverride: blockedReasons.length > 0,
-        overriddenBlocks: blockedReasons.length > 0 ? blockedReasons : undefined,
+        policyOverride: wasOverridden,
+        overrideReason: wasOverridden ? overrideReason : undefined,
+        overriddenBlocks: wasOverridden ? blockedReasons : undefined,
       });
 
       logger.info('Pending entry approved', {

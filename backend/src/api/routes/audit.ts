@@ -11,7 +11,6 @@ import { logger } from '../../logger/logger.js';
 const router = Router();
 
 interface ClientAuditEvent {
-  userId: string | null;
   action: string;
   resource: string;
   resourceId?: string;
@@ -55,7 +54,10 @@ router.post(
       const body = events.flatMap((event) => {
         const doc: AuditEvent = {
           id: uuidv4(),
-          userId: event.userId ?? req.user?.sub ?? 'anonymous',
+          // Attribution is server-derived only. A client-supplied userId is
+          // untrusted and ignored — otherwise an unauthenticated caller could
+          // forge audit events attributed to any user.
+          userId: req.user?.sub ?? 'anonymous',
           action: `client:${event.action}`,
           resource: event.resource,
           resourceId: event.resourceId,
