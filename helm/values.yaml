@@ -187,6 +187,7 @@ affinity: {}
 # Network policies
 # ---------------------------------------------------------------------------
 networkPolicy:
+  enabled: true
   # Restrict frontend ingress to the ingress controller namespace (common default).
   frontendRestrictIngress: true
   # Namespace where the ingress controller runs (e.g. ingress-nginx, traefik).

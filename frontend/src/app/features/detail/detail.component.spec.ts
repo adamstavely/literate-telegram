@@ -4,7 +4,10 @@ import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { DetailComponent } from './detail.component';
 import { RegistryService } from '../../core/services/registry.service';
+import { LoggingService } from '../../core/services/logging.service';
 import { Server, Tool } from '../../shared/types';
+
+const loggingStub = { error: jasmine.createSpy('error'), log: jasmine.createSpy('log') };
 
 function fakeServer(slug: string): Server {
   return {
@@ -50,6 +53,7 @@ describe('DetailComponent route reuse', () => {
             searchEntries: () => of({ hits: [], total: 0, page: 0, size: 0 }),
           },
         },
+        { provide: LoggingService, useValue: loggingStub },
       ],
     });
   });
@@ -113,6 +117,7 @@ describe('DetailComponent route reuse', () => {
           provide: RegistryService,
           useValue: { getEntry, searchEntries },
         },
+        { provide: LoggingService, useValue: loggingStub },
       ],
     });
 

@@ -392,7 +392,7 @@
                       [attr.aria-expanded]="openToolId() === tool.id"
                       [attr.aria-controls]="'tool-params-' + tool.id"
                     >
-                      <app-icon name="tool" [size]="16" style="color: var(--ok)"></app-icon>
+                      <app-icon name="tool" [size]="16" style="color: var(--ok)" aria-hidden="true"></app-icon>
                       <span class="tool-name mono">{{ tool.name }}</span>
                       @if (!tool.readOnly) {
                         <span class="readonly-badge" style="color: var(--warn)">write</span>
@@ -403,10 +403,11 @@
                         [size]="15"
                         style="color: var(--faint); transition: .15s"
                         [style.transform]="openToolId() === tool.id ? 'rotate(180deg)' : ''"
+                        aria-hidden="true"
                       ></app-icon>
                     </button>
-                    <button class="iconbtn" type="button" title="Open tool page" (click)="openToolPage(tool.slug, $event)">
-                      <app-icon name="arrowRight" [size]="15"></app-icon>
+                    <button class="iconbtn" type="button" title="Open tool page" aria-label="Open tool page" (click)="openToolPage(tool.slug, $event)">
+                      <app-icon name="arrowRight" [size]="15" aria-hidden="true"></app-icon>
                     </button>
                   </div>
                   <p class="tool-desc">{{ tool.summary }}</p>

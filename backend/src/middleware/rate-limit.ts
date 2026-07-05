@@ -3,7 +3,7 @@ import { config } from '../config/index.js';
 import { logger } from '../logger/logger.js';
 
 /** Prefer authenticated user id over IP so per-user budgets apply within a replica. */
-function userOrIpKey(req: { user?: { sub?: string }; ip?: string }): string {
+export function rateLimitIdentityKey(req: { user?: { sub?: string }; ip?: string }): string {
   if (req.user?.sub) return `user:${req.user.sub}`;
   return `ip:${req.ip ?? 'unknown'}`;
 }
@@ -27,7 +27,7 @@ export function createGlobalRateLimiter(): ReturnType<typeof rateLimit> {
     max: config.rateLimit.max,
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: userOrIpKey,
+    keyGenerator: rateLimitIdentityKey,
     skip: (req) => /^\/api\/health(\/|$)/.test(req.path),
     handler: rateLimitHandler('Rate limit exceeded. Please try again later.'),
   });
@@ -39,7 +39,7 @@ export const submitRateLimiter = rateLimit({
   max: config.rateLimit.submitMax,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: userOrIpKey,
+  keyGenerator: rateLimitIdentityKey,
   handler: rateLimitHandler('Entry submission rate limit exceeded. Please try again later.'),
 });
 

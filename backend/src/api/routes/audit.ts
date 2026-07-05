@@ -30,6 +30,7 @@ router.post(
   '/client',
   ingestRateLimiter,
   optionalAuth,
+  // Unauthenticated by design — bounded by ingestRateLimiter and batch size (50).
   [
     body('events').isArray({ min: 1, max: 50 }),
     body('events.*.action').isString().trim().isLength({ min: 1, max: 100 }),

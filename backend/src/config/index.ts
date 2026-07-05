@@ -82,7 +82,7 @@ function loadConfig(): Config {
   const isProd = nodeEnv === 'production';
 
   const allowMockAuth =
-    (nodeEnv === 'development' || nodeEnv === 'test') &&
+    nodeEnv === 'development' &&
     optionalEnv('ALLOW_MOCK_AUTH', 'false') === 'true';
 
   // Express `trust proxy` setting. Only when this is configured does req.ip

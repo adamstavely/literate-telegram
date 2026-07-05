@@ -15,6 +15,7 @@ jobs:
         with:
           node-version: '20'
       - run: node scripts/check-styles-sync.mjs
+      - run: node scripts/check-nginx-security-headers.mjs
 
   backend:
     name: Backend (typecheck + tests)

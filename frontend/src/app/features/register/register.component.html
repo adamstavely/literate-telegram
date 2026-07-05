@@ -60,7 +60,7 @@
                     </button>
                   }
                   @if (isAdmin()) {
-                    <button class="choice" type="button" (click)="createCollection()">
+                    <button class="choice" type="button" (click)="createCollection()" aria-label="Create a new collection (opens collection builder)">
                       <div class="choice-ic">
                         <app-icon name="grid" [size]="19" aria-hidden="true"></app-icon>
                       </div>
@@ -181,8 +181,8 @@
 
                 @if (isServer) {
                   <div class="field">
-                    <div class="field-label">Transport</div>
-                    <div class="choice-grid">
+                    <div class="field-label" id="reg-transport-label">Transport</div>
+                    <div class="choice-grid" role="group" aria-labelledby="reg-transport-label">
                       @for (tr of transportOptions; track tr.id) {
                         <button
                           type="button"

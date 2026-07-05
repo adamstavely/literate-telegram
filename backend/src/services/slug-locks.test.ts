@@ -164,10 +164,10 @@ describe('releaseSlug', () => {
   beforeEach(() => restoreEs());
   afterEach(() => restoreEs());
 
-  test('swallows delete errors', async () => {
+  test('swallows delete failures and returns false', async () => {
     stubEs('delete', async () => {
       throw new Error('not found');
     });
-    await assert.doesNotReject(releaseSlug('skill', 'gone'));
+    assert.equal(await releaseSlug('skill', 'gone'), false);
   });
 });
