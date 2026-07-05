@@ -211,7 +211,7 @@
         <app-icon name="grid" [size]="18" aria-hidden="true" />
       </button>
       @if (appsOpen()) {
-        <div #appsPop class="apps-pop" role="menu" aria-label="Interop platform apps">
+        <div #appsPop class="apps-pop" role="dialog" aria-modal="true" aria-label="Interop platform apps">
           <div class="apps-pop-head">
             <span class="apps-pop-title">Interop platform</span>
             <span class="apps-pop-sub">Acme Co workspace</span>

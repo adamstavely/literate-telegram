@@ -1,6 +1,6 @@
 <div class="container page">
   @if (loading()) {
-    <div class="skeleton" style="height: 240px"></div>
+    <div class="skeleton" style="height: 240px" aria-busy="true" aria-label="Loading collection"></div>
   }
 
   @if (error()) {

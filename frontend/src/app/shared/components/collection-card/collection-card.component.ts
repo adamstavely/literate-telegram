@@ -24,6 +24,7 @@ const TYPE_ICONS: Record<string, { icon: string; color: string }> = {
       tabindex="0"
       (click)="navigate()"
       (keydown.enter)="navigate()"
+      (keydown.space)="$event.preventDefault(); navigate()"
     >
       <div class="col-card-top">
         <div

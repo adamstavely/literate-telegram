@@ -131,7 +131,11 @@ router.get(
 
       const action = req.query['action'] as string | undefined;
       if (action) {
-        filterClauses.push({ wildcard: { action: `*${action}*` } });
+        // Match query avoids leading-wildcard scans on the action field.
+        const sanitized = action.replace(/[*?\\]/g, '').trim().slice(0, 100);
+        if (sanitized) {
+          filterClauses.push({ match: { action: sanitized } });
+        }
       }
 
       const resource = req.query['resource'] as string | undefined;

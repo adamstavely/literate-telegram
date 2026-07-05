@@ -323,12 +323,18 @@
 
         @if (activeTab() === 'install') {
           <section class="tab-panel" role="tabpanel" id="panel-install" aria-labelledby="tab-install" tabindex="0">
+            <div class="sr-only" aria-live="polite">{{ copyAnnouncement() }}</div>
             <div class="section">
               <h2 class="section-title">CLI Install</h2>
               <div class="codeblock">
                 <pre class="code-pre"><code>{{ installCommand() }}</code></pre>
-                <button class="copy-btn" type="button" (click)="copyInstall()">
-                  <app-icon [name]="copied() ? 'check' : 'copy'" [size]="14"></app-icon>
+                <button
+                  class="copy-btn"
+                  type="button"
+                  aria-label="Copy install command"
+                  (click)="copyInstall()"
+                >
+                  <app-icon [name]="copied() ? 'check' : 'copy'" [size]="14" aria-hidden="true"></app-icon>
                   {{ copied() ? 'Copied!' : 'Copy' }}
                 </button>
               </div>
@@ -337,7 +343,14 @@
               <h2 class="section-title">Config JSON</h2>
               <div class="codeblock">
                 <pre class="code-pre"><code>{{ configJson() }}</code></pre>
-                <button class="copy-btn" type="button" (click)="copyConfig()">Copy</button>
+                <button
+                  class="copy-btn"
+                  type="button"
+                  aria-label="Copy config JSON"
+                  (click)="copyConfig()"
+                >
+                  {{ copied() ? 'Copied!' : 'Copy' }}
+                </button>
               </div>
             </div>
           </section>

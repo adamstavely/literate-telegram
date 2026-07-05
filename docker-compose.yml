@@ -53,6 +53,7 @@ services:
   # ---------------------------------------------------------------------------
   # Kibana (optional — enable with: docker compose --profile observability up)
   # ---------------------------------------------------------------------------
+  # Observability profile only — not for production. ES security is disabled upstream.
   kibana:
     image: docker.elastic.co/kibana/kibana:8.13.0
     container_name: interop-kibana

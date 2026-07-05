@@ -78,9 +78,19 @@ class ElasticsearchTransport extends Transport {
     ]);
 
     try {
-      await this.client.bulk({ body });
-    } catch {
-      // Swallow ES errors to prevent log transport from crashing the app
+      const result = await this.client.bulk({ body });
+      if (result.errors) {
+        const failed = result.items?.filter((item) => {
+          const status = item.index?.status ?? item.create?.status ?? 200;
+          return status >= 400;
+        }).length ?? 0;
+        console.error(`Elasticsearch log transport: ${failed}/${docs.length} documents failed to index`);
+      }
+    } catch (err) {
+      console.error('Elasticsearch log transport bulk write failed', {
+        error: err instanceof Error ? err.message : String(err),
+        batchSize: docs.length,
+      });
     }
   }
 
@@ -110,6 +120,12 @@ function getEsTransport(): ElasticsearchTransport {
         username: config.elasticsearch.username,
         password: config.elasticsearch.password,
       },
+      ...(config.elasticsearch.caFingerprint
+        ? {
+            caFingerprint: config.elasticsearch.caFingerprint,
+            tls: { rejectUnauthorized: true },
+          }
+        : {}),
     });
     _esTransport = new ElasticsearchTransport({
       client: esClient,

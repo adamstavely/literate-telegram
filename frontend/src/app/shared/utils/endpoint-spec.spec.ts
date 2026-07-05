@@ -1,4 +1,4 @@
-import { buildEndpointSpec, buildLiveRequest, epToken } from './endpoint-spec';
+import { buildEndpointSpec, buildLiveRequest, epToken, exampleVal, liveResponseBody } from './endpoint-spec';
 import { Api, ApiEndpoint } from '../types';
 
 function api(partial: Partial<Api>): Api {
@@ -46,5 +46,19 @@ describe('endpoint-spec', () => {
     const req = buildLiveRequest(api({}), ep, spec, { id: 'cus_42' });
     expect(req).toContain('https://api.test.com/v1/customers/cus_42');
     expect(req).toContain('Authorization: Bearer $TOKEN');
+  });
+
+  it('exampleVal returns known defaults and type-based fallbacks', () => {
+    expect(exampleVal({ name: 'amount', in: 'body', type: 'integer', required: true, desc: '' })).toBe('4200');
+    expect(exampleVal({ name: 'unknown', in: 'query', type: 'string', required: false, desc: '' })).toBe('');
+    expect(exampleVal({ name: 'count', in: 'query', type: 'integer', required: false, desc: '' })).toBe('1');
+  });
+
+  it('liveResponseBody substitutes entered values into the sample', () => {
+    const ep: ApiEndpoint = { method: 'POST', path: '/charges', summary: '' };
+    const spec = buildEndpointSpec(api({}), ep);
+    const body = liveResponseBody(spec, { amount: '9900', currency: 'eur' });
+    expect(body).toContain('"amount": 9900');
+    expect(body).toContain('"currency": "eur"');
   });
 });

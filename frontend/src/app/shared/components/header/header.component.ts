@@ -325,7 +325,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
   }
 
   markAllRead(): void {
-    this.registryService.markAllRead().subscribe({
+    this.registryService.markAllRead().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.notifications.update(notifs => notifs.map(n => ({ ...n, read: true })));
       },
@@ -336,7 +336,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
   }
 
   markRead(id: string): void {
-    this.registryService.markNotificationRead(id).subscribe({
+    this.registryService.markNotificationRead(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.notifications.update(notifs =>
           notifs.map(n => n.id === id ? { ...n, read: true } : n)

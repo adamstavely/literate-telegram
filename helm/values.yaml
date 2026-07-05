@@ -74,6 +74,8 @@ backend:
     LOG_INDEX: "interop-logs"
     AUDIT_INDEX: "interop-audit"
     TRUST_PROXY: "1"
+    INGEST_RATE_LIMIT_WINDOW_MS: "60000"
+    INGEST_RATE_LIMIT_MAX: "30"
   # Name of the Secret that holds ES_PASSWORD, OIDC_ISSUER, OIDC_AUDIENCE, OIDC_JWKS_URI
   envSecret: interop-backend-secrets
 

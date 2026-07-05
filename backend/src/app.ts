@@ -40,21 +40,23 @@ app.use(compression());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
+app.use(requestLoggingMiddleware);
+
 const limiter = rateLimit({
   windowMs: config.rateLimit.windowMs,
   max: config.rateLimit.max,
   standardHeaders: true,
   legacyHeaders: false,
-  handler: (_req, res) => {
+  skip: (req) => /^\/api\/health(\/|$)/.test(req.path),
+  handler: (req, res) => {
     res.status(429).json({
       error: 'Too Many Requests',
       message: 'Rate limit exceeded. Please try again later.',
+      correlationId: req.id,
     });
   },
 });
 app.use(limiter);
-
-app.use(requestLoggingMiddleware);
 app.use(optionalAuth);
 app.use(auditMiddleware);
 app.use('/api', apiRouter);

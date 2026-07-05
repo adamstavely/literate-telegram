@@ -1,5 +1,6 @@
 import { esClient } from '../elasticsearch/client.js';
 import { INDEX_NAMES } from '../elasticsearch/indices.js';
+import { logger } from '../logger/logger.js';
 
 export function typeSlugKey(type: string, slug: string): string {
   return `${type}:${slug}`;
@@ -78,11 +79,17 @@ export async function claimOrOwnSlug(type: string, slug: string, entryId: string
 }
 
 export async function releaseSlug(type: string, slug: string): Promise<void> {
-  await esClient
-    .delete({
+  try {
+    await esClient.delete({
       index: INDEX_NAMES.SLUG_LOCKS,
       id: typeSlugKey(type, slug),
       refresh: 'wait_for',
-    })
-    .catch(() => undefined);
+    });
+  } catch (err) {
+    logger.warn('Failed to release slug lock', {
+      type,
+      slug,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 }

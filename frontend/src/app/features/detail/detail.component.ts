@@ -68,6 +68,7 @@ export class DetailComponent implements OnChanges {
   readonly relatedError = signal<string | null>(null);
   readonly activeTab = signal<TabId>('overview');
   readonly copied = signal(false);
+  readonly copyAnnouncement = signal('');
   readonly openToolId = signal<string | null>(null);
 
   readonly isServer = computed(() => this.entry()?.type === 'server');
@@ -349,14 +350,22 @@ export class DetailComponent implements OnChanges {
   copyConfig(): void {
     void navigator.clipboard.writeText(this.configJson()).then(() => {
       this.copied.set(true);
-      setTimeout(() => this.copied.set(false), 2000);
+      this.copyAnnouncement.set('Config JSON copied to clipboard');
+      setTimeout(() => {
+        this.copied.set(false);
+        this.copyAnnouncement.set('');
+      }, 2000);
     });
   }
 
   copyInstall(): void {
     void navigator.clipboard.writeText(this.installCommand()).then(() => {
       this.copied.set(true);
-      setTimeout(() => this.copied.set(false), 2000);
+      this.copyAnnouncement.set('Install command copied to clipboard');
+      setTimeout(() => {
+        this.copied.set(false);
+        this.copyAnnouncement.set('');
+      }, 2000);
     });
   }
 

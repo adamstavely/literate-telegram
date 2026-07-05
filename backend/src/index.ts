@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import { config } from './config/index.js';
 import { logger } from './logger/logger.js';
 import { setupIndices } from './elasticsearch/indices.js';
@@ -11,9 +10,12 @@ async function start(): Promise<void> {
     await setupIndices();
     logger.info('Elasticsearch indices ready');
   } catch (err) {
-    logger.warn('Could not set up Elasticsearch indices on startup', {
-      error: err instanceof Error ? err.message : 'unknown',
-    });
+    const message = err instanceof Error ? err.message : 'unknown';
+    if (config.nodeEnv === 'production') {
+      logger.error('Could not set up Elasticsearch indices on startup', { error: message });
+    } else {
+      logger.warn('Could not set up Elasticsearch indices on startup', { error: message });
+    }
   }
 
   const server = app.listen(port, () => {

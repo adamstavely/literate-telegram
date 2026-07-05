@@ -1,6 +1,9 @@
 import dotenv from 'dotenv';
 
-dotenv.config();
+// In production rely on the orchestrator env; only load .env for local dev/test.
+if (process.env['NODE_ENV'] !== 'production') {
+  dotenv.config();
+}
 
 function requireEnv(key: string): string {
   const value = process.env[key];
