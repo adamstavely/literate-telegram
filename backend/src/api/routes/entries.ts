@@ -20,6 +20,7 @@ import { slugTaken, claimSlug, releaseSlug } from '../../services/slug-locks.js'
 import { runCompensation } from '../../services/compensation.js';
 import { submitRateLimiter } from '../../middleware/rate-limit.js';
 import { registryVisibilityFilter, entryVisibleToCaller } from '../../services/visibility.js';
+import { clampPage, paginationFrom } from '../../services/pagination.js';
 
 const router = Router();
 
@@ -69,9 +70,9 @@ router.get(
     };
 
     try {
-      const page = params.page ?? 0;
       const size = params.size ?? 20;
-      const from = page * size;
+      const page = clampPage(params.page ?? 0, size);
+      const from = paginationFrom(page, size);
 
       const mustClauses: Record<string, unknown>[] = [];
       const filterClauses: Record<string, unknown>[] = [];
@@ -342,7 +343,7 @@ router.post(
             refresh: 'wait_for',
           });
         } catch (indexErr) {
-          await releaseSlug(entryType, entrySlug);
+          await releaseSlug(entryType, entrySlug, entryId);
           throw indexErr;
         }
 
@@ -393,7 +394,7 @@ router.post(
             });
             return;
           }
-          await releaseSlug(entryType, entrySlug);
+          await releaseSlug(entryType, entrySlug, entryId);
           throw indexErr;
         }
 
@@ -413,7 +414,7 @@ router.post(
           risk,
         });
 
-        await releaseSlug(entryType, entrySlug);
+        await releaseSlug(entryType, entrySlug, entryId);
 
         res.status(201).json({
           id: autoApproved.id,
@@ -458,7 +459,7 @@ router.post(
           refresh: 'wait_for',
         });
       } catch (indexErr) {
-        await releaseSlug(pendType, pendSlug);
+        await releaseSlug(pendType, pendSlug, entryId);
         throw indexErr;
       }
 

@@ -2,6 +2,8 @@ import { Component, OnChanges, SimpleChanges, signal, inject, DestroyRef, Input 
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Subject, switchMap, EMPTY } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { RegistryService } from '../../core/services/registry.service';
 import { AuthService } from '../../core/services/auth.service';
 import { Collection, RegistryEntry } from '../../shared/types';
@@ -57,6 +59,7 @@ export class CollectionDetailComponent implements OnChanges {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly loadId$ = new Subject<string>();
 
   /** Only admins may jump to the governance/policy surface. */
   isAdmin(): boolean {
@@ -71,32 +74,36 @@ export class CollectionDetailComponent implements OnChanges {
   readonly kindOrder = ['agent', 'server', 'skill', 'api'] as const;
   readonly kindMeta = KIND_META;
 
-  // React to the route-bound id changing on the reused component instance.
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['id']) {
-      this.loadCollection();
-    }
+  constructor() {
+    this.loadId$
+      .pipe(
+        switchMap((id) => {
+          this.loading.set(true);
+          this.error.set(null);
+          this.collection.set(null);
+          this.added.set(false);
+          return this.registry.getCollection(id).pipe(
+            catchError(() => {
+              this.error.set('Collection not found.');
+              this.loading.set(false);
+              return EMPTY;
+            }),
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((col) => {
+        this.collection.set(col);
+        this.loading.set(false);
+        document.title = `${col.title} — Interop`;
+      });
   }
 
-  private loadCollection(): void {
-    this.loading.set(true);
-    this.error.set(null);
-    this.collection.set(null);
-    this.added.set(false);
-    this.registry
-      .getCollection(this.id)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (col) => {
-          this.collection.set(col);
-          this.loading.set(false);
-          document.title = `${col.title} — Interop`;
-        },
-        error: () => {
-          this.error.set('Collection not found.');
-          this.loading.set(false);
-        },
-      });
+  // React to the route-bound id changing on the reused component instance.
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['id'] && this.id) {
+      this.loadId$.next(this.id);
+    }
   }
 
   entriesByKind(kind: string): RegistryEntry[] {

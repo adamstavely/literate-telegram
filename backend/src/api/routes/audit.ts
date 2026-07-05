@@ -8,6 +8,7 @@ import { ingestRateLimiter } from '../../middleware/rate-limit.js';
 import { AuditEvent } from '../../types/index.js';
 import { boundedMeta } from '../../services/sanitize-meta.js';
 import { logger } from '../../logger/logger.js';
+import { clampPage, paginationFrom } from '../../services/pagination.js';
 
 const router = Router();
 
@@ -119,9 +120,9 @@ router.get(
     }
 
     try {
-      const page = parseInt(req.query['page'] as string ?? '0', 10) || 0;
       const size = parseInt(req.query['size'] as string ?? '50', 10) || 50;
-      const from = page * size;
+      const page = clampPage(parseInt(req.query['page'] as string ?? '0', 10) || 0, size);
+      const from = paginationFrom(page, size);
 
       const filterClauses: Record<string, unknown>[] = [];
 

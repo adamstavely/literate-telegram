@@ -5,6 +5,7 @@ import { requireAuth } from '../../middleware/auth.js';
 import { Notification, NotificationRead } from '../../types/index.js';
 import { logger } from '../../logger/logger.js';
 import { searchAll } from '../../elasticsearch/search-all.js';
+import { clampPage, paginationFrom } from '../../services/pagination.js';
 
 const router = Router();
 
@@ -59,11 +60,10 @@ async function upsertReceipt(
 router.get('/', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = req.user!.sub;
-    const page = Math.max(0, parseInt(req.query['page'] as string ?? '0', 10) || 0);
-    // Clamp page size so a caller can't request an unbounded window.
     const rawSize = parseInt(req.query['size'] as string ?? '50', 10) || 50;
     const size = Math.min(100, Math.max(1, rawSize));
-    const from = page * size;
+    const page = clampPage(Math.max(0, parseInt(req.query['page'] as string ?? '0', 10) || 0), size);
+    const from = paginationFrom(page, size);
 
     const receipts = await loadReceipts(userId);
     const dismissedIds = [...receipts.values()]

@@ -239,6 +239,28 @@ describe('PUT /api/pending/:id/approve', () => {
     assert.equal(res.body.entryId, 'entry-1');
   });
 
+  test('returns success when the pending flip failed transiently but approval landed', async () => {
+    stubEs('search', async () => pendingSearchHit());
+    stubEs('get', async (args: { index?: string }) =>
+      String(args.index).includes('pending')
+        ? { _source: { status: 'approved' } }
+        : { _source: DEFAULT_POLICY_DOCUMENT },
+    );
+    stubEs('create', async () => ({}));
+    stubEs('index', async () => ({}));
+    stubEs('update', async () => {
+      throw new Error('transient flip failure');
+    });
+
+    const res = await request(app)
+      .put('/api/pending/pending-1/approve')
+      .set(AUTH)
+      .send({});
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.status, 'approved');
+  });
+
   test('keeps the registry doc when a concurrent approver already won', async () => {
     const deleteCalls: Array<{ index?: string; id?: string }> = [];
 
@@ -313,6 +335,11 @@ describe('PUT /api/pending/:id/reject', () => {
 
     stubEs('search', async () => pendingSearchHit());
     stubEs('update', async () => ({})); // flip to rejected succeeds
+    stubEs('get', async (args: { index?: string }) =>
+      String(args.index).includes('registry')
+        ? { _source: { createdAt: pendingEntry.submittedAt } }
+        : { _source: DEFAULT_POLICY_DOCUMENT },
+    );
     stubEs('delete', async (args: { index?: string; id?: string }) => {
       deleteCalls.push(args);
       return {}; // an orphan existed and was deleted
@@ -328,6 +355,33 @@ describe('PUT /api/pending/:id/reject', () => {
     assert.ok(
       deleteCalls.some((c) => String(c.index).includes('registry') && c.id === 'entry-1'),
       'reject must clean up any orphaned registry doc for the entry',
+    );
+  });
+
+  test('does not delete a pre-existing registry doc when rejecting an edit-style pending entry', async () => {
+    const deleteCalls: Array<{ index?: string; id?: string }> = [];
+
+    stubEs('search', async () => pendingSearchHit());
+    stubEs('update', async () => ({}));
+    stubEs('get', async (args: { index?: string }) =>
+      String(args.index).includes('registry')
+        ? { _source: { createdAt: '2020-01-01T00:00:00.000Z' } }
+        : { _source: DEFAULT_POLICY_DOCUMENT },
+    );
+    stubEs('delete', async (args: { index?: string; id?: string }) => {
+      deleteCalls.push(args);
+      return {};
+    });
+
+    const res = await request(app)
+      .put('/api/pending/pending-1/reject')
+      .set(AUTH)
+      .send({ reason: 'Does not meet quality bar for publication.' });
+
+    assert.equal(res.status, 200);
+    assert.ok(
+      !deleteCalls.some((c) => String(c.index).includes('registry')),
+      'reject must not delete a registry doc that predates the pending submission',
     );
   });
 });

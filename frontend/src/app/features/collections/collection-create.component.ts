@@ -1,4 +1,5 @@
 import { Component, signal, computed, inject, DestroyRef } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -103,6 +104,10 @@ export class CollectionCreateComponent {
         error: (err) => {
           this.submitting.set(false);
           if (err instanceof Error && err.message === 'unknown-members') return;
+          if (err instanceof HttpErrorResponse && err.status === 403) {
+            this.error.set('You do not have permission to create collections.');
+            return;
+          }
           this.error.set('Could not create the collection. Check the fields and try again.');
         },
       });

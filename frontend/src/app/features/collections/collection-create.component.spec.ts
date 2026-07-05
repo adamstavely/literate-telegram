@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
 import { of, throwError } from 'rxjs';
 import { CollectionCreateComponent } from './collection-create.component';
 import { RegistryService } from '../../core/services/registry.service';
@@ -62,6 +63,19 @@ describe('CollectionCreateComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.componentInstance.error()).toContain('Could not create');
+  });
+
+  it('shows permission error on 403', () => {
+    registry.createCollection.and.returnValue(
+      throwError(() => new HttpErrorResponse({ status: 403, statusText: 'Forbidden' })),
+    );
+    fixture.componentInstance.title.set('My Stack');
+    fixture.componentInstance.summary.set('A useful stack');
+    fixture.componentInstance.members.set('stripe');
+    fixture.componentInstance.submit();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.error()).toContain('permission');
   });
 
   it('back link uses routerLink for keyboard navigation', () => {

@@ -10,12 +10,34 @@ import { getPolicy, evaluatePolicyEnforcement, reviewDueAt } from '../../service
 import { sanitizeSubmission } from '../../services/entry-dto.js';
 import { claimOrOwnSlug, releaseSlug, isEsConflict, isEsNotFound } from '../../services/slug-locks.js';
 import { runCompensation } from '../../services/compensation.js';
+import { clampPage, paginationFrom } from '../../services/pagination.js';
 
 const router = Router();
 
 /** True if an Elasticsearch error is an optimistic-locking version conflict. */
 function isVersionConflict(err: unknown): boolean {
   return isEsConflict(err);
+}
+
+/**
+ * A registry doc may be deleted on reject only when it was created as part of
+ * this pending submission (orphan from a failed approve). Pre-existing registry
+ * entries (e.g. a future edit/resubmit flow reusing entry.id) must not be removed.
+ */
+async function isRejectOrphanRegistry(entryId: string, pendingSubmittedAt: string): Promise<boolean> {
+  try {
+    const doc = await esClient.get<RegistryEntry>({
+      index: INDEX_NAMES.REGISTRY,
+      id: entryId,
+      _source: ['createdAt'],
+    });
+    const createdAt = doc._source?.createdAt;
+    if (!createdAt) return true;
+    return new Date(createdAt).getTime() >= new Date(pendingSubmittedAt).getTime();
+  } catch (err) {
+    if (isEsNotFound(err)) return false;
+    throw err;
+  }
 }
 
 // All routes require authentication + admin role
@@ -112,9 +134,9 @@ router.get(
     }
 
     try {
-      const page = parseInt(req.query['page'] as string ?? '0', 10) || 0;
       const size = parseInt(req.query['size'] as string ?? '20', 10) || 20;
-      const from = page * size;
+      const page = clampPage(parseInt(req.query['page'] as string ?? '0', 10) || 0, size);
+      const from = paginationFrom(page, size);
 
       const filterClauses: Record<string, unknown>[] = [];
 
@@ -439,7 +461,11 @@ router.put(
           });
           return;
         }
-        throw e;
+
+        if (!concurrentlyApproved) {
+          throw e;
+        }
+        // Flip landed despite a transient client error — continue to audit/release.
       }
 
       await auditAction(req, 'APPROVE_ENTRY', id, {
@@ -461,7 +487,7 @@ router.put(
       });
 
       // Registry uniqueness is now the source of truth — release the submit lock.
-      await releaseSlug(entryType, entrySlug);
+      await releaseSlug(entryType, entrySlug, entry.id);
 
       res.json({
         id,
@@ -561,6 +587,7 @@ router.put(
       // runCompensation records a reconciliation event if it can't complete.
       const orphanEntryId = pending.entry.id;
       const orphanRemoved = orphanEntryId
+        && (await isRejectOrphanRegistry(orphanEntryId, pending.submittedAt))
         ? await runCompensation(
             'reject:delete-orphan-registry',
             async () => {
@@ -576,8 +603,8 @@ router.put(
         : true;
 
       // The entry is abandoned — free its slug so it can be resubmitted.
-      if (pending.entry.type && pending.entry.slug) {
-        await releaseSlug(pending.entry.type, pending.entry.slug);
+      if (pending.entry.type && pending.entry.slug && pending.entry.id) {
+        await releaseSlug(pending.entry.type, pending.entry.slug, pending.entry.id);
       }
 
       await auditAction(req, 'REJECT_ENTRY', id, {
