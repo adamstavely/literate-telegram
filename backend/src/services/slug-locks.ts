@@ -35,8 +35,8 @@ export async function slugTaken(type: string, slug: string): Promise<boolean> {
         bool: {
           filter: [
             { term: { status: 'pending' } },
-            { term: { 'entry.type.keyword': type } },
-            { term: { 'entry.slug.keyword': slug } },
+            { term: { 'entry.type': type } },
+            { term: { 'entry.slug': slug } },
           ],
         },
       },
@@ -68,7 +68,7 @@ export async function slugTaken(type: string, slug: string): Promise<boolean> {
           bool: {
             filter: [
               { term: { status: 'pending' } },
-              { term: { 'entry.id.keyword': entryId } },
+              { term: { 'entry.id': entryId } },
             ],
           },
         },

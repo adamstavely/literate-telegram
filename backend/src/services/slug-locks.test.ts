@@ -49,6 +49,56 @@ describe('slugTaken', () => {
     assert.equal(await slugTaken('skill', 'free-slug'), false);
   });
 
+  test('returns true when a pending submission matches type+slug', async () => {
+    stubEs('count', async (params: { index?: string }) => {
+      if (params.index === 'interop-pending') return { count: 1 };
+      return { count: 0 };
+    });
+    stubEs('exists', async () => false);
+
+    assert.equal(await slugTaken('skill', 'queued-skill'), true);
+  });
+
+  test('queries pending index with plain keyword fields (not .keyword subfields)', async () => {
+    const pendingQueries: unknown[] = [];
+    stubEs('count', async (params: { index?: string; query?: unknown }) => {
+      if (params.index === 'interop-pending') pendingQueries.push(params.query);
+      return { count: 0 };
+    });
+    stubEs('exists', async () => false);
+
+    await slugTaken('tool', 'my-tool');
+
+    assert.equal(pendingQueries.length, 1);
+    const filter = (pendingQueries[0] as { bool: { filter: Record<string, unknown>[] } }).bool
+      .filter;
+    assert.deepEqual(filter[1], { term: { 'entry.type': 'tool' } });
+    assert.deepEqual(filter[2], { term: { 'entry.slug': 'my-tool' } });
+  });
+
+  test('resolves lock via pending entry.id when lock references an entry', async () => {
+    const pendingQueries: unknown[] = [];
+    let pendingCountCalls = 0;
+    stubEs('count', async (params: { index?: string; query?: unknown }) => {
+      if (params.index === 'interop-pending') {
+        pendingQueries.push(params.query);
+        pendingCountCalls += 1;
+        // Initial type+slug check: none; lock-resolution id check: one match.
+        return { count: pendingCountCalls === 2 ? 1 : 0 };
+      }
+      return { count: 0 };
+    });
+    stubEs('exists', async (params: { index?: string }) => params.index === 'interop-slug-locks');
+    stubEs('get', async () => ({ _source: { entryId: 'entry-42' } }));
+
+    assert.equal(await slugTaken('skill', 'held-slug'), true);
+    assert.equal(pendingQueries.length, 2);
+    const lockResolveFilter = (
+      pendingQueries[1] as { bool: { filter: Record<string, unknown>[] } }
+    ).bool.filter;
+    assert.deepEqual(lockResolveFilter[1], { term: { 'entry.id': 'entry-42' } });
+  });
+
   test('releases orphan lock with no entryId', async () => {
     let deleted = false;
     stubEs('count', async () => ({ count: 0 }));
