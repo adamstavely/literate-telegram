@@ -6,6 +6,7 @@ import { INDEX_NAMES } from '../../elasticsearch/indices.js';
 import { optionalAuth, requireAuth, requireAdmin } from '../../middleware/auth.js';
 import { ingestRateLimiter } from '../../middleware/rate-limit.js';
 import { AuditEvent } from '../../types/index.js';
+import { boundedMeta } from '../../services/sanitize-meta.js';
 import { logger } from '../../logger/logger.js';
 
 const router = Router();
@@ -64,7 +65,7 @@ router.post(
           result: 'success',
           metadata: {
             pageUrl: event.pageUrl,
-            ...event.metadata,
+            ...boundedMeta(event.metadata),
           },
         };
 

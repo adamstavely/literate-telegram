@@ -93,6 +93,10 @@ services:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3000
       - ES_NODE=http://elasticsearch:9200
+      # Traffic reaches the backend via the nginx frontend proxy, which sets
+      # X-Forwarded-For. Trust the first proxy hop so req.ip (rate limiting +
+      # audit attribution) reflects the real client, not the container IP.
+      - TRUST_PROXY=1
     ports:
       - "3000:3000"
     networks:
@@ -104,7 +108,7 @@ services:
       # Mount source for hot-reload in dev; remove in production
       - ./backend/src:/app/src:ro
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health/live || exit 1"]
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000/api/health/live',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))\""]
       interval: 15s
       timeout: 5s
       retries: 5

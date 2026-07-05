@@ -123,11 +123,20 @@ describe('PUT /api/pending/:id/approve', () => {
     assert.match(res.body.message, /at least 10 characters/);
   });
 
-  test('returns 409 when slug is already taken at approval time', async () => {
+  test('returns 409 when the slug is held by a different entry at approval time', async () => {
     stubEs('search', async () => pendingSearchHit());
-    stubEs('get', async () => ({ _source: DEFAULT_POLICY_DOCUMENT }));
-    stubEs('count', async () => ({ count: 1 }));
-    stubEs('exists', async () => false);
+    // Policy get for enforcement; slug-lock get returns a lock owned by someone else.
+    stubEs('get', async (args: { index?: string }) =>
+      String(args.index).includes('slug-locks')
+        ? { _source: { entryId: 'a-different-entry' } }
+        : { _source: DEFAULT_POLICY_DOCUMENT },
+    );
+    // claimSlug create() conflicts (slug already locked).
+    stubEs('create', async () => {
+      const e = new Error('conflict') as Error & { statusCode: number };
+      e.statusCode = 409;
+      throw e;
+    });
 
     const res = await request(app)
       .put('/api/pending/pending-1/approve')
@@ -138,14 +147,12 @@ describe('PUT /api/pending/:id/approve', () => {
     assert.match(res.body.message, /already exists/);
   });
 
-  test('compensates pending status when registry publish fails', async () => {
+  test('leaves pending untouched when registry publish fails (registry-first ordering)', async () => {
     const updateCalls: Array<{ doc: Record<string, unknown> }> = [];
 
     stubEs('search', async () => pendingSearchHit());
     stubEs('get', async () => ({ _source: DEFAULT_POLICY_DOCUMENT }));
-    stubEs('count', async () => ({ count: 0 }));
-    stubEs('exists', async () => false);
-    stubEs('create', async () => ({}));
+    stubEs('create', async () => ({})); // claimSlug succeeds (entry owns its slug)
     stubEs('update', async (args: { doc: Record<string, unknown> }) => {
       updateCalls.push(args);
       return {};
@@ -153,7 +160,6 @@ describe('PUT /api/pending/:id/approve', () => {
     stubEs('index', async () => {
       throw new Error('registry publish failed');
     });
-    stubEs('delete', async () => ({}));
 
     const res = await request(app)
       .put('/api/pending/pending-1/approve')
@@ -161,8 +167,13 @@ describe('PUT /api/pending/:id/approve', () => {
       .send({});
 
     assert.equal(res.status, 500);
-    const rollback = updateCalls.find((c) => c.doc['status'] === 'pending');
-    assert.ok(rollback, 'expected pending rollback update');
+    // Registry is published before the pending flip, so a publish failure must
+    // leave the pending doc untouched (never flipped to 'approved') — safe and
+    // re-approvable, no divergence to roll back.
+    assert.ok(
+      !updateCalls.some((c) => c.doc['status'] === 'approved'),
+      'pending must not be flipped to approved when publish fails',
+    );
   });
 });
 

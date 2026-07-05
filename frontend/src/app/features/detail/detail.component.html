@@ -19,6 +19,15 @@
     </div>
   }
 
+  @if (entry() && !loading() && relatedError()) {
+    <div class="container" style="max-width: 1200px">
+      <div class="callout" role="status" aria-live="polite" style="margin: 12px 0">
+        <app-icon name="warning" [size]="16" aria-hidden="true"></app-icon>
+        <div>{{ relatedError() }} The main entry is shown, but some related items may be missing.</div>
+      </div>
+    </div>
+  }
+
   @if (entry() && !loading() && isTool() && asTool(); as tool) {
   <nav class="crumbs" aria-label="Breadcrumb">
     <a routerLink="/">Browse</a>
