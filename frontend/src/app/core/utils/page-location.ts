@@ -16,13 +16,13 @@ const REDACTED_QUERY_KEYS = new Set([
 export function safePageLocation(): string {
   const { pathname, searchParams } = new URL(window.location.href);
   const filtered = new URLSearchParams();
-  for (const [key, value] of searchParams.entries()) {
+  searchParams.forEach((value, key) => {
     if (REDACTED_QUERY_KEYS.has(key.toLowerCase())) {
       filtered.set(key, '[redacted]');
     } else {
       filtered.set(key, value);
     }
-  }
+  });
   const qs = filtered.toString();
   return qs ? `${pathname}?${qs}` : pathname;
 }
