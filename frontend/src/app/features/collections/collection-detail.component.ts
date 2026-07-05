@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RegistryService } from '../../core/services/registry.service';
+import { AuthService } from '../../core/services/auth.service';
 import { Collection, RegistryEntry } from '../../shared/types';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { SensitivityBadgeComponent } from '../../shared/components/sensitivity-badge/sensitivity-badge.component';
@@ -53,8 +54,14 @@ export class CollectionDetailComponent implements OnChanges {
   @Input() id!: string;
 
   private readonly registry = inject(RegistryService);
+  private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+
+  /** Only admins may jump to the governance/policy surface. */
+  isAdmin(): boolean {
+    return this.auth.isAdmin();
+  }
 
   readonly collection = signal<Collection | null>(null);
   readonly loading = signal(true);

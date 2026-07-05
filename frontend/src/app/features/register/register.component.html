@@ -355,6 +355,8 @@
                       role="switch"
                       tabindex="0"
                       (click)="form.patchValue({ readOnly: !form.get('readOnly')?.value })"
+                      (keydown.enter)="form.patchValue({ readOnly: !form.get('readOnly')?.value })"
+                      (keydown.space)="$event.preventDefault(); form.patchValue({ readOnly: !form.get('readOnly')?.value })"
                     ></div>
                   </label>
                   <label class="toggle-row">
@@ -371,6 +373,8 @@
                       role="switch"
                       tabindex="0"
                       (click)="form.patchValue({ approvalRequired: !form.get('approvalRequired')?.value })"
+                      (keydown.enter)="form.patchValue({ approvalRequired: !form.get('approvalRequired')?.value })"
+                      (keydown.space)="$event.preventDefault(); form.patchValue({ approvalRequired: !form.get('approvalRequired')?.value })"
                     ></div>
                   </label>
                 </div>

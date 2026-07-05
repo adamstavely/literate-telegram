@@ -59,8 +59,10 @@ async function upsertReceipt(
 router.get('/', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = req.user!.sub;
-    const page = parseInt(req.query['page'] as string ?? '0', 10) || 0;
-    const size = parseInt(req.query['size'] as string ?? '50', 10) || 50;
+    const page = Math.max(0, parseInt(req.query['page'] as string ?? '0', 10) || 0);
+    // Clamp page size so a caller can't request an unbounded window.
+    const rawSize = parseInt(req.query['size'] as string ?? '50', 10) || 50;
+    const size = Math.min(100, Math.max(1, rawSize));
     const from = page * size;
 
     const receipts = await loadReceipts(userId);
@@ -107,14 +109,15 @@ router.get('/', async (req: Request, res: Response, next: NextFunction): Promise
       .map((h) => ({ source: h._source, esId: h._id }))
       .filter((h): h is { source: Notification; esId: string } =>
         h.source !== undefined && h.esId !== undefined)
-      .map(({ source, esId }) => {
+      .map(({ source }) => {
         // For global notifications the shared doc's `read` is meaningless; the
         // per-user receipt is the source of truth. Own notifications use the doc.
+        // The internal ES document id (_esId) is deliberately not exposed.
         const isGlobal = source.userId === undefined || source.userId === null;
         const read = isGlobal
           ? (receipts.get(source.id)?.read ?? false)
           : source.read;
-        return { ...source, read, _esId: esId };
+        return { ...source, read };
       });
 
     // Re-sort in memory: unread first, then newest first, since read state for
@@ -166,9 +169,13 @@ router.put('/read-all', async (req: Request, res: Response, next: NextFunction):
       },
     });
 
+    // Don't resurrect globals the user already dismissed — marking all read must
+    // not clear an existing dismissal receipt.
+    const receipts = await loadReceipts(userId);
     const globalIds = globals.hits.hits
       .map((h) => h._source?.id)
-      .filter((id): id is string => typeof id === 'string');
+      .filter((id): id is string => typeof id === 'string')
+      .filter((id) => !receipts.get(id)?.dismissed);
 
     if (globalIds.length > 0) {
       const now = new Date().toISOString();

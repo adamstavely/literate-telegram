@@ -20,7 +20,7 @@
     </div>
   </aside>
 
-  <main class="docs-main" id="docs-content" tabindex="-1">
+  <div class="docs-main" id="docs-content" tabindex="-1" role="region" aria-label="Documentation article">
     @if (activeArticle(); as article) {
       <article class="docs-article fade-up" [attr.aria-label]="article.title">
         <div class="docs-eyebrow">Documentation</div>
@@ -86,7 +86,7 @@
         <p>Select an article from the sidebar to get started.</p>
       </div>
     }
-  </main>
+  </div>
 
   @if (tocHeadings().length >= 2) {
     <aside class="docs-toc" aria-label="On this page">

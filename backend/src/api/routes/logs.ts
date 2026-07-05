@@ -17,6 +17,37 @@ interface ClientLogEntry {
   userAgent: string;
 }
 
+const MAX_CONTEXT_KEYS = 20;
+const MAX_CONTEXT_VALUE_LEN = 500;
+
+/**
+ * Bound and flatten client-supplied context before it lands in the dynamically
+ * mapped `meta` object. Untrusted clients could otherwise explode the index
+ * mapping with unbounded keys or deeply nested values.
+ */
+function sanitizeLogContext(context: Record<string, unknown> | undefined): Record<string, unknown> {
+  if (!context || typeof context !== 'object') return {};
+  const out: Record<string, unknown> = {};
+  let count = 0;
+  for (const [key, value] of Object.entries(context)) {
+    if (count >= MAX_CONTEXT_KEYS) break;
+    if (key === 'stack') continue; // captured separately as a top-level field
+    if (value === null || typeof value === 'boolean' || typeof value === 'number') {
+      out[key] = value;
+    } else if (typeof value === 'string') {
+      out[key] = value.slice(0, MAX_CONTEXT_VALUE_LEN);
+    } else {
+      try {
+        out[key] = JSON.stringify(value).slice(0, MAX_CONTEXT_VALUE_LEN);
+      } catch {
+        out[key] = '[unserializable]';
+      }
+    }
+    count += 1;
+  }
+  return out;
+}
+
 router.post(
   '/',
   ingestRateLimiter,
@@ -57,7 +88,7 @@ router.post(
             meta: {
               url: entry.url,
               userAgent: entry.userAgent,
-              ...entry.context,
+              ...sanitizeLogContext(entry.context),
             },
           },
         ];

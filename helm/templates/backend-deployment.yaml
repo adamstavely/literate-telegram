@@ -66,18 +66,21 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.backend.envSecret }}
                   key: OIDC_JWKS_URI
+          # Readiness gates traffic on downstream availability (Elasticsearch).
           readinessProbe:
             httpGet:
-              path: /api/health
+              path: /api/health/ready
               port: http
             initialDelaySeconds: 10
             periodSeconds: 10
             failureThreshold: 3
             successThreshold: 1
             timeoutSeconds: 5
+          # Liveness only checks the process is up, so a transient ES outage
+          # cannot trigger a pod restart loop.
           livenessProbe:
             httpGet:
-              path: /api/health
+              path: /api/health/live
               port: http
             initialDelaySeconds: 30
             periodSeconds: 20

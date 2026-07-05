@@ -18,23 +18,23 @@
       </div>
       <div class="hero-meta" role="complementary" aria-label="Registry statistics">
         <div class="hero-stat">
-          <div class="n mono">{{ statCount('agent') | number }}</div>
+          <div class="n mono">{{ statsError() ? '—' : (statCount('agent') | number) }}</div>
           <div class="l"><app-icon name="agent" [size]="14" aria-hidden="true"></app-icon>agents</div>
         </div>
         <div class="hero-stat">
-          <div class="n mono">{{ statCount('server') | number }}</div>
+          <div class="n mono">{{ statsError() ? '—' : (statCount('server') | number) }}</div>
           <div class="l"><app-icon name="server" [size]="14" aria-hidden="true"></app-icon>servers</div>
         </div>
         <div class="hero-stat">
-          <div class="n mono">{{ statCount('api') | number }}</div>
+          <div class="n mono">{{ statsError() ? '—' : (statCount('api') | number) }}</div>
           <div class="l"><app-icon name="api" [size]="14" aria-hidden="true"></app-icon>APIs</div>
         </div>
         <div class="hero-stat">
-          <div class="n mono">{{ statCount('tool') | number }}</div>
+          <div class="n mono">{{ statsError() ? '—' : (statCount('tool') | number) }}</div>
           <div class="l"><app-icon name="tool" [size]="14" aria-hidden="true"></app-icon>tools</div>
         </div>
         <div class="hero-stat">
-          <div class="n mono">{{ statCount('skill') | number }}</div>
+          <div class="n mono">{{ statsError() ? '—' : (statCount('skill') | number) }}</div>
           <div class="l"><app-icon name="skill" [size]="14" aria-hidden="true"></app-icon>skills</div>
         </div>
       </div>
@@ -114,7 +114,7 @@
         </div>
       </aside>
 
-      <main id="main-content">
+      <div class="browse-results" role="region" aria-label="Registry results">
         @if (showFeaturedStrip() && featuredCollections().length > 0) {
           <section class="feat-collections" aria-label="Curated collections">
             <div class="feat-head">
@@ -279,7 +279,7 @@
             </nav>
           }
         }
-      </main>
+      </div>
     </div>
   </div>
 </div>

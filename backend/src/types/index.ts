@@ -4,6 +4,7 @@ export type TransportType = 'stdio' | 'http' | 'sse';
 export type AutonomyLevel = 'low' | 'medium' | 'high' | 'full';
 export type ApiStyle = 'REST' | 'GraphQL';
 export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
+export type Visibility = 'private' | 'org' | 'public';
 
 export interface ToolParam {
   name: string;
@@ -27,6 +28,10 @@ export interface BaseEntry {
   version?: string;
   createdAt: string;
   updatedAt: string;
+  /** Server-controlled: set from policy.defaultVisibility at submission. */
+  visibility?: Visibility;
+  /** Server-controlled: when the entry must be re-reviewed (republishAfterDays). */
+  reviewDueAt?: string;
 }
 
 export interface Tool extends BaseEntry {

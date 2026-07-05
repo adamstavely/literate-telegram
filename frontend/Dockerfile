@@ -19,8 +19,10 @@ RUN npm run build
 # ============================================================
 FROM nginx:1.25-alpine AS runner
 
-# Remove default nginx config and content
-RUN rm -rf /usr/share/nginx/html/* /etc/nginx/conf.d/*
+# Remove default nginx config and content. Install curl so the HEALTHCHECK
+# doesn't depend on wget being present in the base image.
+RUN rm -rf /usr/share/nginx/html/* /etc/nginx/conf.d/* \
+  && apk add --no-cache curl
 
 # Copy compiled Angular app
 COPY --from=builder /build/dist/interop-frontend/browser /usr/share/nginx/html
@@ -45,7 +47,7 @@ RUN chmod +x /docker-entrypoint.sh
 EXPOSE 80
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=3 \
-  CMD wget -qO- http://localhost:80/ || exit 1
+  CMD curl -fsS http://localhost:80/ || exit 1
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]

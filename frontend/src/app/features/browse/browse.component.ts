@@ -40,6 +40,7 @@ export class BrowseComponent implements OnInit {
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
   readonly stats = signal<RegistryStats | null>(null);
+  readonly statsError = signal(false);
   readonly featuredCollections = signal<Collection[]>([]);
 
   readonly searchQuery = signal('');
@@ -94,13 +95,19 @@ export class BrowseComponent implements OnInit {
   ngOnInit(): void {
     // Load stats
     this.registry.getStats().subscribe({
-      next: s => this.stats.set(s),
-      error: () => {},
+      next: s => {
+        this.stats.set(s);
+        this.statsError.set(false);
+      },
+      error: (err: unknown) => {
+        this.statsError.set(true);
+        console.error('Failed to load registry stats', err);
+      },
     });
 
     this.registry.getCollections().subscribe({
       next: cols => this.featuredCollections.set(cols.slice(0, 4)),
-      error: () => {},
+      error: (err: unknown) => console.error('Failed to load featured collections', err),
     });
 
     // Read initial params from URL
@@ -203,8 +210,9 @@ export class BrowseComponent implements OnInit {
     if (this.sortBy() !== 'installs') qp['sort'] = this.sortBy() ?? 'installs';
     if (this.currentPage() > 0) qp['page'] = this.currentPage();
 
+    // Navigating updates the URL, which the queryParams subscription reacts to
+    // by running the search. Don't also trigger it here — that double-fetches.
     void this.router.navigate([], { queryParams: qp });
-    this._triggerSearch();
   }
 
   private _triggerSearch(): void {
@@ -220,6 +228,7 @@ export class BrowseComponent implements OnInit {
     this.search$.next(params);
   }
 
+  /** Re-run the current search without changing filters (used by "Retry"). */
   retrySearch(): void {
     this.error.set(null);
     this._triggerSearch();

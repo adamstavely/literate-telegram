@@ -13,10 +13,10 @@ const clientOptions: ConstructorParameters<typeof Client>[0] = {
 };
 
 if (config.elasticsearch.caFingerprint) {
-  clientOptions.tls = {
-    ca: config.elasticsearch.caFingerprint,
-    rejectUnauthorized: true,
-  };
+  // This is a certificate fingerprint (SHA-256), not a PEM cert — it belongs in
+  // the dedicated caFingerprint option, not tls.ca.
+  clientOptions.caFingerprint = config.elasticsearch.caFingerprint;
+  clientOptions.tls = { rejectUnauthorized: true };
 }
 
 export const esClient = new Client(clientOptions);

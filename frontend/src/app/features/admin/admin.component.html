@@ -36,11 +36,13 @@
         class="tab"
         [class.on]="filter() === tab.id"
         role="tab"
+        [id]="'filter-tab-' + tab.id"
         [attr.aria-selected]="filter() === tab.id"
-        tabindex="0"
+        [attr.tabindex]="filter() === tab.id ? 0 : -1"
         (click)="setFilter(tab.id)"
         (keydown.enter)="setFilter(tab.id)"
         (keydown.space)="$event.preventDefault(); setFilter(tab.id)"
+        (keydown)="onFilterKeydown($event, tab.id)"
       >{{ tabLabel(tab) }}</div>
     }
   </div>
@@ -194,5 +196,49 @@
       ></app-icon>
     </span>
     <span><b>{{ toast()!.name }}</b> {{ toast()!.verdict }}</span>
+  </div>
+}
+
+@if (rejectDialog(); as rd) {
+  <div class="modal-overlay" (click)="cancelRejectDialog()">
+    <div
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-label]="rd.mode === 'changes' ? 'Request changes' : 'Reject submission'"
+      (click)="$event.stopPropagation()"
+      (keydown.escape)="cancelRejectDialog()"
+    >
+      <h2 class="modal-title">
+        {{ rd.mode === 'changes' ? 'Request changes' : 'Reject submission' }}
+      </h2>
+      <p class="modal-sub">{{ rd.entry.entry.name }}</p>
+      <label for="reject-reason" class="sr-only">
+        {{ rd.mode === 'changes' ? 'Describe the changes required' : 'Reason for rejection' }}
+      </label>
+      <textarea
+        id="reject-reason"
+        class="input"
+        rows="4"
+        autofocus
+        [ngModel]="rejectReason()"
+        (ngModelChange)="rejectReason.set($event)"
+        [attr.placeholder]="rd.mode === 'changes'
+          ? 'Describe the changes required (min 10 characters)'
+          : 'Reason for rejection (min 10 characters)'"
+        aria-describedby="reject-error"
+      ></textarea>
+      @if (rejectError()) {
+        <div id="reject-error" class="field-error" role="alert">{{ rejectError() }}</div>
+      }
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary btn-sm" (click)="cancelRejectDialog()">
+          Cancel
+        </button>
+        <button type="button" class="btn btn-primary btn-sm" (click)="confirmRejectDialog()">
+          {{ rd.mode === 'changes' ? 'Request changes' : 'Reject' }}
+        </button>
+      </div>
+    </div>
   </div>
 }

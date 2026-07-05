@@ -14,10 +14,39 @@ import {
   EntryType,
 } from '../../types/index.js';
 import { logger } from '../../logger/logger.js';
-import { getPolicy, assessRiskWithPolicy, applySubmissionPolicy } from '../../services/policy.js';
+import { getPolicy, assessRiskWithPolicy, applySubmissionPolicy, reviewDueAt } from '../../services/policy.js';
 import { sanitizeSubmission } from '../../services/entry-dto.js';
 
 const router = Router();
+
+/**
+ * True if a live registry entry or an in-flight pending submission already uses
+ * this type+slug. GET /:type/:slug returns only the first hit, and auto-approve
+ * can publish directly, so duplicates must be rejected before they are created.
+ */
+async function slugTaken(type: string, slug: string): Promise<boolean> {
+  const [registry, pending] = await Promise.all([
+    esClient.count({
+      index: INDEX_NAMES.REGISTRY,
+      query: { bool: { filter: [{ term: { type } }, { term: { slug } }] } },
+    }),
+    esClient.count({
+      index: INDEX_NAMES.PENDING,
+      query: {
+        bool: {
+          filter: [
+            { term: { status: 'pending' } },
+            // entry.* is dynamically mapped (text + keyword); match the exact
+            // keyword sub-field so hyphenated slugs aren't tokenized.
+            { term: { 'entry.type.keyword': type } },
+            { term: { 'entry.slug.keyword': slug } },
+          ],
+        },
+      },
+    }),
+  ]);
+  return registry.count > 0 || pending.count > 0;
+}
 
 function buildSortClause(sort?: string): Array<Record<string, { order: SortOrder }>> {
   switch (sort) {
@@ -268,12 +297,41 @@ router.post(
       const { risk, flags: riskFlags } = assessRiskWithPolicy(partialEntry, policyDoc);
       const flags = [...new Set([...riskFlags, ...decision.flags])];
 
+      // Reject-action rules fail closed at submission — don't waste moderator
+      // time queuing an entry that can never be approved.
+      if (decision.rejectRules.length > 0) {
+        res.status(422).json({
+          error: 'Policy Violation',
+          message: 'Submission violates a reject-level policy rule and was not accepted.',
+          blockedBy: decision.rejectRules,
+          risk,
+          correlationId: req.id,
+        });
+        return;
+      }
+
+      // Reject duplicate type+slug before creating anything.
+      if (partialEntry.type && partialEntry.slug && (await slugTaken(partialEntry.type, partialEntry.slug))) {
+        res.status(409).json({
+          error: 'Conflict',
+          message: `An entry with slug "${partialEntry.slug}" already exists for type "${partialEntry.type}".`,
+          correlationId: req.id,
+        });
+        return;
+      }
+
       if (decision.autoApprove) {
         // Policy allows immediate publication — skip the review queue.
+        const dueAt = reviewDueAt(policyDoc, now);
         await esClient.index({
           index: INDEX_NAMES.REGISTRY,
           id: entryId,
-          document: { ...partialEntry, verified: true, updatedAt: now },
+          document: {
+            ...partialEntry,
+            verified: true,
+            updatedAt: now,
+            ...(dueAt ? { reviewDueAt: dueAt } : {}),
+          },
           refresh: 'wait_for',
         });
 
@@ -289,12 +347,21 @@ router.post(
           approvedAt: now,
         };
 
-        await esClient.index({
-          index: INDEX_NAMES.PENDING,
-          id: autoApproved.id,
-          document: autoApproved,
-          refresh: 'wait_for',
-        });
+        try {
+          await esClient.index({
+            index: INDEX_NAMES.PENDING,
+            id: autoApproved.id,
+            document: autoApproved,
+            refresh: 'wait_for',
+          });
+        } catch (indexErr) {
+          // Compensate: the entry is already live but we failed to record the
+          // approval. Roll the registry write back so the two stores don't drift.
+          await esClient
+            .delete({ index: INDEX_NAMES.REGISTRY, id: entryId, refresh: 'wait_for' })
+            .catch(() => undefined);
+          throw indexErr;
+        }
 
         await auditAction(req, 'AUTO_APPROVE_ENTRY', autoApproved.id, {
           entryId,

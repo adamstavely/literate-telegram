@@ -47,9 +47,11 @@
             <app-icon [name]="added() ? 'check' : 'install'" [size]="14"></app-icon>
             {{ added() ? 'Stack installed' : 'Install stack' }}
           </button>
-          <button class="btn btn-secondary btn-md" type="button" style="width: 100%; margin-top: 8px" (click)="reviewGovernance()">
-            <app-icon name="shield" [size]="14"></app-icon> Review governance
-          </button>
+          @if (isAdmin()) {
+            <button class="btn btn-secondary btn-md" type="button" style="width: 100%; margin-top: 8px" (click)="reviewGovernance()">
+              <app-icon name="shield" [size]="14"></app-icon> Review governance
+            </button>
+          }
         </div>
       </div>
     </header>

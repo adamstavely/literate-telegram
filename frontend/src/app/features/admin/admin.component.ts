@@ -7,6 +7,7 @@ import {
   DestroyRef,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RegistryService } from '../../core/services/registry.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
@@ -43,7 +44,7 @@ interface KpiCard {
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [RouterLink, IconComponent, TypeBadgeComponent],
+  imports: [RouterLink, FormsModule, IconComponent, TypeBadgeComponent],
   templateUrl: './admin.component.html',
 })
 export class AdminComponent implements OnInit {
@@ -58,6 +59,11 @@ export class AdminComponent implements OnInit {
   readonly toast = signal<Toast | null>(null);
   readonly registryStats = signal<AppStats | null>(null);
   readonly pendingStats = signal<PendingStats | null>(null);
+
+  /** Accessible reject / request-changes dialog state (replaces window.prompt). */
+  readonly rejectDialog = signal<{ entry: PendingEntry; mode: 'reject' | 'changes' } | null>(null);
+  readonly rejectReason = signal('');
+  readonly rejectError = signal<string | null>(null);
 
   readonly filteredItems = computed(() => {
     const filter = this.filter();
@@ -144,6 +150,40 @@ export class AdminComponent implements OnInit {
 
   setFilter(filter: QueueFilter): void {
     this.filter.set(filter);
+  }
+
+  /** Roving-tabindex arrow-key navigation for the queue filter tablist. */
+  onFilterKeydown(event: KeyboardEvent, currentId: QueueFilter): void {
+    const tabs = this.filterTabs;
+    const idx = tabs.findIndex((t) => t.id === currentId);
+    if (idx < 0) return;
+
+    let next = idx;
+    switch (event.key) {
+      case 'ArrowRight':
+      case 'ArrowDown':
+        next = (idx + 1) % tabs.length;
+        break;
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        next = (idx - 1 + tabs.length) % tabs.length;
+        break;
+      case 'Home':
+        next = 0;
+        break;
+      case 'End':
+        next = tabs.length - 1;
+        break;
+      default:
+        return;
+    }
+
+    event.preventDefault();
+    const nextTab = tabs[next];
+    if (nextTab) {
+      this.setFilter(nextTab.id);
+      document.getElementById(`filter-tab-${nextTab.id}`)?.focus();
+    }
   }
 
   tabLabel(tab: { id: QueueFilter; label: string }): string {
@@ -240,19 +280,35 @@ export class AdminComponent implements OnInit {
   }
 
   requestChanges(entry: PendingEntry): void {
-    const details = window.prompt(
-      'Describe the changes required (min 10 characters):',
-    );
-    if (!details || details.trim().length < 10) return;
-    this.rejectEntry(entry, `Changes requested: ${details.trim()}`, 'changes requested');
+    this.openRejectDialog(entry, 'changes');
   }
 
   reject(entry: PendingEntry): void {
-    const reason = window.prompt(
-      'Reason for rejection (min 10 characters):',
-    );
-    if (!reason || reason.trim().length < 10) return;
-    this.rejectEntry(entry, reason.trim(), 'rejected');
+    this.openRejectDialog(entry, 'reject');
+  }
+
+  private openRejectDialog(entry: PendingEntry, mode: 'reject' | 'changes'): void {
+    this.rejectReason.set('');
+    this.rejectError.set(null);
+    this.rejectDialog.set({ entry, mode });
+  }
+
+  cancelRejectDialog(): void {
+    this.rejectDialog.set(null);
+  }
+
+  confirmRejectDialog(): void {
+    const ctx = this.rejectDialog();
+    if (!ctx) return;
+    const text = this.rejectReason().trim();
+    if (text.length < 10) {
+      this.rejectError.set('Please enter at least 10 characters.');
+      return;
+    }
+    const reason = ctx.mode === 'changes' ? `Changes requested: ${text}` : text;
+    const verdict = ctx.mode === 'changes' ? 'changes requested' : 'rejected';
+    this.rejectDialog.set(null);
+    this.rejectEntry(ctx.entry, reason, verdict);
   }
 
   private rejectEntry(entry: PendingEntry, reason: string, verdict: string): void {
