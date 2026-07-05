@@ -3,6 +3,8 @@ import { body, validationResult } from 'express-validator';
 import { esClient } from '../../elasticsearch/client.js';
 import { INDEX_NAMES } from '../../elasticsearch/indices.js';
 import { optionalAuth } from '../../middleware/auth.js';
+import { ingestRateLimiter } from '../../middleware/rate-limit.js';
+import { logger } from '../../logger/logger.js';
 
 const router = Router();
 
@@ -17,6 +19,7 @@ interface ClientLogEntry {
 
 router.post(
   '/',
+  ingestRateLimiter,
   optionalAuth,
   [
     body('entries').isArray({ min: 1, max: 50 }),
@@ -60,9 +63,22 @@ router.post(
         ];
       });
 
-      await esClient.bulk({ refresh: false, body });
+      const bulkResponse = await esClient.bulk({ refresh: false, body });
 
-      res.status(202).json({ accepted: entries.length });
+      let failed = 0;
+      if (bulkResponse.errors) {
+        for (const item of bulkResponse.items) {
+          const status = item.index?.status ?? item.create?.status ?? 200;
+          if (status >= 400) failed += 1;
+        }
+        logger.warn('Client log ingestion had item failures', {
+          correlationId: req.id,
+          failed,
+          total: entries.length,
+        });
+      }
+
+      res.status(202).json({ accepted: entries.length - failed, failed });
     } catch (err) {
       next(err);
     }

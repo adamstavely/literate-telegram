@@ -15,6 +15,7 @@ import {
 } from '../../types/index.js';
 import { logger } from '../../logger/logger.js';
 import { assessEntryRisk } from '../../services/policy.js';
+import { sanitizeSubmission } from '../../services/entry-dto.js';
 
 const router = Router();
 
@@ -248,8 +249,11 @@ router.post(
       const now = new Date().toISOString();
       const entryId = uuidv4();
 
+      // Build the entry from an explicit allowlist rather than spreading the
+      // raw body — otherwise unvalidated/nested fields (verified, rating,
+      // arbitrary keys) leak through into the dynamically-mapped pending index.
       const partialEntry: Partial<RegistryEntry> = {
-        ...(req.body as Partial<RegistryEntry>),
+        ...sanitizeSubmission(req.body as Record<string, unknown>),
         id: entryId,
         verified: false,
         installs: 0,

@@ -5,6 +5,7 @@ const PENDING_INDEX = 'interop-pending';
 const AUDIT_INDEX = 'interop-audit';
 const LOGS_INDEX = 'interop-logs';
 const NOTIFICATIONS_INDEX = 'interop-notifications';
+const NOTIFICATION_READS_INDEX = 'interop-notification-reads';
 const POLICY_INDEX = 'interop-policy';
 
 export const INDEX_NAMES = {
@@ -13,6 +14,7 @@ export const INDEX_NAMES = {
   AUDIT: AUDIT_INDEX,
   LOGS: LOGS_INDEX,
   NOTIFICATIONS: NOTIFICATIONS_INDEX,
+  NOTIFICATION_READS: NOTIFICATION_READS_INDEX,
   POLICY: POLICY_INDEX,
 } as const;
 
@@ -153,6 +155,8 @@ async function createPendingIndex(): Promise<void> {
         approvedAt: { type: 'date' },
         rejectedBy: { type: 'keyword' },
         rejectedAt: { type: 'date' },
+        approvals: { type: 'keyword' },
+        policyOverride: { type: 'boolean' },
         entry: {
           type: 'object',
           dynamic: true,
@@ -261,6 +265,31 @@ async function createNotificationsIndex(): Promise<void> {
   });
 }
 
+async function createNotificationReadsIndex(): Promise<void> {
+  if (await indexExists(NOTIFICATION_READS_INDEX)) return;
+
+  // Per-user read/dismissal receipts. Global notifications (no userId) are shared
+  // documents, so their read state must live here, keyed by user, instead of
+  // mutating the shared notification. Doc id is `${userId}::${notificationId}`.
+  await esClient.indices.create({
+    index: NOTIFICATION_READS_INDEX,
+    mappings: {
+      dynamic: false,
+      properties: {
+        userId: { type: 'keyword' },
+        notificationId: { type: 'keyword' },
+        read: { type: 'boolean' },
+        dismissed: { type: 'boolean' },
+        updatedAt: { type: 'date' },
+      },
+    },
+    settings: {
+      number_of_shards: 1,
+      number_of_replicas: 1,
+    },
+  });
+}
+
 async function createPolicyIndex(): Promise<void> {
   if (await indexExists(POLICY_INDEX)) return;
 
@@ -291,6 +320,7 @@ export async function setupIndices(): Promise<void> {
     createAuditIndex(),
     createLogsIndex(),
     createNotificationsIndex(),
+    createNotificationReadsIndex(),
     createPolicyIndex(),
   ]);
 }

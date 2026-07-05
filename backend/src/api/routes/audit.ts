@@ -4,7 +4,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { esClient } from '../../elasticsearch/client.js';
 import { INDEX_NAMES } from '../../elasticsearch/indices.js';
 import { optionalAuth, requireAuth, requireAdmin } from '../../middleware/auth.js';
+import { ingestRateLimiter } from '../../middleware/rate-limit.js';
 import { AuditEvent } from '../../types/index.js';
+import { logger } from '../../logger/logger.js';
 
 const router = Router();
 
@@ -29,6 +31,7 @@ function getClientIp(req: Request): string {
 // POST /api/audit/client — ingest batched client-side audit events
 router.post(
   '/client',
+  ingestRateLimiter,
   optionalAuth,
   [
     body('events').isArray({ min: 1, max: 50 }),
@@ -69,9 +72,22 @@ router.post(
         return [{ index: { _index: INDEX_NAMES.AUDIT } }, doc];
       });
 
-      await esClient.bulk({ refresh: false, body });
+      const bulkResponse = await esClient.bulk({ refresh: false, body });
 
-      res.status(202).json({ accepted: events.length });
+      let failed = 0;
+      if (bulkResponse.errors) {
+        for (const item of bulkResponse.items) {
+          const status = item.index?.status ?? item.create?.status ?? 200;
+          if (status >= 400) failed += 1;
+        }
+        logger.warn('Client audit ingestion had item failures', {
+          correlationId: req.id,
+          failed,
+          total: events.length,
+        });
+      }
+
+      res.status(202).json({ accepted: events.length - failed, failed });
     } catch (err) {
       next(err);
     }

@@ -85,6 +85,10 @@ export interface PendingEntry {
   approvedAt?: string;
   rejectedBy?: string;
   rejectedAt?: string;
+  /** Distinct approver subs recorded so far (for two-approver enforcement). */
+  approvals?: string[];
+  /** Whether an admin overrode a policy block to approve. */
+  policyOverride?: boolean;
 }
 
 export interface AuditEvent {
@@ -110,6 +114,19 @@ export interface Notification {
   read: boolean;
   createdAt: string;
   link?: string;
+}
+
+/**
+ * Per-user read/dismissal receipt for a notification. Used so that read state on
+ * shared global notifications (those without a userId) is tracked per user
+ * instead of mutating the shared document.
+ */
+export interface NotificationRead {
+  userId: string;
+  notificationId: string;
+  read: boolean;
+  dismissed: boolean;
+  updatedAt: string;
 }
 
 export interface SearchParams {

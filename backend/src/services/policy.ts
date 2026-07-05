@@ -182,7 +182,7 @@ export async function savePolicy(
 export function assessRiskWithPolicy(
   entry: Partial<RegistryEntry>,
   doc: PolicyDocument,
-): { risk: RiskLevel; flags: string[] } {
+): { risk: RiskLevel; flags: string[]; firedRules: PolicyRule[] } {
   const flags: string[] = [];
   let riskScore = checkPolicyConstraints(entry, doc, flags);
 
@@ -201,11 +201,13 @@ export function assessRiskWithPolicy(
     flags.push('no-auth');
   }
 
+  const firedRules: PolicyRule[] = [];
   for (const rule of doc.rules) {
     const flag = evaluateRule(rule, entry, doc);
     if (flag) {
       flags.push(flag);
       riskScore += severityScore(rule.severity, rule.action);
+      firedRules.push(rule);
     }
   }
 
@@ -215,12 +217,53 @@ export function assessRiskWithPolicy(
   else if (riskScore >= 1) risk = 'medium';
   else risk = 'low';
 
-  return { risk, flags: [...new Set(flags)] };
+  return { risk, flags: [...new Set(flags)], firedRules };
 }
 
 export async function assessEntryRisk(
   entry: Partial<RegistryEntry>,
 ): Promise<{ risk: RiskLevel; flags: string[] }> {
   const doc = await getPolicy();
-  return assessRiskWithPolicy(entry, doc);
+  const { risk, flags } = assessRiskWithPolicy(entry, doc);
+  return { risk, flags };
+}
+
+/**
+ * Governance decision for approving a pending entry against the active policy.
+ *
+ * The Policy page toggles and per-rule actions are meaningless unless something
+ * reads them at approval time. This turns them into enforcement:
+ *  - a fired rule with action 'reject' hard-blocks approval,
+ *  - a fired rule with action 'block' (or quarantineHighRisk on a high/critical
+ *    entry) blocks approval unless an admin explicitly overrides,
+ *  - twoApproversHighRisk requires two distinct approvers on high/critical risk.
+ */
+export interface ApprovalEnforcement {
+  risk: RiskLevel;
+  flags: string[];
+  /** Rule names whose action is 'reject' and which fired — approval is forbidden. */
+  rejectRules: string[];
+  /** Rule names whose action is 'block' and which fired — approval needs override. */
+  blockRules: string[];
+  /** High/critical entry while quarantineHighRisk is on — approval needs override. */
+  quarantined: boolean;
+  /** High/critical entry while twoApproversHighRisk is on — needs a second approver. */
+  requiresTwoApprovers: boolean;
+}
+
+export function evaluatePolicyEnforcement(
+  entry: Partial<RegistryEntry>,
+  doc: PolicyDocument,
+): ApprovalEnforcement {
+  const { risk, flags, firedRules } = assessRiskWithPolicy(entry, doc);
+  const highRisk = risk === 'high' || risk === 'critical';
+
+  return {
+    risk,
+    flags,
+    rejectRules: firedRules.filter((r) => r.action === 'reject').map((r) => r.name),
+    blockRules: firedRules.filter((r) => r.action === 'block').map((r) => r.name),
+    quarantined: doc.policy.quarantineHighRisk === true && highRisk,
+    requiresTwoApprovers: doc.policy.twoApproversHighRisk === true && highRisk,
+  };
 }

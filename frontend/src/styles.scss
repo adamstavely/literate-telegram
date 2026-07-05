@@ -1,4 +1,7 @@
-@import '../../project/styles.css';
+/* Vendored copy of project/styles.css. The Docker build context is frontend/ only,
+   so the canonical stylesheet outside this directory is not reachable at image build
+   time. Keep src/vendor/interop.css in sync with project/styles.css. */
+@import './vendor/interop.css';
 
 /* Angular-specific additions not in the canonical stylesheet */
 :root {

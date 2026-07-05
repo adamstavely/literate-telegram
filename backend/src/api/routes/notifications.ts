@@ -2,13 +2,58 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { esClient } from '../../elasticsearch/client.js';
 import { INDEX_NAMES } from '../../elasticsearch/indices.js';
 import { requireAuth } from '../../middleware/auth.js';
-import { Notification } from '../../types/index.js';
+import { Notification, NotificationRead } from '../../types/index.js';
 import { logger } from '../../logger/logger.js';
 
 const router = Router();
 
 // All routes require authentication
 router.use(requireAuth);
+
+function receiptId(userId: string, notificationId: string): string {
+  return `${userId}::${notificationId}`;
+}
+
+/**
+ * Load this user's read/dismissal receipts. Receipts only exist for global
+ * notifications (shared docs with no userId); a user's own notifications carry
+ * their read state on the document itself.
+ */
+async function loadReceipts(userId: string): Promise<Map<string, NotificationRead>> {
+  const response = await esClient.search<NotificationRead>({
+    index: INDEX_NAMES.NOTIFICATION_READS,
+    size: 1000,
+    query: { term: { userId } },
+  });
+
+  const map = new Map<string, NotificationRead>();
+  for (const hit of response.hits.hits) {
+    const src = hit._source;
+    if (src) map.set(src.notificationId, src);
+  }
+  return map;
+}
+
+async function upsertReceipt(
+  userId: string,
+  notificationId: string,
+  patch: Partial<Pick<NotificationRead, 'read' | 'dismissed'>>,
+): Promise<void> {
+  const now = new Date().toISOString();
+  await esClient.update({
+    index: INDEX_NAMES.NOTIFICATION_READS,
+    id: receiptId(userId, notificationId),
+    doc: {
+      userId,
+      notificationId,
+      read: patch.read ?? false,
+      dismissed: patch.dismissed ?? false,
+      updatedAt: now,
+    },
+    doc_as_upsert: true,
+    refresh: 'wait_for',
+  });
+}
 
 // GET /api/notifications - get user's notifications
 router.get('/', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -18,12 +63,23 @@ router.get('/', async (req: Request, res: Response, next: NextFunction): Promise
     const size = parseInt(req.query['size'] as string ?? '50', 10) || 50;
     const from = page * size;
 
+    const receipts = await loadReceipts(userId);
+    const dismissedIds = [...receipts.values()]
+      .filter((r) => r.dismissed)
+      .map((r) => r.notificationId);
+
+    const mustNot: Record<string, unknown>[] = [];
+    if (dismissedIds.length > 0) {
+      // Hide globals this user has dismissed (own notifications are deleted, not
+      // receipt-dismissed, so this only affects shared globals).
+      mustNot.push({ terms: { id: dismissedIds } });
+    }
+
     const response = await esClient.search<Notification>({
       index: INDEX_NAMES.NOTIFICATIONS,
       from,
       size,
       sort: [
-        { read: { order: 'asc' } },   // unread first
         { createdAt: { order: 'desc' } },
       ],
       query: {
@@ -38,6 +94,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction): Promise
             },
           ],
           minimum_should_match: 1,
+          ...(mustNot.length > 0 ? { must_not: mustNot } : {}),
         },
       },
     });
@@ -47,8 +104,25 @@ router.get('/', async (req: Request, res: Response, next: NextFunction): Promise
       : (response.hits.total?.value ?? 0);
 
     const hits = response.hits.hits
-      .map((h) => ({ ...h._source, _esId: h._id }))
-      .filter((s): s is Notification & { _esId: string } => s._esId !== undefined);
+      .map((h) => ({ source: h._source, esId: h._id }))
+      .filter((h): h is { source: Notification; esId: string } =>
+        h.source !== undefined && h.esId !== undefined)
+      .map(({ source, esId }) => {
+        // For global notifications the shared doc's `read` is meaningless; the
+        // per-user receipt is the source of truth. Own notifications use the doc.
+        const isGlobal = source.userId === undefined || source.userId === null;
+        const read = isGlobal
+          ? (receipts.get(source.id)?.read ?? false)
+          : source.read;
+        return { ...source, read, _esId: esId };
+      });
+
+    // Re-sort in memory: unread first, then newest first, since read state for
+    // globals is overlaid after the ES query.
+    hits.sort((a, b) => {
+      if (a.read !== b.read) return a.read ? 1 : -1;
+      return b.createdAt.localeCompare(a.createdAt);
+    });
 
     res.json({ hits, total, page, size });
   } catch (err) {
@@ -61,6 +135,7 @@ router.put('/read-all', async (req: Request, res: Response, next: NextFunction):
   try {
     const userId = req.user!.sub;
 
+    // Mark this user's own notifications read by mutating their documents.
     await esClient.updateByQuery({
       index: INDEX_NAMES.NOTIFICATIONS,
       refresh: true,
@@ -68,15 +143,7 @@ router.put('/read-all', async (req: Request, res: Response, next: NextFunction):
         bool: {
           filter: [
             { term: { read: false } },
-            {
-              bool: {
-                should: [
-                  { term: { userId } },
-                  { bool: { must_not: [{ exists: { field: 'userId' } }] } },
-                ],
-                minimum_should_match: 1,
-              },
-            },
+            { term: { userId } },
           ],
         },
       },
@@ -85,6 +152,35 @@ router.put('/read-all', async (req: Request, res: Response, next: NextFunction):
         lang: 'painless',
       },
     });
+
+    // Mark global notifications read via per-user receipts, never by mutating
+    // the shared documents (which would clobber every other user's state).
+    const globals = await esClient.search<Notification>({
+      index: INDEX_NAMES.NOTIFICATIONS,
+      size: 1000,
+      _source: ['id'],
+      query: {
+        bool: {
+          must_not: [{ exists: { field: 'userId' } }],
+        },
+      },
+    });
+
+    const globalIds = globals.hits.hits
+      .map((h) => h._source?.id)
+      .filter((id): id is string => typeof id === 'string');
+
+    if (globalIds.length > 0) {
+      const now = new Date().toISOString();
+      const body = globalIds.flatMap((notificationId) => [
+        { update: { _index: INDEX_NAMES.NOTIFICATION_READS, _id: receiptId(userId, notificationId) } },
+        {
+          doc: { userId, notificationId, read: true, dismissed: false, updatedAt: now },
+          doc_as_upsert: true,
+        },
+      ]);
+      await esClient.bulk({ refresh: true, body });
+    }
 
     logger.info('All notifications marked as read', {
       correlationId: req.id,
@@ -104,7 +200,7 @@ router.put('/:id/read', async (req: Request, res: Response, next: NextFunction):
   try {
     const userId = req.user!.sub;
 
-    // Find the notification
+    // Find the notification (own or global)
     const searchResponse = await esClient.search<Notification>({
       index: INDEX_NAMES.NOTIFICATIONS,
       size: 1,
@@ -121,7 +217,7 @@ router.put('/:id/read', async (req: Request, res: Response, next: NextFunction):
     });
 
     const hit = searchResponse.hits.hits[0];
-    if (!hit) {
+    if (!hit?._source || !hit._id) {
       res.status(404).json({
         error: 'Not Found',
         message: `Notification not found: ${id}`,
@@ -130,17 +226,18 @@ router.put('/:id/read', async (req: Request, res: Response, next: NextFunction):
       return;
     }
 
-    if (!hit._id) {
-      res.status(500).json({ error: 'Internal Server Error', message: 'Missing document ID', correlationId: req.id });
-      return;
+    const isGlobal = hit._source.userId === undefined || hit._source.userId === null;
+    if (isGlobal) {
+      // Per-user receipt; never mutate the shared global document.
+      await upsertReceipt(userId, id, { read: true });
+    } else {
+      await esClient.update({
+        index: INDEX_NAMES.NOTIFICATIONS,
+        id: hit._id,
+        doc: { read: true },
+        refresh: 'wait_for',
+      });
     }
-
-    await esClient.update({
-      index: INDEX_NAMES.NOTIFICATIONS,
-      id: hit._id,
-      doc: { read: true },
-      refresh: 'wait_for',
-    });
 
     res.json({ id, read: true });
   } catch (err) {
@@ -171,7 +268,7 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction): P
     });
 
     const hit = searchResponse.hits.hits[0];
-    if (!hit) {
+    if (!hit?._source || !hit._id) {
       res.status(404).json({
         error: 'Not Found',
         message: `Notification not found: ${id}`,
@@ -180,21 +277,23 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction): P
       return;
     }
 
-    if (!hit._id) {
-      res.status(500).json({ error: 'Internal Server Error', message: 'Missing document ID', correlationId: req.id });
-      return;
+    const isGlobal = hit._source.userId === undefined || hit._source.userId === null;
+    if (isGlobal) {
+      // Dismiss for this user only via a receipt; keep the shared doc for others.
+      await upsertReceipt(userId, id, { dismissed: true, read: true });
+    } else {
+      await esClient.delete({
+        index: INDEX_NAMES.NOTIFICATIONS,
+        id: hit._id,
+        refresh: 'wait_for',
+      });
     }
-
-    await esClient.delete({
-      index: INDEX_NAMES.NOTIFICATIONS,
-      id: hit._id,
-      refresh: 'wait_for',
-    });
 
     logger.info('Notification dismissed', {
       correlationId: req.id,
       userId,
       notificationId: id,
+      global: isGlobal,
     });
 
     res.status(204).send();
