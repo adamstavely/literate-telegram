@@ -64,6 +64,17 @@ export class RegistryService {
       .pipe(retry({ count: 1, delay: 1000, resetOnSuccess: true }));
   }
 
+  createCollection(payload: {
+    title: string;
+    desc: string;
+    blurb?: string;
+    icon: string;
+    accent: string;
+    members: { kind: string; id: string }[];
+  }): Observable<Collection> {
+    return this.http.post<Collection>(`${this.base}/collections`, payload);
+  }
+
   submitEntry(entry: Partial<RegistryEntry>): Observable<{ id: string }> {
     return this.http.post<{ id: string }>(`${this.base}/entries`, entry);
   }

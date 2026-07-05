@@ -375,7 +375,16 @@ const apis: Api[] = [
     version: '2024-04-10', createdAt: PAST(500), updatedAt: PAST(2),
     style: 'REST',
     endpoint: 'https://api.stripe.com',
+    baseUrl: 'https://api.stripe.com/v1',
+    auth: 'API key',
     wrappedBy: 'stripe',
+    endpoints: [
+      { method: 'POST', path: '/charges', summary: 'Create a charge against a customer or source.' },
+      { method: 'GET', path: '/customers/:id', summary: 'Retrieve a customer and their default source.' },
+      { method: 'POST', path: '/refunds', summary: 'Refund a charge in full or in part.' },
+      { method: 'GET', path: '/subscriptions', summary: 'List subscriptions, filterable by status.' },
+      { method: 'POST', path: '/payouts', summary: 'Pay out an available balance to a bank account.' },
+    ],
   },
   {
     id: uuidv4(), type: 'api', name: 'GitHub REST API', slug: 'github-rest',
@@ -386,7 +395,16 @@ const apis: Api[] = [
     version: '2022-11-28', createdAt: PAST(1000), updatedAt: PAST(1),
     style: 'REST',
     endpoint: 'https://api.github.com',
+    baseUrl: 'https://api.github.com',
+    auth: 'OAuth 2.1',
     wrappedBy: 'github',
+    endpoints: [
+      { method: 'GET', path: '/repos/:owner/:repo', summary: "Fetch a repository's metadata." },
+      { method: 'POST', path: '/repos/:owner/:repo/issues', summary: 'Open a new issue.' },
+      { method: 'GET', path: '/repos/:owner/:repo/pulls/:n', summary: 'Get a pull request with its diff stats.' },
+      { method: 'PUT', path: '/repos/:owner/:repo/pulls/:n/merge', summary: 'Merge a pull request.' },
+      { method: 'GET', path: '/search/code', summary: 'Search code across repositories.' },
+    ],
   },
   {
     id: uuidv4(), type: 'api', name: 'Linear GraphQL', slug: 'linear-graphql',
@@ -397,7 +415,16 @@ const apis: Api[] = [
     version: '1.0.0', createdAt: PAST(300), updatedAt: PAST(5),
     style: 'GraphQL',
     endpoint: 'https://api.linear.app/graphql',
+    baseUrl: 'https://api.linear.app/graphql',
+    auth: 'OAuth 2.1',
     wrappedBy: 'linear',
+    endpoints: [
+      { method: 'QUERY', path: 'issue(id)', summary: 'Fetch an issue with nested project and assignee.' },
+      { method: 'QUERY', path: 'issues(filter)', summary: 'List issues matching a structured filter.' },
+      { method: 'MUTATION', path: 'issueCreate', summary: 'Create an issue in a team.' },
+      { method: 'MUTATION', path: 'issueUpdate', summary: 'Update state, assignee, or estimate.' },
+      { method: 'QUERY', path: 'cycles', summary: 'List cycles for a team with progress.' },
+    ],
   },
   {
     id: uuidv4(), type: 'api', name: 'Twilio API', slug: 'twilio-api',
@@ -408,6 +435,14 @@ const apis: Api[] = [
     version: '2010-04-01', createdAt: PAST(600), updatedAt: PAST(10),
     style: 'REST',
     endpoint: 'https://api.twilio.com',
+    baseUrl: 'https://api.twilio.com/2010-04-01',
+    auth: 'API key',
+    endpoints: [
+      { method: 'POST', path: '/Messages', summary: 'Send an SMS or MMS message.' },
+      { method: 'POST', path: '/Calls', summary: 'Place an outbound phone call.' },
+      { method: 'GET', path: '/Messages/:sid', summary: 'Fetch the status of a sent message.' },
+      { method: 'GET', path: '/IncomingPhoneNumbers', summary: 'List the numbers on the account.' },
+    ],
   },
   {
     id: uuidv4(), type: 'api', name: 'OpenWeather API', slug: 'openweather-api',
@@ -418,6 +453,13 @@ const apis: Api[] = [
     version: '3.0', createdAt: PAST(400), updatedAt: PAST(30),
     style: 'REST',
     endpoint: 'https://api.openweathermap.org',
+    baseUrl: 'https://api.openweathermap.org/data/3.0',
+    auth: 'API key',
+    endpoints: [
+      { method: 'GET', path: '/onecall', summary: 'Current, hourly, and daily forecast for a point.' },
+      { method: 'GET', path: '/weather', summary: 'Current conditions for coordinates.' },
+      { method: 'GET', path: '/forecast', summary: '5-day / 3-hour forecast.' },
+    ],
   },
 ];
 

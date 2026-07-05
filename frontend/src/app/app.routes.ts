@@ -42,6 +42,13 @@ export const routes: Routes = [
     title: 'Collections — Interop',
   },
   {
+    path: 'collections/new',
+    loadComponent: () =>
+      import('./features/collections/collection-create.component').then(m => m.CollectionCreateComponent),
+    title: 'New collection — Interop',
+    canActivate: [authGuard],
+  },
+  {
     path: 'collections/:id',
     loadComponent: () =>
       import('./features/collections/collection-detail.component').then(m => m.CollectionDetailComponent),

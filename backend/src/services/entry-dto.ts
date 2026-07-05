@@ -166,6 +166,20 @@ export function sanitizeSubmission(body: RawBody): Partial<RegistryEntry> {
       if (endpoint !== undefined) entry['endpoint'] = endpoint;
       const wrappedBy = str(body['wrappedBy']);
       if (wrappedBy !== undefined) entry['wrappedBy'] = wrappedBy;
+      const baseUrl = str(body['baseUrl']);
+      if (baseUrl !== undefined) entry['baseUrl'] = baseUrl;
+      const auth = str(body['auth']);
+      if (auth !== undefined) entry['auth'] = auth;
+      if (Array.isArray(body['endpoints'])) {
+        entry['endpoints'] = body['endpoints'].map((raw) => {
+          const e = (raw ?? {}) as RawBody;
+          return {
+            method: (str(e['method']) ?? 'GET').toUpperCase(),
+            path: str(e['path']) ?? '',
+            summary: str(e['summary']) ?? '',
+          };
+        });
+      }
       return entry as Partial<RegistryEntry>;
     }
 

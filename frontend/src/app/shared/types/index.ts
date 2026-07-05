@@ -65,11 +65,20 @@ export interface Agent extends BaseEntry {
   skills: string[];
 }
 
+export interface ApiEndpoint {
+  method: string; // GET | POST | PUT | PATCH | DELETE | QUERY | MUTATION
+  path: string;
+  summary?: string;
+}
+
 export interface Api extends BaseEntry {
   type: 'api';
   style: ApiStyle;
   endpoint?: string;
   wrappedBy?: string;
+  baseUrl?: string;
+  auth?: string;
+  endpoints?: ApiEndpoint[];
 }
 
 export type RegistryEntry = Server | Tool | Skill | Agent | Api;

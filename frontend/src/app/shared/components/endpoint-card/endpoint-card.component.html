@@ -1,0 +1,149 @@
+<div class="endpoint-card" [class.open]="open()">
+  <button
+    class="endpoint-row ep-toggle"
+    type="button"
+    (click)="toggleOpen()"
+    [attr.aria-expanded]="open()"
+  >
+    <span class="ep-verb-badge" [class]="'ep-verb-badge ' + verbClass()">{{ ep.method }}</span>
+    <span class="ep-path mono">{{ ep.path }}</span>
+    <span class="ep-sum">{{ ep.summary }}</span>
+    <app-icon name="chevron-down" [size]="16" class="ep-chevron" aria-hidden="true" />
+  </button>
+
+  @if (open()) {
+    <div class="ep-detail">
+      <p class="ep-detail-desc">{{ ep.summary }}</p>
+
+      <div class="ep-sec">
+        <div class="ep-sec-title">{{ spec.isGql ? 'Arguments' : 'Parameters' }}</div>
+        @if (allParams.length) {
+          <div class="param-table">
+            @for (p of allParams; track p.in + p.name) {
+              <div class="param-trow ep-param">
+                <span class="param-name mono">{{ p.name }}</span>
+                <span class="param-in" [class]="'param-in in-' + p.in">{{ p.in }}</span>
+                <span class="param-type mono">{{ p.type }}</span>
+                @if (p.required) {
+                  <span class="param-req">required</span>
+                } @else {
+                  <span class="param-opt">optional</span>
+                }
+                <span class="param-desc">{{ p.desc }}</span>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="field-hint" style="margin-top: 0">No parameters.</div>
+        }
+      </div>
+
+      @if (spec.body.length > 0) {
+        <div class="ep-sec">
+          <div class="ep-sec-title">
+            {{ spec.isGql ? 'Input variables' : 'Request body' }}
+            <span class="ep-sec-meta mono">{{ spec.isGql ? 'JSON' : 'application/json' }}</span>
+          </div>
+          <div class="param-table">
+            @for (p of spec.body; track 'b' + p.name) {
+              <div class="param-trow ep-param">
+                <span class="param-name mono">{{ p.name }}</span>
+                <span class="param-in" [class]="'param-in in-' + spec.bodyIn">{{ spec.bodyIn }}</span>
+                <span class="param-type mono">{{ p.type }}</span>
+                @if (p.required) {
+                  <span class="param-req">required</span>
+                } @else {
+                  <span class="param-opt">optional</span>
+                }
+                <span class="param-desc">{{ p.desc }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <div class="ep-sec">
+        <div class="ep-sec-title">Responses</div>
+        <div class="ep-resp-list">
+          @for (r of spec.responses; track $index) {
+            <div class="ep-resp">
+              <span class="ep-code" [class]="'ep-code ep-code-' + r.tone">{{ r.code }}</span>
+              <span class="ep-resp-label">{{ r.label }}</span>
+              <span class="ep-resp-desc">{{ r.desc }}</span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="ep-sec ep-sec-split">
+        <div class="ep-try-head">
+          <div class="ep-sec-title" style="margin-bottom: 0">{{ tryOn() ? 'Try it out' : 'Example' }}</div>
+          <button class="ep-try-btn" [class.on]="tryOn()" type="button" (click)="toggleTry()">
+            <app-icon [name]="tryOn() ? 'close' : 'play'" [size]="13" aria-hidden="true" />
+            {{ tryOn() ? 'Cancel' : 'Try it out' }}
+          </button>
+        </div>
+
+        @if (tryOn() && inputFields.length > 0) {
+          <div class="ep-form">
+            @for (p of inputFields; track p.in + p.name) {
+              <div class="ep-field">
+                <label class="ep-field-label" [attr.for]="'ep-' + ep.method + '-' + p.name">
+                  <span class="param-name mono">{{ p.name }}</span>
+                  <span class="param-in" [class]="'param-in in-' + p.in">{{ p.in }}</span>
+                  <span class="param-type mono">{{ p.type }}</span>
+                  @if (p.required) { <span class="param-req">required</span> }
+                </label>
+                <input
+                  class="input mono ep-input"
+                  [id]="'ep-' + ep.method + '-' + p.name"
+                  [ngModel]="vals()[p.name]"
+                  (ngModelChange)="setVal(p.name, $event)"
+                  [attr.placeholder]="p.desc"
+                />
+              </div>
+            }
+          </div>
+        }
+
+        @if (tryOn()) {
+          <div class="ep-exec-row">
+            <button class="btn btn-accent btn-sm" type="button" (click)="execute()" [disabled]="running()">
+              @if (!running()) { <app-icon name="play" [size]="14" aria-hidden="true" /> }
+              {{ running() ? 'Sending…' : 'Execute' }}
+            </button>
+            <button class="btn btn-secondary btn-sm" type="button" (click)="reset()" [disabled]="running()">Reset</button>
+            <span class="ep-exec-hint">Sends a sandboxed request against a mock of {{ api.name }}.</span>
+          </div>
+        }
+
+        <div>
+          <div class="ep-sec-title">{{ tryOn() ? 'Request' : 'Example request' }}</div>
+          <pre class="codeblock"><code>{{ tryOn() ? liveReq() : spec.example }}</code></pre>
+        </div>
+
+        <div>
+          <div class="ep-sec-title" style="display: flex; align-items: center; gap: 8px">
+            {{ tryOn() ? 'Server response' : 'Example response' }}
+            @if (tryOn() && resp()) {
+              <span class="ep-code" [class]="'ep-code ep-code-' + resp()!.tone" style="margin-left: 0">{{ resp()!.code }}</span>
+              <span class="ep-resp-time">{{ resp()!.ms }} ms</span>
+            }
+            @if (!tryOn()) { <span class="ep-sec-meta mono">200</span> }
+          </div>
+          @if (tryOn()) {
+            @if (running()) {
+              <div class="ep-resp-empty"><span class="ep-spinner"></span>Awaiting response…</div>
+            } @else if (resp()) {
+              <div class="result-pane">{{ resp()!.body }}</div>
+            } @else {
+              <div class="ep-resp-empty">Press <b>Execute</b> to send the request and see the response.</div>
+            }
+          } @else {
+            <div class="result-pane">{{ spec.sample }}</div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+</div>
