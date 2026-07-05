@@ -4,6 +4,7 @@ import { INDEX_NAMES } from '../../elasticsearch/indices.js';
 import { requireAuth } from '../../middleware/auth.js';
 import { Notification, NotificationRead } from '../../types/index.js';
 import { logger } from '../../logger/logger.js';
+import { searchAll } from '../../elasticsearch/search-all.js';
 
 const router = Router();
 
@@ -20,16 +21,15 @@ function receiptId(userId: string, notificationId: string): string {
  * their read state on the document itself.
  */
 async function loadReceipts(userId: string): Promise<Map<string, NotificationRead>> {
-  const response = await esClient.search<NotificationRead>({
-    index: INDEX_NAMES.NOTIFICATION_READS,
-    size: 1000,
-    query: { term: { userId } },
-  });
+  const receipts = await searchAll<NotificationRead>(
+    INDEX_NAMES.NOTIFICATION_READS,
+    { term: { userId } },
+    { sort: [{ updatedAt: 'desc' }, { _id: 'asc' }] },
+  );
 
   const map = new Map<string, NotificationRead>();
-  for (const hit of response.hits.hits) {
-    const src = hit._source;
-    if (src) map.set(src.notificationId, src);
+  for (const src of receipts) {
+    map.set(src.notificationId, src);
   }
   return map;
 }
@@ -158,35 +158,37 @@ router.put('/read-all', async (req: Request, res: Response, next: NextFunction):
 
     // Mark global notifications read via per-user receipts, never by mutating
     // the shared documents (which would clobber every other user's state).
-    const globals = await esClient.search<Notification>({
-      index: INDEX_NAMES.NOTIFICATIONS,
-      size: 1000,
-      _source: ['id'],
-      query: {
+    const globals = await searchAll<Pick<Notification, 'id'>>(
+      INDEX_NAMES.NOTIFICATIONS,
+      {
         bool: {
           must_not: [{ exists: { field: 'userId' } }],
         },
       },
-    });
+      { source: ['id'], sort: [{ createdAt: 'desc' }, { id: 'asc' }] },
+    );
 
     // Don't resurrect globals the user already dismissed — marking all read must
     // not clear an existing dismissal receipt.
     const receipts = await loadReceipts(userId);
-    const globalIds = globals.hits.hits
-      .map((h) => h._source?.id)
-      .filter((id): id is string => typeof id === 'string')
+    const globalIds = globals
+      .map((g) => g.id)
       .filter((id) => !receipts.get(id)?.dismissed);
 
     if (globalIds.length > 0) {
       const now = new Date().toISOString();
-      const body = globalIds.flatMap((notificationId) => [
-        { update: { _index: INDEX_NAMES.NOTIFICATION_READS, _id: receiptId(userId, notificationId) } },
-        {
-          doc: { userId, notificationId, read: true, dismissed: false, updatedAt: now },
-          doc_as_upsert: true,
-        },
-      ]);
-      await esClient.bulk({ refresh: true, body });
+      const BULK_BATCH = 500;
+      for (let i = 0; i < globalIds.length; i += BULK_BATCH) {
+        const batch = globalIds.slice(i, i + BULK_BATCH);
+        const body = batch.flatMap((notificationId) => [
+          { update: { _index: INDEX_NAMES.NOTIFICATION_READS, _id: receiptId(userId, notificationId) } },
+          {
+            doc: { userId, notificationId, read: true, dismissed: false, updatedAt: now },
+            doc_as_upsert: true,
+          },
+        ]);
+        await esClient.bulk({ refresh: i + BULK_BATCH >= globalIds.length, body });
+      }
     }
 
     logger.info('All notifications marked as read', {

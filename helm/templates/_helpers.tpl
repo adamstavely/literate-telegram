@@ -119,7 +119,7 @@ Elasticsearch URL (http://host:port).
 {{- if .Values.elasticsearch.url -}}
 {{- .Values.elasticsearch.url -}}
 {{- else -}}
-{{- printf "http://%s:%d" (include "interop.elasticsearch.serviceName" .) (int .Values.elasticsearch.port) }}
+{{- printf "%s://%s:%d" (.Values.elasticsearch.scheme | default "http") (include "interop.elasticsearch.serviceName" .) (int .Values.elasticsearch.port) }}
 {{- end -}}
 {{- end }}
 

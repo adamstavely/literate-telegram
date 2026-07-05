@@ -15,9 +15,6 @@ spec:
     - name: http
       port: 9200
       protocol: TCP
-    - name: transport
-      port: 9300
-      protocol: TCP
   selector:
     {{- include "interop.elasticsearch.selectorLabels" . | nindent 4 }}
 ---
@@ -36,10 +33,6 @@ spec:
     - name: http
       port: 9200
       targetPort: http
-      protocol: TCP
-    - name: transport
-      port: 9300
-      targetPort: transport
       protocol: TCP
   selector:
     {{- include "interop.elasticsearch.selectorLabels" . | nindent 4 }}

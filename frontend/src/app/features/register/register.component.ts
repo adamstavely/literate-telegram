@@ -37,6 +37,7 @@ export class RegisterComponent implements OnInit {
   readonly isAdmin = toSignal(this.auth.isAdmin$, { initialValue: this.auth.isAdmin() });
 
   readonly currentStep = signal(1);
+  readonly stepAnnouncement = signal('');
   readonly submitting = signal(false);
   readonly submitted = signal(false);
   readonly error = signal<string | null>(null);
@@ -119,10 +120,20 @@ export class RegisterComponent implements OnInit {
       readOnly: [false],
       approvalRequired: [false],
     });
+    this.announceCurrentStep();
   }
 
   selectType(type: EntryType): void {
     this.form.patchValue({ type });
+    this.announceCurrentStep();
+  }
+
+  private announceCurrentStep(): void {
+    const step = this.currentStep();
+    const meta = this.steps.find((s) => s.id === step);
+    if (meta) {
+      this.stepAnnouncement.set(`Step ${step} of 5: ${meta.label} — ${meta.description}`);
+    }
   }
 
   /** Collections are authored in their own flow rather than the entry wizard. */
@@ -156,18 +167,22 @@ export class RegisterComponent implements OnInit {
   nextStep(): void {
     const step = this.currentStep();
     if (!this.isStepValid(step)) {
-      // Surface the errors for the incomplete fields and stay on this step.
       this.fieldsForStep(step).forEach(f => this.form.get(f)?.markAsTouched());
+      if (step === 3 && this.isTool) {
+        this.form.get('parentServer')?.markAsTouched();
+      }
       return;
     }
     if (step < 5) {
       this.currentStep.update(s => s + 1);
+      this.announceCurrentStep();
     }
   }
 
   prevStep(): void {
     if (this.currentStep() > 1) {
       this.currentStep.update(s => s - 1);
+      this.announceCurrentStep();
     }
   }
 

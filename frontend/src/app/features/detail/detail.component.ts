@@ -366,6 +366,9 @@ export class DetailComponent implements OnChanges {
         this.copied.set(false);
         this.copyAnnouncement.set('');
       }, 2000);
+    }).catch(() => {
+      this.copyAnnouncement.set('Could not copy to clipboard');
+      setTimeout(() => this.copyAnnouncement.set(''), 3000);
     });
   }
 
@@ -377,6 +380,9 @@ export class DetailComponent implements OnChanges {
         this.copied.set(false);
         this.copyAnnouncement.set('');
       }, 2000);
+    }).catch(() => {
+      this.copyAnnouncement.set('Could not copy to clipboard');
+      setTimeout(() => this.copyAnnouncement.set(''), 3000);
     });
   }
 

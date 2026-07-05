@@ -3,6 +3,7 @@ import { createRemoteJWKSet, jwtVerify, JWTVerifyResult, JWTPayload } from 'jose
 import { config } from '../config/index.js';
 import { AuthenticatedUser } from '../types/index.js';
 import { logger } from '../logger/logger.js';
+import { hasRole, normalizeRoles } from './roles.js';
 
 let jwksCache: ReturnType<typeof createRemoteJWKSet> | null = null;
 let jwksCacheTime = 0;
@@ -36,7 +37,7 @@ function extractUser(payload: TokenClaims): AuthenticatedUser {
     sub: payload.sub ?? '',
     email: payload.email,
     name: payload.name,
-    roles: Array.isArray(roles) ? roles : [],
+    roles: normalizeRoles(roles),
   };
 }
 
@@ -145,8 +146,7 @@ export function requireAdmin(
     return;
   }
 
-  const roles = req.user.roles ?? [];
-  if (!roles.includes('admin')) {
+  if (!hasRole(req.user, 'admin')) {
     res.status(403).json({
       error: 'Forbidden',
       message: 'Admin role required',

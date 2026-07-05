@@ -106,7 +106,9 @@ export class LoggingService implements OnDestroy {
     if (error instanceof Error) {
       errorContext['errorName'] = error.name;
       errorContext['errorMessage'] = error.message;
-      errorContext['stack'] = error.stack;
+      if (!environment.production) {
+        errorContext['stack'] = error.stack;
+      }
     } else if (error !== undefined) {
       errorContext['raw'] = String(error);
     }

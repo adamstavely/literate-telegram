@@ -12,7 +12,7 @@
  *
  * In placeholder mode, the service reads `mock-auth` from localStorage so
  * that developers can simulate an authenticated session without a real IdP.
- * Set it via the browser console:
+ * Call `login()` or set it via the browser console:
  *   localStorage.setItem('mock-auth', JSON.stringify({
  *     sub: 'dev-user-1',
  *     email: 'dev@example.com',
@@ -51,7 +51,7 @@ export class AuthService implements OnDestroy {
 
   /** Emits true whenever the current user has the 'admin' role. */
   readonly isAdmin$: Observable<boolean> = this._user$.pipe(
-    map(u => u?.roles?.includes('admin') ?? false),
+    map(u => u?.roles?.some(r => r.toLowerCase() === 'admin') ?? false),
   );
 
   private _storageListener: Subscription;
@@ -83,7 +83,7 @@ export class AuthService implements OnDestroy {
    * Wire to real JWT claim checks when using an actual OIDC library.
    */
   isAdmin(): boolean {
-    return this._user$.value?.roles?.includes('admin') ?? false;
+    return this._user$.value?.roles?.some(r => r.toLowerCase() === 'admin') ?? false;
   }
 
   /**
@@ -138,21 +138,7 @@ export class AuthService implements OnDestroy {
   // ── Internals ──────────────────────────────────────────────────────────────
 
   private _readStoredUser(): AuthenticatedUser | null {
-    let raw = localStorage.getItem(this.STORAGE_KEY);
-    // In non-production (local dev / demo) seed a mock session so the app
-    // behaves like the design prototype — a signed-in "You" with the header,
-    // Publish, and collection-authoring flows available without a login screen.
-    // Production never auto-seeds; it goes through real OIDC.
-    if (!raw && !environment.production) {
-      this._setMockUser({
-        sub: 'dev-user-1',
-        email: 'dev@example.com',
-        name: 'Dev User',
-        roles: ['admin'],
-        accessToken: 'mock-token',
-      });
-      raw = localStorage.getItem(this.STORAGE_KEY);
-    }
+    const raw = localStorage.getItem(this.STORAGE_KEY);
     if (!raw) return null;
     try {
       const payload = JSON.parse(raw) as MockAuthPayload;
@@ -172,7 +158,7 @@ export class AuthService implements OnDestroy {
       sub: payload.sub,
       email: payload.email,
       name: payload.name,
-      roles: payload.roles,
+      roles: payload.roles?.map(r => r.toLowerCase()) ?? [],
     };
   }
 }

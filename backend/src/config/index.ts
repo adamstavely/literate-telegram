@@ -49,6 +49,8 @@ export interface Config {
   rateLimit: {
     windowMs: number;
     max: number;
+    submitWindowMs: number;
+    submitMax: number;
     ingestWindowMs: number;
     ingestMax: number;
   };
@@ -119,6 +121,8 @@ function loadConfig(): Config {
     rateLimit: {
       windowMs: optionalEnvNumber('RATE_LIMIT_WINDOW_MS', 60000),
       max: optionalEnvNumber('RATE_LIMIT_MAX', 200),
+      submitWindowMs: optionalEnvNumber('SUBMIT_RATE_LIMIT_WINDOW_MS', 60000),
+      submitMax: optionalEnvNumber('SUBMIT_RATE_LIMIT_MAX', 10),
       // Client-side telemetry ingestion is unauthenticated, so it gets a much
       // tighter per-IP budget than the global limit to prevent ES flooding.
       ingestWindowMs: optionalEnvNumber('INGEST_RATE_LIMIT_WINDOW_MS', 60000),

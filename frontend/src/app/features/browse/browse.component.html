@@ -262,11 +262,13 @@
             <div
               [class]="viewMode() === 'grid' ? 'grid grid-cards' : 'grid'"
               [style.gap.px]="viewMode() === 'grid' ? 14 : 10"
-              role="feed"
+              role="list"
               aria-label="Registry entries"
             >
               @for (entry of entries(); track trackEntry($index, entry)) {
-                <app-entry-card [entry]="entry" [viewMode]="viewMode()"></app-entry-card>
+                <div role="listitem">
+                  <app-entry-card [entry]="entry" [viewMode]="viewMode()"></app-entry-card>
+                </div>
               }
             </div>
           }

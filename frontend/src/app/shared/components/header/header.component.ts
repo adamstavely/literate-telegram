@@ -61,7 +61,9 @@ export class HeaderComponent implements OnInit, OnDestroy {
   readonly isAuthenticated = signal(false);
 
   /** Whether the user is an admin. */
-  readonly isAdmin = computed(() => this.currentUser()?.roles?.includes('admin') ?? false);
+  readonly isAdmin = computed(() =>
+    this.currentUser()?.roles?.some((r) => r.toLowerCase() === 'admin') ?? false,
+  );
 
   /** Platform "app switcher" (waffle) menu. */
   readonly appsOpen = signal(false);

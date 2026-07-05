@@ -32,7 +32,7 @@
 
         <!-- Wizard form -->
         <div class="wizard-main">
-          <div aria-live="polite" class="sr-only" id="step-announce"></div>
+          <div aria-live="polite" class="sr-only" id="step-announce">{{ stepAnnouncement() }}</div>
 
           <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
             <!-- Step 1: Type selection -->
@@ -223,6 +223,9 @@
                   <div class="field">
                     <label class="field-label" for="reg-parent-server">Parent Server <span class="req-star" aria-hidden="true">*</span></label>
                     <input id="reg-parent-server" class="input" type="text" formControlName="parentServer" placeholder="server-slug" />
+                    @if (form.get('parentServer')?.touched && !(form.get('parentServer')?.value || '').trim()) {
+                      <div class="field-error" role="alert">Parent server slug is required for tools.</div>
+                    }
                   </div>
                   <div class="field">
                     <label class="field-label" for="reg-returns">Return type</label>

@@ -27,7 +27,8 @@ helm/        Helm chart (Kubernetes deployment)
 project/     Canonical design source (styles.css + HTML/JSX prototypes)
 scripts/     Repo-level scripts (e.g. CSS-sync check)
 docker-compose.yml   Local full stack (Elasticsearch + backend + frontend)
-.github/workflows/   CI (styles-sync, backend, frontend)
+docker-compose.dev.yml   Dev overrides (hot-reload, :3000/:9200 publish)
+.github/workflows/   CI (styles-sync, backend, frontend, docker, helm, compose)
 ```
 
 ## Quick start (Docker Compose)
@@ -35,7 +36,13 @@ docker-compose.yml   Local full stack (Elasticsearch + backend + frontend)
 ```bash
 cp backend/.env.example .env          # tweak if needed (dev defaults are fine)
 docker compose up --build             # ES + backend + frontend
-# Frontend: http://localhost:4200   Backend API: http://localhost:3000/api
+# Frontend: http://localhost:4200   API via nginx proxy at /api (backend not on host :3000)
+```
+
+For local backend hot-reload and direct API access on `:3000`:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 ```
 
 Then seed demo data (servers, tools, skills, agents, APIs, pending items,

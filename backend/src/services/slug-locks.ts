@@ -77,8 +77,13 @@ export async function slugTaken(type: string, slug: string): Promise<boolean> {
     if (regDoc || pendCount.count > 0) return true;
     await releaseSlug(type, slug);
     return false;
-  } catch {
-    return true;
+  } catch (err) {
+    logger.error('Failed to resolve slug lock state', {
+      type,
+      slug,
+      error: err instanceof Error ? err.message : 'unknown',
+    });
+    throw err;
   }
 }
 

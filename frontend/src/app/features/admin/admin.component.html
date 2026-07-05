@@ -38,7 +38,8 @@
 
   <div class="tabs" style="margin-bottom:20px;" role="tablist" aria-label="Filter queue">
     @for (tab of filterTabs; track tab.id) {
-      <div
+      <button
+        type="button"
         class="tab"
         [class.on]="filter() === tab.id"
         role="tab"
@@ -46,10 +47,8 @@
         [attr.aria-selected]="filter() === tab.id"
         [attr.tabindex]="filter() === tab.id ? 0 : -1"
         (click)="setFilter(tab.id)"
-        (keydown.enter)="setFilter(tab.id)"
-        (keydown.space)="$event.preventDefault(); setFilter(tab.id)"
         (keydown)="onFilterKeydown($event, tab.id)"
-      >{{ tabLabel(tab) }}</div>
+      >{{ tabLabel(tab) }}</button>
     }
   </div>
 

@@ -2,6 +2,47 @@ import { rateLimit } from 'express-rate-limit';
 import { config } from '../config/index.js';
 import { logger } from '../logger/logger.js';
 
+/** Prefer authenticated user id over IP so per-user budgets apply within a replica. */
+function userOrIpKey(req: { user?: { sub?: string }; ip?: string }): string {
+  if (req.user?.sub) return `user:${req.user.sub}`;
+  return `ip:${req.ip ?? 'unknown'}`;
+}
+
+const rateLimitHandler = (message: string) => (req: { id?: string }, res: { status: (n: number) => { json: (b: unknown) => void } }) => {
+  res.status(429).json({
+    error: 'Too Many Requests',
+    message,
+    correlationId: req.id,
+  });
+};
+
+/**
+ * Global API limiter. Uses the default in-memory store (not shared across
+ * replicas) — configure a Redis store at the orchestrator layer for multi-pod
+ * deployments that need a cluster-wide budget.
+ */
+export function createGlobalRateLimiter(): ReturnType<typeof rateLimit> {
+  return rateLimit({
+    windowMs: config.rateLimit.windowMs,
+    max: config.rateLimit.max,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: userOrIpKey,
+    skip: (req) => /^\/api\/health(\/|$)/.test(req.path),
+    handler: rateLimitHandler('Rate limit exceeded. Please try again later.'),
+  });
+}
+
+/** Per-user cap on entry submissions to throttle queue flooding. */
+export const submitRateLimiter = rateLimit({
+  windowMs: config.rateLimit.submitWindowMs,
+  max: config.rateLimit.submitMax,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: userOrIpKey,
+  handler: rateLimitHandler('Entry submission rate limit exceeded. Please try again later.'),
+});
+
 /**
  * Tight per-IP limiter for the unauthenticated client telemetry endpoints
  * (POST /api/logs, POST /api/audit/client). Each request can bulk-index up to

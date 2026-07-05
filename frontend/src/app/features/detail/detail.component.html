@@ -114,20 +114,33 @@
       <div class="section">
         <h2 class="section-title">Parameters</h2>
         @if (tool.params.length > 0) {
-          <div class="param-table">
-            @for (param of tool.params; track param.name) {
-              <div class="param-trow">
-                <span class="param-name">{{ param.name }}</span>
-                <span class="param-type">{{ param.type }}</span>
-                @if (param.required) {
-                  <span class="param-req">required</span>
-                } @else {
-                  <span class="param-opt">optional</span>
-                }
-                <span class="param-desc">{{ param.description }}</span>
-              </div>
-            }
-          </div>
+          <table class="param-table" role="table">
+            <caption class="sr-only">Tool parameters</caption>
+            <thead>
+              <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Type</th>
+                <th scope="col">Required</th>
+                <th scope="col">Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (param of tool.params; track param.name) {
+                <tr class="param-trow">
+                  <td class="param-name">{{ param.name }}</td>
+                  <td class="param-type">{{ param.type }}</td>
+                  <td>
+                    @if (param.required) {
+                      <span class="param-req">required</span>
+                    } @else {
+                      <span class="param-opt">optional</span>
+                    }
+                  </td>
+                  <td class="param-desc">{{ param.description }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
         } @else {
           <p class="field-hint">This tool takes no arguments.</p>
         }
@@ -399,16 +412,31 @@
                   <p class="tool-desc">{{ tool.summary }}</p>
                   @if (openToolId() === tool.id && tool.params.length > 0) {
                     <div class="params" [id]="'tool-params-' + tool.id">
-                      @for (param of tool.params; track param.name) {
-                        <div class="param">
-                          <span class="param-name">{{ param.name }}</span>
-                          <span class="param-type">{{ param.type }}</span>
-                          @if (param.required) {
-                            <span class="param-req">required</span>
+                      <table class="param-table" role="table">
+                        <caption class="sr-only">Parameters for {{ tool.name }}</caption>
+                        <thead>
+                          <tr>
+                            <th scope="col">Name</th>
+                            <th scope="col">Type</th>
+                            <th scope="col">Required</th>
+                            <th scope="col">Description</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (param of tool.params; track param.name) {
+                            <tr class="param">
+                              <td class="param-name">{{ param.name }}</td>
+                              <td class="param-type">{{ param.type }}</td>
+                              <td>
+                                @if (param.required) {
+                                  <span class="param-req">required</span>
+                                }
+                              </td>
+                              <td class="param-desc">{{ param.description }}</td>
+                            </tr>
                           }
-                          <span class="param-desc">{{ param.description }}</span>
-                        </div>
-                      }
+                        </tbody>
+                      </table>
                     </div>
                   }
                 </div>

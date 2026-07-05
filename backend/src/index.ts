@@ -13,9 +13,9 @@ async function start(): Promise<void> {
     const message = err instanceof Error ? err.message : 'unknown';
     if (config.nodeEnv === 'production') {
       logger.error('Could not set up Elasticsearch indices on startup', { error: message });
-    } else {
-      logger.warn('Could not set up Elasticsearch indices on startup', { error: message });
+      process.exit(1);
     }
+    logger.warn('Could not set up Elasticsearch indices on startup', { error: message });
   }
 
   const server = app.listen(port, () => {

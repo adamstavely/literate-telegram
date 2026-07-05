@@ -18,6 +18,7 @@ import { getPolicy, assessRiskWithPolicy, applySubmissionPolicy, reviewDueAt } f
 import { sanitizeSubmission } from '../../services/entry-dto.js';
 import { slugTaken, claimSlug, releaseSlug } from '../../services/slug-locks.js';
 import { runCompensation } from '../../services/compensation.js';
+import { submitRateLimiter } from '../../middleware/rate-limit.js';
 import { registryVisibilityFilter, entryVisibleToCaller } from '../../services/visibility.js';
 
 const router = Router();
@@ -42,7 +43,7 @@ router.get(
   '/',
   optionalAuth,
   [
-    query('q').optional().isString().trim(),
+    query('q').optional().isString().trim().isLength({ max: 200 }),
     query('type').optional().isIn(['server', 'tool', 'skill', 'agent', 'api']),
     query('category').optional().isString().trim(),
     query('client').optional().isString().trim(),
@@ -76,14 +77,16 @@ router.get(
       const filterClauses: Record<string, unknown>[] = [];
 
       if (params.q) {
-        mustClauses.push({
-          multi_match: {
-            query: params.q,
-            fields: ['name^3', 'summary^2', 'description', 'publisher'],
-            type: 'best_fields',
-            fuzziness: 'AUTO',
-          },
-        });
+        const qMatch: Record<string, unknown> = {
+          query: params.q,
+          fields: ['name^3', 'summary^2', 'description', 'publisher'],
+          type: 'best_fields',
+        };
+        // Short queries produce noisy fuzzy matches — require exact tokens.
+        if (params.q.length >= 3) {
+          qMatch['fuzziness'] = 'AUTO';
+        }
+        mustClauses.push({ multi_match: qMatch });
       }
 
       if (params.type) {
@@ -246,15 +249,17 @@ router.get(
 router.post(
   '/',
   requireAuth,
+  submitRateLimiter,
   [
     body('type').isIn(['server', 'tool', 'skill', 'agent', 'api']).withMessage('Invalid entry type'),
     body('name').isString().trim().isLength({ min: 2, max: 100 }).withMessage('Name must be 2-100 characters'),
     body('slug').isString().trim().matches(/^[a-z0-9-]+$/).withMessage('Slug must be lowercase alphanumeric with hyphens'),
     body('publisher').isString().trim().isLength({ min: 1, max: 100 }).withMessage('Publisher is required'),
     body('summary').isString().trim().isLength({ min: 10, max: 500 }).withMessage('Summary must be 10-500 characters'),
-    body('description').isString().trim().isLength({ min: 20 }).withMessage('Description must be at least 20 characters'),
+    body('description').isString().trim().isLength({ min: 20, max: 10000 }).withMessage('Description must be 20-10000 characters'),
     body('sensitivity').isIn(['public', 'internal', 'confidential', 'restricted']).withMessage('Invalid sensitivity level'),
-    body('categories').isArray({ min: 1 }).withMessage('At least one category required'),
+    body('categories').isArray({ min: 1, max: 20 }).withMessage('Provide 1-20 categories'),
+    body('categories.*').isString().trim().isLength({ min: 1, max: 50 }).withMessage('Each category must be 1-50 characters'),
   ],
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const errors = validationResult(req);

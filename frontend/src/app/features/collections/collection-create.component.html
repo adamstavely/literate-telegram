@@ -34,6 +34,9 @@
       <label class="field-label" for="col-members">Members <span class="req-star">*</span></label>
       <input id="col-members" class="input mono" required aria-required="true" [ngModel]="members()" (ngModelChange)="members.set($event)"
         placeholder="Entry slugs, comma-separated — e.g. stripe, github-mcp, sentry" />
+      @if (memberError()) {
+        <div class="field-error" role="alert">{{ memberError() }}</div>
+      }
       <div class="field-hint">{{ memberSlugs().length }} member(s). Use registry entry slugs.</div>
     </div>
 

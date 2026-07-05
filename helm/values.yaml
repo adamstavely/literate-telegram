@@ -38,6 +38,15 @@ ingress:
     nginx.ingress.kubernetes.io/proxy-connect-timeout: "10"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/hsts: "true"
+    nginx.ingress.kubernetes.io/hsts-max-age: "31536000"
+    nginx.ingress.kubernetes.io/hsts-include-subdomains: "true"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "Cross-Origin-Opener-Policy: same-origin";
+      more_set_headers "Cross-Origin-Resource-Policy: same-origin";
+    nginx.ingress.kubernetes.io/hsts: "true"
+    nginx.ingress.kubernetes.io/hsts-max-age: "31536000"
+    nginx.ingress.kubernetes.io/hsts-include-subdomains: "true"
   hosts:
     - host: interop.io
       paths:
@@ -102,8 +111,9 @@ frontend:
 # ---------------------------------------------------------------------------
 elasticsearch:
   enabled: true
-  # Full URL override (e.g. https://es.example.com:9200) — takes precedence over host/port.
+  # Full URL override (e.g. https://es.example.com:9200) — takes precedence over scheme/host/port.
   url: ""
+  scheme: "http"
   host: ""        # External host — used only when enabled=false
   port: 9200
   # SHA-256 cert fingerprint for HTTPS ES (maps to ES_CA_FINGERPRINT in the backend).
@@ -176,3 +186,11 @@ securityContext:
 nodeSelector: {}
 tolerations: []
 affinity: {}
+
+# ---------------------------------------------------------------------------
+# Network policies
+# ---------------------------------------------------------------------------
+networkPolicy:
+  # Restrict frontend ingress to the ingress controller namespace (common default).
+  frontendRestrictIngress: true
+  ingressControllerNamespace: ingress-nginx
