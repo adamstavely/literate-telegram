@@ -8,7 +8,7 @@
     "dev": "tsx watch src/index.ts",
     "seed": "tsx src/elasticsearch/seed.ts",
     "lint": "eslint src --ext .ts",
-    "test": "node --import tsx --test 'src/**/*.test.ts'"
+    "test": "node --import tsx --test $(find src -name '*.test.ts')"
   },
   "dependencies": {
     "@elastic/elasticsearch": "^8.13.0",
