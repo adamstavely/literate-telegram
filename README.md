@@ -1,25 +1,102 @@
-# CODING AGENTS: READ THIS FIRST
+# Interop — AI Registry
 
-This is a **handoff bundle** from Claude Design (claude.ai/design).
+Interop is a governed registry and catalog for AI building blocks — **MCP servers,
+tools, skills, agents, and APIs**. Teams browse and publish entries, curate them
+into installable **collections**, and govern them through a **data-sensitivity**
+model, a **policy engine**, and an **admin moderation queue**.
 
-A user mocked up designs in HTML/CSS/JS using an AI design tool, then exported this bundle so a coding agent can implement the designs for real.
+| Layer | Tech |
+|-------|------|
+| Frontend | Angular 17 (standalone components + signals), served by nginx |
+| Backend | Node.js + Express + TypeScript |
+| Datastore | Elasticsearch 8.13 |
+| Auth | OIDC / JWT (Bearer), verified server-side with `jose` |
+| Local dev | Docker Compose |
+| Deployment | Helm chart (Kubernetes) |
 
-## What you should do — IMPORTANT
+> **New to this codebase? Read [`HANDOFF.md`](./HANDOFF.md).** It is the detailed
+> engineering guide: architecture, request flows, the governance model, every
+> environment variable, all Elasticsearch indices, and how to run/deploy.
 
-**Read the chat transcripts first.** There are 1 chat transcript(s) in `chats/`. The transcripts show the full back-and-forth between the user and the design assistant — they tell you **what the user actually wants** and **where they landed** after iterating. Don't skip them. The final HTML files are the output, but the chat is where the intent lives.
+## Repository layout
 
-**Read `project/Registry.html` in full.** The user had this file open when they triggered the handoff, so it's almost certainly the primary design they want built. Read it top to bottom — don't skim. Then **follow its imports**: open every file it pulls in (shared components, CSS, scripts) so you understand how the pieces fit together before you start implementing.
+```
+backend/     Express + TypeScript API (src/), Dockerfile, .env.example
+frontend/    Angular 17 app (src/), nginx config, Dockerfile
+helm/        Helm chart (Kubernetes deployment)
+project/     Canonical design source (styles.css + HTML/JSX prototypes)
+scripts/     Repo-level scripts (e.g. CSS-sync check)
+docker-compose.yml   Local full stack (Elasticsearch + backend + frontend)
+.github/workflows/   CI (styles-sync, backend, frontend)
+```
 
-**If anything is ambiguous, ask the user to confirm before you start implementing.** It's much cheaper to clarify scope up front than to build the wrong thing.
+## Quick start (Docker Compose)
 
-## About the design files
+```bash
+cp backend/.env.example .env          # tweak if needed (dev defaults are fine)
+docker compose up --build             # ES + backend + frontend
+# Frontend: http://localhost:4200   Backend API: http://localhost:3000/api
+```
 
-The design medium is **HTML/CSS/JS** — these are prototypes, not production code. Your job is to **recreate them pixel-perfectly** in whatever technology makes sense for the target codebase (React, Vue, native, whatever fits). Match the visual output; don't copy the prototype's internal structure unless it happens to fit.
+Then seed demo data (servers, tools, skills, agents, APIs, pending items,
+notifications):
 
-**Don't render these files in a browser or take screenshots unless the user asks you to.** Everything you need — dimensions, colors, layout rules — is spelled out in the source. Read the HTML and CSS directly; a screenshot won't tell you anything they don't.
+```bash
+cd backend && npm ci && npm run seed  # targets http://localhost:9200 by default
+```
 
-## Bundle contents
+Optional Kibana: `docker compose --profile observability up`.
 
-- `README.md` — this file
-- `chats/` — conversation transcripts (read these!)
-- `project/` — the `MCP` project files (HTML prototypes, assets, components)
+## Quick start (run services directly)
+
+```bash
+# 1. Elasticsearch (single node, security off) — e.g. via docker:
+docker run -p 9200:9200 -e discovery.type=single-node -e xpack.security.enabled=false \
+  docker.elastic.co/elasticsearch/elasticsearch:8.13.0
+
+# 2. Backend
+cd backend && npm ci
+cp .env.example .env && echo "ALLOW_MOCK_AUTH=true" >> .env   # dev-only admin bypass
+npm run seed        # create indices + demo data
+npm run dev         # http://localhost:3000  (tsx watch)
+
+# 3. Frontend
+cd frontend && npm ci
+npm start           # http://localhost:4200  (proxies /api to :3000)
+```
+
+In development the frontend auto-creates a mock signed-in **admin** session, and
+the backend accepts the bearer token `mock-token` when `ALLOW_MOCK_AUTH=true`
+(dev/test only — never in production).
+
+## Common commands
+
+| Where | Command | Purpose |
+|-------|---------|---------|
+| backend | `npm run dev` | Run API with hot reload (`tsx watch`) |
+| backend | `npm run build` | Typecheck + compile to `dist/` |
+| backend | `npm run seed` | Create ES indices + seed demo data |
+| backend | `npm test` | Unit + route tests (`node:test` + `supertest`) |
+| frontend | `npm start` | Dev server on `:4200` |
+| frontend | `npm run build` | Production build to `dist/` |
+| frontend | `npm run test:ci` | Headless unit tests |
+| frontend | `npm run check:styles` | Verify vendored CSS matches `project/styles.css` |
+| repo | `node scripts/check-styles-sync.mjs` | Same check, from repo root (CI) |
+
+## Deployment
+
+Kubernetes via the Helm chart in [`helm/`](./helm). It deploys Elasticsearch
+(optional, a built-in single-node StatefulSet), the backend (with a post-install
+seed Job), the frontend, services, and an ingress. See
+[`HANDOFF.md`](./HANDOFF.md) → **Deployment**.
+
+## Design system
+
+The canonical stylesheet lives at `project/styles.css` and is **vendored** into
+`frontend/src/vendor/interop.css` (the frontend Docker build context can't reach
+outside `frontend/`). The two must stay identical — CI enforces it. After editing
+`project/styles.css`, run:
+
+```bash
+cp project/styles.css frontend/src/vendor/interop.css
+```
