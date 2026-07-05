@@ -12,6 +12,12 @@ export function isEsConflict(err: unknown): boolean {
   return e?.statusCode === 409 || e?.meta?.statusCode === 409;
 }
 
+/** True if an Elasticsearch error is a 404 (document/index not found). */
+export function isEsNotFound(err: unknown): boolean {
+  const e = err as { statusCode?: number; meta?: { statusCode?: number } };
+  return e?.statusCode === 404 || e?.meta?.statusCode === 404;
+}
+
 /**
  * True if a live registry entry, slug lock, or in-flight pending submission
  * already uses this type+slug. Orphan locks (no matching registry/pending doc)

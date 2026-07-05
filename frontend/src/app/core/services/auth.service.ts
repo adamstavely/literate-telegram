@@ -49,6 +49,11 @@ export class AuthService implements OnDestroy {
     map(u => u !== null),
   );
 
+  /** Emits true whenever the current user has the 'admin' role. */
+  readonly isAdmin$: Observable<boolean> = this._user$.pipe(
+    map(u => u?.roles?.includes('admin') ?? false),
+  );
+
   private _storageListener: Subscription;
 
   constructor() {

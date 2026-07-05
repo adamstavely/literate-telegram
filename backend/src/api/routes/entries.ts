@@ -345,13 +345,33 @@ router.post(
             refresh: 'wait_for',
           });
         } catch (indexErr) {
-          await runCompensation(
+          const rolledBack = await runCompensation(
             'auto-approve:rollback-registry',
             async () => {
               await esClient.delete({ index: INDEX_NAMES.REGISTRY, id: entryId, refresh: 'wait_for' });
             },
             { entryId, type: entryType, slug: entrySlug },
           );
+          if (!rolledBack) {
+            // The registry doc is still live with no pending record, and rollback
+            // exhausted its retries. Keep the slug lock (a live entry still owns
+            // it) and tell the caller the stores diverged rather than returning
+            // an opaque 500 that hides the need for manual reconciliation.
+            logger.error('Auto-approve rollback failed; registry may hold an orphaned entry', {
+              correlationId: req.id,
+              entryId,
+              entryType,
+            });
+            res.status(500).json({
+              error: 'Internal Server Error',
+              message:
+                'Entry was published but recording its approval failed, and automatic rollback did not complete. This entry requires manual reconciliation.',
+              reconciliation: 'required',
+              entryId,
+              correlationId: req.id,
+            });
+            return;
+          }
           await releaseSlug(entryType, entrySlug);
           throw indexErr;
         }

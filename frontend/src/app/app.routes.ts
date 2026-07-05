@@ -46,7 +46,10 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/collections/collection-create.component').then(m => m.CollectionCreateComponent),
     title: 'New collection — Interop',
-    canActivate: [authGuard],
+    // Creating a collection is an admin action (POST /api/collections requires
+    // admin). Guard the route with adminGuard so non-admins are redirected
+    // rather than reaching the form and hitting a 403 on submit.
+    canActivate: [adminGuard],
   },
   {
     path: 'collections/:id',

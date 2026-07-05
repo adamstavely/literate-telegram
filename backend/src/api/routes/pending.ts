@@ -8,7 +8,8 @@ import { PendingEntry, PendingStats, RegistryEntry, RiskLevel } from '../../type
 import { logger } from '../../logger/logger.js';
 import { getPolicy, evaluatePolicyEnforcement, reviewDueAt } from '../../services/policy.js';
 import { sanitizeSubmission } from '../../services/entry-dto.js';
-import { claimOrOwnSlug, releaseSlug, isEsConflict } from '../../services/slug-locks.js';
+import { claimOrOwnSlug, releaseSlug, isEsConflict, isEsNotFound } from '../../services/slug-locks.js';
+import { runCompensation } from '../../services/compensation.js';
 
 const router = Router();
 
@@ -375,6 +376,61 @@ router.put(
           refresh: 'wait_for',
         });
       } catch (e) {
+        // The registry doc was already published above. If this flip didn't
+        // land, that publish is now an orphan — a live, verified registry entry
+        // with no matching approved pending record — UNLESS a concurrent
+        // approver won the flip, in which case their identical registry doc must
+        // stay. Read the pending doc back (realtime GET, so it reflects the
+        // winner's write even before refresh) to tell the two cases apart, then
+        // roll back our own publish when it is an orphan. This keeps the reported
+        // "approve 500 leaves a live entry" case from ever creating divergence.
+        let concurrentlyApproved = false;
+        try {
+          const recheck = await esClient.get<PendingEntry>({
+            index: INDEX_NAMES.PENDING,
+            id: pendingDocId,
+            _source: ['status'],
+          });
+          concurrentlyApproved = recheck._source?.status === 'approved';
+        } catch {
+          // Can't confirm a concurrent win — treat as an orphan and roll back,
+          // the safe default (a pending/rejected entry must not stay live).
+        }
+
+        if (!concurrentlyApproved) {
+          const rolledBack = await runCompensation(
+            'approve:rollback-registry',
+            async () => {
+              try {
+                await esClient.delete({ index: INDEX_NAMES.REGISTRY, id: entry.id, refresh: 'wait_for' });
+              } catch (delErr) {
+                if (isEsNotFound(delErr)) return; // nothing published — nothing to undo
+                throw delErr;
+              }
+            },
+            { entryId: entry.id, pendingId: id, type: entry.type, slug: entry.slug },
+          );
+          if (!rolledBack) {
+            // Rollback exhausted its retries: a verified registry doc is live
+            // with no approved pending record. Surface it (reconciliation record
+            // already written by runCompensation) instead of an opaque 500.
+            logger.error('Approve rollback failed; registry may hold an orphaned entry', {
+              correlationId: req.id,
+              pendingId: id,
+              entryId: entry.id,
+            });
+            res.status(500).json({
+              error: 'Internal Server Error',
+              message:
+                'Publishing succeeded but recording the approval failed, and automatic rollback did not complete. This entry requires manual reconciliation.',
+              reconciliation: 'required',
+              entryId: entry.id,
+              correlationId: req.id,
+            });
+            return;
+          }
+        }
+
         if (isVersionConflict(e)) {
           res.status(409).json({
             error: 'Conflict',
@@ -495,6 +551,30 @@ router.put(
         throw e;
       }
 
+      // Defense in depth against an approve that published to the registry but
+      // then failed before flipping this pending doc (leaving it 'pending').
+      // That would orphan a live, verified registry entry under this entry's id.
+      // Now that we've definitively rejected, remove any such orphan so a
+      // rejected entry can't stay live. Submissions always mint a fresh entry.id,
+      // so a registry doc under a just-rejected entry's id can only be that
+      // orphan — never a different, legitimately-published entry. Best-effort:
+      // runCompensation records a reconciliation event if it can't complete.
+      const orphanEntryId = pending.entry.id;
+      const orphanRemoved = orphanEntryId
+        ? await runCompensation(
+            'reject:delete-orphan-registry',
+            async () => {
+              try {
+                await esClient.delete({ index: INDEX_NAMES.REGISTRY, id: orphanEntryId, refresh: 'wait_for' });
+              } catch (delErr) {
+                if (isEsNotFound(delErr)) return; // the normal case: nothing was ever published
+                throw delErr;
+              }
+            },
+            { entryId: orphanEntryId, pendingId: id, type: pending.entry.type, slug: pending.entry.slug },
+          )
+        : true;
+
       // The entry is abandoned — free its slug so it can be resubmitted.
       if (pending.entry.type && pending.entry.slug) {
         await releaseSlug(pending.entry.type, pending.entry.slug);
@@ -518,6 +598,9 @@ router.put(
         status: 'rejected',
         reason,
         message: 'Entry rejected',
+        // If an orphaned registry doc couldn't be removed, the entry is rejected
+        // but may still be live — flag it so ops can reconcile.
+        ...(orphanRemoved ? {} : { reconciliation: 'required' }),
       });
     } catch (err) {
       next(err);
