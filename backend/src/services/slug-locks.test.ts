@@ -8,6 +8,7 @@ import {
   claimSlug,
   claimOrOwnSlug,
   releaseSlug,
+  LOCK_GRACE_MS,
 } from './slug-locks.js';
 import { stubEs, restoreEs } from '../test/mock-es.js';
 
@@ -89,7 +90,12 @@ describe('slugTaken', () => {
       return { count: 0 };
     });
     stubEs('exists', async (params: { index?: string }) => params.index === 'interop-slug-locks');
-    stubEs('get', async () => ({ _source: { entryId: 'entry-42' } }));
+    stubEs('get', async () => ({
+      _source: {
+        entryId: 'entry-42',
+        claimedAt: new Date(Date.now() - LOCK_GRACE_MS - 1000).toISOString(),
+      },
+    }));
 
     assert.equal(await slugTaken('skill', 'held-slug'), true);
     assert.equal(pendingQueries.length, 2);
@@ -103,7 +109,7 @@ describe('slugTaken', () => {
     let deleted = false;
     stubEs('count', async () => ({ count: 0 }));
     stubEs('exists', async () => true);
-    stubEs('get', async () => ({ _source: {} }));
+    stubEs('get', async () => ({ _source: { claimedAt: new Date(Date.now() - LOCK_GRACE_MS - 1000).toISOString() } }));
     stubEs('delete', async () => {
       deleted = true;
       return {};
@@ -111,6 +117,19 @@ describe('slugTaken', () => {
 
     assert.equal(await slugTaken('skill', 'orphan'), false);
     assert.equal(deleted, true);
+  });
+
+  test('treats a recently claimed lock as taken even without registry or pending docs', async () => {
+    stubEs('count', async () => ({ count: 0 }));
+    stubEs('exists', async () => true);
+    stubEs('get', async () => ({
+      _source: {
+        entryId: 'entry-in-flight',
+        claimedAt: new Date().toISOString(),
+      },
+    }));
+
+    assert.equal(await slugTaken('skill', 'in-flight'), true);
   });
 });
 
@@ -169,5 +188,29 @@ describe('releaseSlug', () => {
       throw new Error('not found');
     });
     assert.equal(await releaseSlug('skill', 'gone'), false);
+  });
+
+  test('does not delete when entryId does not match the lock owner', async () => {
+    let deleted = false;
+    stubEs('get', async () => ({ _source: { entryId: 'owner-entry' } }));
+    stubEs('delete', async () => {
+      deleted = true;
+      return {};
+    });
+
+    assert.equal(await releaseSlug('skill', 'held', 'other-entry'), false);
+    assert.equal(deleted, false);
+  });
+
+  test('deletes when entryId matches the lock owner', async () => {
+    let deleted = false;
+    stubEs('get', async () => ({ _source: { entryId: 'owner-entry' } }));
+    stubEs('delete', async () => {
+      deleted = true;
+      return {};
+    });
+
+    assert.equal(await releaseSlug('skill', 'held', 'owner-entry'), true);
+    assert.equal(deleted, true);
   });
 });

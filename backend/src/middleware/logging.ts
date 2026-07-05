@@ -4,7 +4,6 @@ import { logger } from '../logger/logger.js';
 import { AuthenticatedUser } from '../types/index.js';
 
 declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       id: string;

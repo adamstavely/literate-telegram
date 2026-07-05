@@ -7,7 +7,7 @@
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
     "seed": "tsx src/elasticsearch/seed.ts",
-    "lint": "eslint src --ext .ts",
+    "lint": "eslint src",
     "test": "NODE_ENV=development ALLOW_MOCK_AUTH=true node --import tsx --test --test-concurrency=1 $(find src -name '*.test.ts')"
   },
   "dependencies": {
@@ -25,14 +25,17 @@
     "winston-transport": "^4.7.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
     "@types/compression": "^1.7.5",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/node": "^20.12.7",
     "@types/supertest": "^7.2.0",
     "@types/uuid": "^9.0.8",
+    "eslint": "^9.39.2",
     "supertest": "^7.2.2",
     "tsx": "^4.7.3",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "typescript-eslint": "^8.50.1"
   }
 }
