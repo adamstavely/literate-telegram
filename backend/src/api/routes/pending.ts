@@ -6,6 +6,7 @@ import { requireAuth, requireAdmin } from '../../middleware/auth.js';
 import { auditAction } from '../../middleware/audit.js';
 import { PendingEntry, PendingStats, RegistryEntry, RiskLevel } from '../../types/index.js';
 import { logger } from '../../logger/logger.js';
+import { getPolicy, evaluatePolicyEnforcement } from '../../services/policy.js';
 
 const router = Router();
 
@@ -194,6 +195,76 @@ router.put(
 
       const entry = pending.entry as RegistryEntry;
       const now = new Date().toISOString();
+      const approver = req.user!.sub;
+      const override = (req.body as { override?: unknown } | undefined)?.override === true;
+
+      // Enforce the active governance policy at approval time. Without this the
+      // Policy page toggles and per-rule actions are purely cosmetic.
+      const policyDoc = await getPolicy();
+      const enforcement = evaluatePolicyEnforcement(pending.entry, policyDoc);
+
+      // 'reject'-action rules are a hard stop — the entry must be rejected.
+      if (enforcement.rejectRules.length > 0) {
+        res.status(422).json({
+          error: 'Policy Violation',
+          message: 'Entry violates a reject-level policy rule and cannot be approved.',
+          blockedBy: enforcement.rejectRules,
+          risk: enforcement.risk,
+          correlationId: req.id,
+        });
+        return;
+      }
+
+      // 'block'-action rules and quarantine require an explicit admin override.
+      const blockedReasons = [
+        ...enforcement.blockRules,
+        ...(enforcement.quarantined ? ['Quarantine: high-risk entry'] : []),
+      ];
+      if (blockedReasons.length > 0 && !override) {
+        res.status(409).json({
+          error: 'Policy Block',
+          message:
+            'Approval is blocked by policy. Resubmit with { "override": true } to force-approve.',
+          blockedBy: blockedReasons,
+          risk: enforcement.risk,
+          correlationId: req.id,
+        });
+        return;
+      }
+
+      // Two-approver requirement for high/critical risk: record this approver's
+      // vote and hold the entry until a second, distinct approver signs off.
+      if (enforcement.requiresTwoApprovers) {
+        const approvals = new Set(pending.approvals ?? []);
+        approvals.add(approver);
+        if (approvals.size < 2) {
+          await esClient.update({
+            index: INDEX_NAMES.PENDING,
+            id: pendingHit._id,
+            doc: { approvals: [...approvals] },
+            refresh: 'wait_for',
+          });
+
+          await auditAction(req, 'APPROVE_ENTRY_VOTE', id, {
+            entryId: entry.id,
+            approvals: approvals.size,
+            required: 2,
+          });
+
+          res.status(202).json({
+            id,
+            status: 'pending',
+            approvals: approvals.size,
+            required: 2,
+            message: 'Approval recorded. A second distinct approver is required.',
+          });
+          return;
+        }
+      }
+
+      const finalApprovals = enforcement.requiresTwoApprovers
+        ? [...new Set([...(pending.approvals ?? []), approver])]
+        : undefined;
 
       // Index into the registry
       await esClient.index({
@@ -213,8 +284,10 @@ router.put(
         id: pendingHit._id,
         doc: {
           status: 'approved',
-          approvedBy: req.user!.sub,
+          approvedBy: approver,
           approvedAt: now,
+          policyOverride: blockedReasons.length > 0,
+          ...(finalApprovals ? { approvals: finalApprovals } : {}),
         },
         refresh: 'wait_for',
       });
@@ -223,6 +296,9 @@ router.put(
         entryId: entry.id,
         entryType: entry.type,
         entryName: entry.name,
+        risk: enforcement.risk,
+        policyOverride: blockedReasons.length > 0,
+        overriddenBlocks: blockedReasons.length > 0 ? blockedReasons : undefined,
       });
 
       logger.info('Pending entry approved', {
