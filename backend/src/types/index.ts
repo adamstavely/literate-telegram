@@ -89,6 +89,8 @@ export interface PendingEntry {
   approvals?: string[];
   /** Whether an admin overrode a policy block to approve. */
   policyOverride?: boolean;
+  /** Justification supplied when a policy block was overridden. */
+  overrideReason?: string;
 }
 
 export interface AuditEvent {

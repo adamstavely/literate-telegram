@@ -1,6 +1,7 @@
 import {
   Component,
-  OnInit,
+  OnChanges,
+  SimpleChanges,
   signal,
   computed,
   inject,
@@ -23,7 +24,7 @@ export interface DocTocHeading {
   imports: [IconComponent],
   templateUrl: './docs.component.html',
 })
-export class DocsComponent implements OnInit {
+export class DocsComponent implements OnChanges {
   private readonly sanitizer = inject(DomSanitizer);
   private readonly router = inject(Router);
 
@@ -69,8 +70,17 @@ export class DocsComponent implements OnInit {
     return idx >= 0 && idx < all.length - 1 ? all[idx + 1] : null;
   });
 
-  ngOnInit(): void {
+  // React to the route-bound articleId changing on the reused component
+  // instance (/docs/a → /docs/b), not just to first construction.
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['articleId']) {
+      this.syncActiveArticle();
+    }
+  }
+
+  private syncActiveArticle(): void {
     const id = this.articleId ?? 'overview';
+    if (this.activeArticle()?.id === id) return;
     const found = this.articles().find(a => a.id === id);
     this.activeArticle.set(found ?? this.articles()[0] ?? null);
     this.resetToc();

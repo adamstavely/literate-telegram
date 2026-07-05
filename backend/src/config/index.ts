@@ -27,6 +27,7 @@ function optionalEnvNumber(key: string, defaultValue: number): number {
 export interface Config {
   nodeEnv: 'development' | 'production' | 'test';
   port: number;
+  allowMockAuth: boolean;
   elasticsearch: {
     node: string;
     username: string;
@@ -69,9 +70,16 @@ function loadConfig(): Config {
 
   const caFingerprint = process.env['ES_CA_FINGERPRINT'] || undefined;
 
+  // The mock-token admin bypass is a local dev convenience. It must be opted
+  // into explicitly (and never in production) so a leaked compose default can't
+  // hand out admin in a shared environment.
+  const allowMockAuth =
+    nodeEnv === 'development' && optionalEnv('ALLOW_MOCK_AUTH', 'false') === 'true';
+
   return {
     nodeEnv,
     port: optionalEnvNumber('PORT', 3000),
+    allowMockAuth,
     elasticsearch: {
       node: optionalEnv('ES_NODE', 'http://localhost:9200'),
       username: optionalEnv('ES_USERNAME', 'elastic'),

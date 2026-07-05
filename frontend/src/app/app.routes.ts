@@ -1,7 +1,6 @@
-import { inject } from '@angular/core';
 import { Routes } from '@angular/router';
-import { AuthService } from './core/services/auth.service';
 import { adminGuard } from './core/guards/admin.guard';
+import { authGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   {
@@ -20,7 +19,7 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/register/register.component').then(m => m.RegisterComponent),
     title: 'Register — Interop',
-    canActivate: [() => inject(AuthService).isAuthenticated()],
+    canActivate: [authGuard],
   },
   {
     path: 'admin',

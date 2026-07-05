@@ -14,7 +14,7 @@ import {
   EntryType,
 } from '../../types/index.js';
 import { logger } from '../../logger/logger.js';
-import { assessEntryRisk } from '../../services/policy.js';
+import { getPolicy, assessRiskWithPolicy, applySubmissionPolicy } from '../../services/policy.js';
 import { sanitizeSubmission } from '../../services/entry-dto.js';
 
 const router = Router();
@@ -252,7 +252,7 @@ router.post(
       // Build the entry from an explicit allowlist rather than spreading the
       // raw body — otherwise unvalidated/nested fields (verified, rating,
       // arbitrary keys) leak through into the dynamically-mapped pending index.
-      const partialEntry: Partial<RegistryEntry> = {
+      const sanitized: Partial<RegistryEntry> = {
         ...sanitizeSubmission(req.body as Record<string, unknown>),
         id: entryId,
         verified: false,
@@ -261,7 +261,67 @@ router.post(
         updatedAt: now,
       };
 
-      const { risk, flags } = await assessEntryRisk(partialEntry);
+      // Apply submit-time policy (read-only defaults, token cap, auto-approve).
+      const policyDoc = await getPolicy();
+      const decision = applySubmissionPolicy(sanitized, policyDoc);
+      const partialEntry = decision.entry;
+      const { risk, flags: riskFlags } = assessRiskWithPolicy(partialEntry, policyDoc);
+      const flags = [...new Set([...riskFlags, ...decision.flags])];
+
+      if (decision.autoApprove) {
+        // Policy allows immediate publication — skip the review queue.
+        await esClient.index({
+          index: INDEX_NAMES.REGISTRY,
+          id: entryId,
+          document: { ...partialEntry, verified: true, updatedAt: now },
+          refresh: 'wait_for',
+        });
+
+        const autoApproved: PendingEntry = {
+          id: uuidv4(),
+          entry: partialEntry,
+          submittedBy: req.user!.sub,
+          submittedAt: now,
+          status: 'approved',
+          risk,
+          flags,
+          approvedBy: 'system:policy',
+          approvedAt: now,
+        };
+
+        await esClient.index({
+          index: INDEX_NAMES.PENDING,
+          id: autoApproved.id,
+          document: autoApproved,
+          refresh: 'wait_for',
+        });
+
+        await auditAction(req, 'AUTO_APPROVE_ENTRY', autoApproved.id, {
+          entryId,
+          entryType: partialEntry.type,
+          name: partialEntry.name,
+          risk,
+        });
+
+        logger.info('New entry auto-approved by policy', {
+          correlationId: req.id,
+          userId: req.user?.sub,
+          pendingId: autoApproved.id,
+          entryId,
+          entryType: partialEntry.type,
+          risk,
+        });
+
+        res.status(201).json({
+          id: autoApproved.id,
+          entryId,
+          status: 'approved',
+          risk,
+          flags,
+          message: 'Entry auto-approved and published per policy',
+        });
+        return;
+      }
 
       const pending: PendingEntry = {
         id: uuidv4(),

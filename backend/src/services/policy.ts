@@ -25,6 +25,27 @@ function publisherDomain(publisher: string | undefined): string | null {
   return null;
 }
 
+/**
+ * Canonicalize an auth method label to the keys used in the policy `auth` map.
+ * Seed/registry data uses machine values ('oauth2', 'api-key', 'none') while the
+ * policy document keys are display strings ('OAuth 2.1', 'API key', 'None'), so
+ * a naive lookup silently misses every prohibition. Normalizing bridges both.
+ */
+function normalizeAuthMethod(auth: string | undefined): string {
+  if (!auth) return 'None';
+  const key = auth.trim().toLowerCase().replace(/[\s._-]+/g, '');
+  const map: Record<string, string> = {
+    none: 'None',
+    oauth2: 'OAuth 2.1',
+    oauth21: 'OAuth 2.1',
+    apikey: 'API key',
+    restrictedapikey: 'Restricted API key',
+    bottoken: 'Bot token',
+    connectionstring: 'Connection string',
+  };
+  return map[key] ?? auth;
+}
+
 function severityScore(severity: PolicyRule['severity'], action: PolicyRule['action']): number {
   if (action === 'block' || action === 'reject') return severity === 'high' ? 4 : 3;
   if (action === 'review') return severity === 'high' ? 3 : 2;
@@ -114,7 +135,7 @@ function checkPolicyConstraints(
         extraScore += 2;
       }
     }
-    const authMethod = server.auth ?? 'None';
+    const authMethod = normalizeAuthMethod(server.auth);
     if (doc.policy.auth[authMethod] === false) {
       flags.push(`Auth method not permitted: ${authMethod}`);
       extraScore += 2;
@@ -196,7 +217,7 @@ export function assessRiskWithPolicy(
   if (entry.sensitivity === 'confidential') { riskScore += 2; flags.push('confidential-data'); }
 
   const server = entry as { auth?: string };
-  if (server.auth === 'none' || server.auth === 'None') {
+  if (server.auth !== undefined && normalizeAuthMethod(server.auth) === 'None') {
     riskScore += 1;
     flags.push('no-auth');
   }
@@ -266,4 +287,85 @@ export function evaluatePolicyEnforcement(
     quarantined: doc.policy.quarantineHighRisk === true && highRisk,
     requiresTwoApprovers: doc.policy.twoApproversHighRisk === true && highRisk,
   };
+}
+
+/** Skill token budget enforced when policy.tokenCap is enabled. */
+export const DEFAULT_MAX_SKILL_TOKENS = 8000;
+
+export function isPublisherDomainVerified(
+  publisher: string | undefined,
+  doc: PolicyDocument,
+): boolean {
+  const domain = publisherDomain(publisher);
+  if (!domain) return false;
+  return doc.domains.some((d) => d.d === domain && d.verified);
+}
+
+export interface SubmissionDecision {
+  /** The entry after policy-driven adjustments (e.g. forced read-only). */
+  entry: Partial<RegistryEntry>;
+  /** Whether the entry may be published immediately without manual review. */
+  autoApprove: boolean;
+  /** Extra flags raised at submission time (e.g. token cap). */
+  flags: string[];
+}
+
+/**
+ * Apply policy toggles that act at submission time, before an entry enters the
+ * review queue. This makes the Policy page's submit-side switches real:
+ *  - readOnlyDefault: mutating tools are forced read-only; enabling writes is an
+ *    admin opt-in during review, never a submitter choice.
+ *  - tokenCap: skills over the token budget are flagged and cannot auto-approve.
+ *  - requireReview / autoApproveVerified / autoApproveSkills: decide whether a
+ *    low-risk, un-flagged submission can publish immediately or must be queued.
+ *
+ * The remaining PolicyState fields (perToolApproval, blockWriteUntilReview,
+ * defaultVisibility, republishAfterDays) describe install-time / lifecycle
+ * behavior that the registry API does not own, so they remain declarative.
+ */
+export function applySubmissionPolicy(
+  entry: Partial<RegistryEntry>,
+  doc: PolicyDocument,
+): SubmissionDecision {
+  const flags: string[] = [];
+  const adjusted: Partial<RegistryEntry> = { ...entry };
+
+  // readOnlyDefault — writes must be opted into by an admin, not the submitter.
+  if (doc.policy.readOnlyDefault) {
+    if (adjusted.type === 'tool') {
+      (adjusted as Tool).readOnly = true;
+    }
+    if (adjusted.type === 'server' && Array.isArray((adjusted as Server).tools)) {
+      (adjusted as Server).tools = (adjusted as Server).tools.map((t) => ({
+        ...t,
+        readOnly: true,
+      }));
+    }
+  }
+
+  // tokenCap — oversized skills are flagged so they can't slip through auto-approve.
+  let tokenCapExceeded = false;
+  if (doc.policy.tokenCap && adjusted.type === 'skill') {
+    const tokens = (adjusted as Skill).tokens ?? 0;
+    if (tokens > DEFAULT_MAX_SKILL_TOKENS) {
+      tokenCapExceeded = true;
+      flags.push(`Token cap exceeded (${tokens} > ${DEFAULT_MAX_SKILL_TOKENS})`);
+    }
+  }
+
+  const { risk, firedRules } = assessRiskWithPolicy(adjusted, doc);
+  const hasHardRule = firedRules.some((r) => r.action === 'block' || r.action === 'reject');
+
+  // An explicit category opt-in: trusted publisher, or the skills fast-path.
+  const categoryAutoApprove =
+    (doc.policy.autoApproveVerified && isPublisherDomainVerified(adjusted.publisher, doc)) ||
+    (doc.policy.autoApproveSkills && adjusted.type === 'skill');
+
+  const autoApprove =
+    risk === 'low' &&
+    !hasHardRule &&
+    !tokenCapExceeded &&
+    (!doc.policy.requireReview || categoryAutoApprove);
+
+  return { entry: adjusted, autoApprove, flags };
 }

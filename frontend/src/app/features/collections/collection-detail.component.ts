@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, inject, DestroyRef, Input } from '@angular/core';
+import { Component, OnChanges, SimpleChanges, signal, inject, DestroyRef, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -49,7 +49,7 @@ const KIND_META: Record<string, { icon: string; label: string; color: string; no
   ],
   templateUrl: './collection-detail.component.html',
 })
-export class CollectionDetailComponent implements OnInit {
+export class CollectionDetailComponent implements OnChanges {
   @Input() id!: string;
 
   private readonly registry = inject(RegistryService);
@@ -64,7 +64,18 @@ export class CollectionDetailComponent implements OnInit {
   readonly kindOrder = ['agent', 'server', 'skill', 'api'] as const;
   readonly kindMeta = KIND_META;
 
-  ngOnInit(): void {
+  // React to the route-bound id changing on the reused component instance.
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['id']) {
+      this.loadCollection();
+    }
+  }
+
+  private loadCollection(): void {
+    this.loading.set(true);
+    this.error.set(null);
+    this.collection.set(null);
+    this.added.set(false);
     this.registry
       .getCollection(this.id)
       .pipe(takeUntilDestroyed(this.destroyRef))
