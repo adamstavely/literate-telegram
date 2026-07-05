@@ -29,6 +29,7 @@ COPY --from=builder /build/dist/interop-frontend/browser /usr/share/nginx/html
 
 # Copy nginx configuration — uses envsubst for BACKEND_URL at startup
 COPY nginx.conf /etc/nginx/nginx.conf
+COPY nginx-security-headers.conf /etc/nginx/nginx-security-headers.conf
 
 # Create temp dirs nginx needs when running as non-root
 RUN mkdir -p /var/cache/nginx/client_temp \

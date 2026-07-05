@@ -5,7 +5,7 @@ import {
   RuleSeverity,
   Visibility,
 } from '../types/index.js';
-import { SUPPORTED_POLICY_RULE_IDS } from '../data/policy-rule-ids.js';
+import { SUPPORTED_POLICY_RULE_IDS, CUSTOM_POLICY_RULE_ID_PATTERN } from '../data/policy-rule-ids.js';
 
 const RULE_ACTIONS: readonly RuleAction[] = ['flag', 'review', 'block', 'reject'];
 const RULE_SEVERITIES: readonly RuleSeverity[] = ['high', 'medium', 'low'];
@@ -74,10 +74,19 @@ export function validatePolicyDocument(
         return;
       }
       if (typeof rule['id'] !== 'string' || !rule['id']) errors.push(`rules[${i}].id must be a non-empty string`);
-      else if (!SUPPORTED_POLICY_RULE_IDS.includes(rule['id'])) {
-        errors.push(
-          `rules[${i}].id "${rule['id']}" is not supported — known ids: ${SUPPORTED_POLICY_RULE_IDS.join(', ')}`,
-        );
+      else {
+        const ruleId = rule['id'];
+        const isBuiltIn = SUPPORTED_POLICY_RULE_IDS.includes(ruleId);
+        const isCustom = CUSTOM_POLICY_RULE_ID_PATTERN.test(ruleId);
+        if (!isBuiltIn && !isCustom) {
+          errors.push(`rules[${i}].id "${ruleId}" must be a built-in id or match ${CUSTOM_POLICY_RULE_ID_PATTERN}`);
+        }
+        if (!isBuiltIn) {
+          const cond = rule['cond'];
+          if (typeof cond !== 'string' || cond.trim().length < 5) {
+            errors.push(`rules[${i}].cond is required (min 5 characters) for custom rule "${ruleId}"`);
+          }
+        }
       }
       if (typeof rule['name'] !== 'string') errors.push(`rules[${i}].name must be a string`);
       if (!RULE_SEVERITIES.includes(rule['severity'] as RuleSeverity)) {

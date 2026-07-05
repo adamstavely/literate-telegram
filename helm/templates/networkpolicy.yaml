@@ -20,6 +20,31 @@ spec:
       ports:
         - protocol: TCP
           port: 3000
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.networkPolicy.ingressControllerNamespace | quote }}
+        {{- range .Values.networkPolicy.extraIngressNamespaces }}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ . | quote }}
+        {{- end }}
+      ports:
+        - protocol: TCP
+          port: 3000
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "interop.seedJob.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 3000
+    {{- if .Values.networkPolicy.allowProbeIngress }}
+    # Kubelet health/readiness probes originate from the node, not frontend/ingress pods.
+    - ports:
+        - protocol: TCP
+          port: 3000
+    {{- end }}
   egress:
     - ports:
         - protocol: TCP
@@ -29,6 +54,9 @@ spec:
           port: 443
     - ports:
         - protocol: UDP
+          port: 53
+    - ports:
+        - protocol: TCP
           port: 53
 ---
 apiVersion: networking.k8s.io/v1
@@ -51,10 +79,20 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: {{ .Values.networkPolicy.ingressControllerNamespace | quote }}
+        {{- range .Values.networkPolicy.extraIngressNamespaces }}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ . | quote }}
+        {{- end }}
       ports:
         - protocol: TCP
           port: 8080
     {{- else }}
+    - ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
+    {{- if .Values.networkPolicy.allowProbeIngress }}
     - ports:
         - protocol: TCP
           port: 8080
@@ -69,6 +107,9 @@ spec:
           port: 3000
     - ports:
         - protocol: UDP
+          port: 53
+    - ports:
+        - protocol: TCP
           port: 53
 {{- if .Values.elasticsearch.enabled }}
 ---
@@ -90,6 +131,13 @@ spec:
         - podSelector:
             matchLabels:
               {{- include "interop.backend.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9200
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "interop.seedJob.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 9200

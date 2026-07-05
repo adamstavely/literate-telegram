@@ -107,8 +107,11 @@ function resolveCollection(
     'public',
   );
 
+  const visibleMembers = def.members.filter((m) => byMember.has(memberKey(m)));
+
   return {
     ...def,
+    members: visibleMembers,
     entries,
     count: entries.length,
     installs: entries.reduce((n, e) => n + (e.installs || 0), 0),

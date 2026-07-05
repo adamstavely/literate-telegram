@@ -71,6 +71,16 @@ function severityScore(severity: PolicyRule['severity'], action: PolicyRule['act
   return severity === 'high' ? 2 : 1;
 }
 
+/** Match custom rule cond strings against entry text using significant keywords. */
+function evaluateCustomCond(cond: string, text: string): boolean {
+  const keywords = cond
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length >= 4);
+  if (keywords.length === 0) return false;
+  return keywords.some((kw) => text.includes(kw));
+}
+
 function evaluateRule(
   rule: PolicyRule,
   entry: Partial<RegistryEntry>,
@@ -133,6 +143,9 @@ function evaluateRule(
       }
       break;
     default:
+      if (rule.cond && evaluateCustomCond(rule.cond, text)) {
+        return rule.flag;
+      }
       break;
   }
 

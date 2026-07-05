@@ -38,14 +38,45 @@ describe('validatePolicyDocument', () => {
     assert.ok(validatePolicyDocument(input).some((e) => e.includes('verified')));
   });
 
-  test('rejects an unsupported rule id', () => {
+  test('accepts a custom rule id with a cond string', () => {
+    const input = validInput();
+    input.rules.push({
+      id: 'custom-rule',
+      name: 'Custom keyword rule',
+      cond: 'dangerous shell command',
+      desc: 'Flags dangerous shell usage',
+      severity: 'medium',
+      action: 'flag',
+      enabled: true,
+      flag: 'Custom flag',
+    });
+    assert.deepEqual(validatePolicyDocument(input), []);
+  });
+
+  test('rejects a custom rule without cond', () => {
+    const input = validInput();
+    input.rules.push({
+      id: 'custom-rule',
+      name: 'Custom',
+      cond: '',
+      desc: 'd',
+      severity: 'medium',
+      action: 'flag',
+      enabled: true,
+      flag: 'Custom flag',
+    });
+    assert.ok(validatePolicyDocument(input).some((e) => e.includes('cond is required')));
+  });
+
+  test('rejects an invalid custom rule id', () => {
     const input = validInput();
     input.rules.push({
       ...input.rules[0]!,
-      id: 'custom-rule',
-      name: 'Custom',
+      id: 'INVALID',
+      name: 'Bad id',
+      cond: 'some condition here',
     });
-    assert.ok(validatePolicyDocument(input).some((e) => e.includes('not supported')));
+    assert.ok(validatePolicyDocument(input).some((e) => e.includes('must be a built-in id')));
   });
 
   test('rejects non-array rules/domains', () => {

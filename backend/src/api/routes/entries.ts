@@ -285,7 +285,7 @@ router.post(
       };
 
       // Apply submit-time policy (read-only defaults, token cap, auto-approve).
-      const policyDoc = await getPolicy();
+      const policyDoc = await getPolicy(true);
       const decision = applySubmissionPolicy(sanitized, policyDoc);
       const partialEntry = decision.entry;
       const { risk, flags: riskFlags } = assessRiskWithPolicy(partialEntry, policyDoc);
