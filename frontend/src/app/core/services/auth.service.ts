@@ -1,32 +1,11 @@
-/**
- * AuthService — OIDC placeholder scaffold.
- *
- * HOW TO WIRE A REAL OIDC LIBRARY:
- * 1. Install `angular-oauth2-oidc` or `auth0-angular`.
- * 2. Replace the `_authenticated$` BehaviorSubject with the library's
- *    authentication signal/observable.
- * 3. Call `oauthService.configure(environment.oidc)` and
- *    `oauthService.loadDiscoveryDocumentAndTryLogin()` from `initAuth()`.
- * 4. Replace `getAccessToken()` with `oauthService.getAccessToken()`.
- * 5. Replace `login()` / `logout()` with the library equivalents.
- *
- * In placeholder mode, the service reads `mock-auth` from localStorage so
- * that developers can simulate an authenticated session without a real IdP.
- * Call `login()` or set it via the browser console:
- *   localStorage.setItem('mock-auth', JSON.stringify({
- *     sub: 'dev-user-1',
- *     email: 'dev@example.com',
- *     name: 'Dev User',
- *     roles: ['admin'],
- *     accessToken: 'mock-token',
- *   }));
- */
-
-import { Injectable, OnDestroy } from '@angular/core';
-import { BehaviorSubject, Observable, fromEvent, Subscription } from 'rxjs';
+import { Injectable, OnDestroy, inject } from '@angular/core';
+import { BehaviorSubject, Observable, Subscription, fromEvent } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { OAuthService } from 'angular-oauth2-oidc';
 import { environment } from '../../../environments/environment';
 import { AuthenticatedUser } from '../../shared/types';
+import { buildAuthConfig, isOidcConfigured } from '../auth/auth.config';
+import { userFromAccessToken } from '../auth/jwt-claims';
 
 interface MockAuthPayload extends AuthenticatedUser {
   accessToken?: string;
@@ -35,33 +14,31 @@ interface MockAuthPayload extends AuthenticatedUser {
 @Injectable({ providedIn: 'root' })
 export class AuthService implements OnDestroy {
   private readonly STORAGE_KEY = 'mock-auth';
+  private readonly oauth = inject(OAuthService, { optional: true });
 
   private _user$ = new BehaviorSubject<AuthenticatedUser | null>(
-    this._readStoredUser(),
+    this._readInitialUser(),
   );
 
-  /** Emits the currently authenticated user, or null when logged out. */
+  private _oauthEventsSub: Subscription | null = null;
+  private _storageListener: Subscription;
+
   readonly currentUser$: Observable<AuthenticatedUser | null> =
     this._user$.asObservable();
 
-  /** Emits true whenever a user is authenticated. */
   readonly isAuthenticated$: Observable<boolean> = this._user$.pipe(
     map(u => u !== null),
   );
 
-  /** Emits true whenever the current user has the 'admin' role. */
   readonly isAdmin$: Observable<boolean> = this._user$.pipe(
     map(u => u?.roles?.some(r => r.toLowerCase() === 'admin') ?? false),
   );
 
-  private _storageListener: Subscription;
-
   constructor() {
-    // React to mock-auth changes in other tabs / from DevTools console.
     this._storageListener = fromEvent<StorageEvent>(window, 'storage').subscribe(
       event => {
-        if (event.key === this.STORAGE_KEY) {
-          this._user$.next(this._readStoredUser());
+        if (!isOidcConfigured() && event.key === this.STORAGE_KEY) {
+          this._user$.next(this._readStoredMockUser());
         }
       },
     );
@@ -69,51 +46,57 @@ export class AuthService implements OnDestroy {
 
   ngOnDestroy(): void {
     this._storageListener.unsubscribe();
+    this._oauthEventsSub?.unsubscribe();
   }
 
-  // ── Synchronous helpers ────────────────────────────────────────────────────
+  /** Configure OIDC and attempt silent login when an IdP is configured. */
+  async initAuth(): Promise<void> {
+    if (!isOidcConfigured() || !this.oauth) {
+      this._user$.next(this._readStoredMockUser());
+      return;
+    }
 
-  /** Returns true if there is a currently authenticated user. */
+    this.oauth.configure(buildAuthConfig());
+    this._oauthEventsSub = this.oauth.events.subscribe(() => {
+      this.syncFromOAuth();
+    });
+
+    await this.oauth.loadDiscoveryDocumentAndTryLogin();
+    this.syncFromOAuth();
+  }
+
   isAuthenticated(): boolean {
     return this._user$.value !== null;
   }
 
-  /**
-   * Returns true if the current user has the 'admin' role.
-   * Wire to real JWT claim checks when using an actual OIDC library.
-   */
   isAdmin(): boolean {
     return this._user$.value?.roles?.some(r => r.toLowerCase() === 'admin') ?? false;
   }
 
-  /**
-   * Returns the raw access token, or null when unauthenticated.
-   * Replace with `oauthService.getAccessToken()` for real OIDC.
-   */
   getAccessToken(): string | null {
+    if (isOidcConfigured() && this.oauth?.hasValidAccessToken()) {
+      return this.oauth.getAccessToken();
+    }
     const raw = localStorage.getItem(this.STORAGE_KEY);
     if (!raw) return null;
     try {
-      const payload = JSON.parse(raw) as MockAuthPayload;
-      return payload.accessToken ?? null;
+      return (JSON.parse(raw) as MockAuthPayload).accessToken ?? null;
     } catch {
       return null;
     }
   }
 
-  // ── Actions ────────────────────────────────────────────────────────────────
+  login(returnUrl?: string): void {
+    if (returnUrl) {
+      sessionStorage.setItem('auth-return-url', returnUrl);
+    }
 
-  /**
-   * Initiates OIDC login.
-   * Replace with `oauthService.initLoginFlow()` for real OIDC.
-   */
-  login(): void {
+    if (isOidcConfigured() && this.oauth) {
+      this.oauth.initLoginFlow();
+      return;
+    }
+
     if (environment.production) {
-      // PLACEHOLDER: In a real app this would redirect to the OIDC provider.
-      // e.g. this.oauthService.initLoginFlow();
-      console.warn(
-        '[AuthService] login() called — wire a real OIDC library to enable authentication.',
-      );
       return;
     }
 
@@ -126,23 +109,46 @@ export class AuthService implements OnDestroy {
     });
   }
 
-  /**
-   * Clears the session and emits null on currentUser$.
-   * Replace with `oauthService.logOut()` for real OIDC.
-   */
   logout(): void {
+    if (isOidcConfigured() && this.oauth) {
+      this.oauth.logOut();
+    }
     localStorage.removeItem(this.STORAGE_KEY);
     this._user$.next(null);
   }
 
-  // ── Internals ──────────────────────────────────────────────────────────────
+  /** Refresh currentUser$ from the OAuthService access token. */
+  syncFromOAuth(): void {
+    if (!isOidcConfigured() || !this.oauth?.hasValidAccessToken()) {
+      if (isOidcConfigured()) {
+        this._user$.next(null);
+      }
+      return;
+    }
 
-  private _readStoredUser(): AuthenticatedUser | null {
+    const user = userFromAccessToken(this.oauth.getAccessToken());
+    this._user$.next(
+      user
+        ? {
+            sub: user.sub,
+            email: user.email,
+            name: user.name,
+            roles: user.roles,
+          }
+        : null,
+    );
+  }
+
+  private _readInitialUser(): AuthenticatedUser | null {
+    if (isOidcConfigured()) return null;
+    return this._readStoredMockUser();
+  }
+
+  private _readStoredMockUser(): AuthenticatedUser | null {
     const raw = localStorage.getItem(this.STORAGE_KEY);
     if (!raw) return null;
     try {
-      const payload = JSON.parse(raw) as MockAuthPayload;
-      return this._toUser(payload);
+      return this._toUser(JSON.parse(raw) as MockAuthPayload);
     } catch {
       return null;
     }
