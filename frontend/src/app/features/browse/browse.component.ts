@@ -220,6 +220,11 @@ export class BrowseComponent implements OnInit {
     this.search$.next(params);
   }
 
+  retrySearch(): void {
+    this.error.set(null);
+    this._triggerSearch();
+  }
+
   trackEntry(_index: number, entry: RegistryEntry): string {
     return entry.id;
   }

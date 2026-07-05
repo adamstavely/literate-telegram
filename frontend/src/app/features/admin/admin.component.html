@@ -46,10 +46,9 @@
   </div>
 
   @if (error()) {
-    <div class="callout" role="alert" style="margin-bottom:14px;">
+    <div class="callout" role="alert" aria-live="assertive" style="margin-bottom:14px;">
       <app-icon name="warning" [size]="16" aria-hidden="true"></app-icon>
-      <span>{{ error() }}</span>
-      <button class="btn btn-secondary btn-sm" type="button" (click)="loadPending()">Retry</button>
+      <div>{{ error() }} <button type="button" class="inline-link" (click)="loadPending()">Retry</button></div>
     </div>
   }
 
