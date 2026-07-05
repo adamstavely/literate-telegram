@@ -8,11 +8,11 @@ global:
 image:
   frontend:
     repository: interop/frontend
-    tag: "latest"
+    tag: ""   # Defaults to Chart.appVersion when empty
     pullPolicy: IfNotPresent
   backend:
     repository: interop/backend
-    tag: "latest"
+    tag: ""   # Defaults to Chart.appVersion when empty
     pullPolicy: IfNotPresent
 
 # ---------------------------------------------------------------------------
@@ -36,8 +36,8 @@ ingress:
     nginx.ingress.kubernetes.io/proxy-body-size: "10m"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
     nginx.ingress.kubernetes.io/proxy-connect-timeout: "10"
-    # Uncomment to force HTTPS redirect
-    # nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
   hosts:
     - host: interop.io
       paths:
@@ -76,8 +76,10 @@ backend:
     TRUST_PROXY: "1"
     INGEST_RATE_LIMIT_WINDOW_MS: "60000"
     INGEST_RATE_LIMIT_MAX: "30"
-  # Name of the Secret that holds ES_PASSWORD, OIDC_ISSUER, OIDC_AUDIENCE, OIDC_JWKS_URI
+  # Name of the Secret that holds ES_PASSWORD, OIDC_ISSUER, OIDC_AUDIENCE, OIDC_JWKS_URI.
+  # When existingSecret is set, Helm will not render secret.yaml — provision the Secret out-of-band.
   envSecret: interop-backend-secrets
+  existingSecret: ""
 
 # ---------------------------------------------------------------------------
 # Frontend workload
@@ -103,7 +105,7 @@ elasticsearch:
   host: ""        # External host — used only when enabled=false
   port: 9200
   username: elastic
-  password: "changeme"   # Override via --set or a values override file
+  password: ""   # Required when elasticsearch.enabled=true — never commit real values
   storageSize: 10Gi
   storageClassName: ""   # Leave blank to use cluster default StorageClass
   resources:
@@ -114,6 +116,8 @@ elasticsearch:
       cpu: 2000m
       memory: 2Gi
   javaOpts: "-Xms512m -Xmx512m"
+  # Set sysctlInit=true only when nodes lack vm.max_map_count=262144 (requires privileged init).
+  sysctlInit: false
 
 # ---------------------------------------------------------------------------
 # OIDC / JWT settings (values stored in the Secret, not here)
@@ -144,10 +148,8 @@ serviceAccount:
 # ---------------------------------------------------------------------------
 # Pod metadata
 # ---------------------------------------------------------------------------
-podAnnotations:
-  prometheus.io/scrape: "true"
-  prometheus.io/port: "3000"
-  prometheus.io/path: "/api/metrics"
+# Pod metadata — Prometheus scrape disabled until /api/metrics is implemented.
+podAnnotations: {}
 
 # ---------------------------------------------------------------------------
 # Security contexts

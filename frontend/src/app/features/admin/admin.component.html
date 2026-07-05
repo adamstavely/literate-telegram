@@ -187,16 +187,16 @@
 @if (toast()) {
   <div
     class="fade-up"
-    role="status"
+    [attr.role]="toast()!.verdict.includes('failed') ? 'alert' : 'status'"
     aria-live="polite"
     style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:95;background:var(--ink);color:white;padding:12px 18px;border-radius:11px;box-shadow:var(--shadow-lg);display:flex;align-items:center;gap:10px;font-size:14px;"
   >
     <span
-      [style.color]="toast()!.verdict === 'rejected' ? '#ff9b91' : '#86efac'"
+      [style.color]="toast()!.verdict.includes('failed') || toast()!.verdict === 'rejected' ? '#ff9b91' : '#86efac'"
       style="display:inline-flex;"
     >
       <app-icon
-        [name]="toast()!.verdict === 'rejected' ? 'close' : 'check'"
+        [name]="toast()!.verdict.includes('failed') || toast()!.verdict === 'rejected' ? 'close' : 'check'"
         [size]="16"
         aria-hidden="true"
       ></app-icon>

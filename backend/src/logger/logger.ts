@@ -114,19 +114,10 @@ function getEsTransport(): ElasticsearchTransport {
   if (!_esTransport) {
     // Import lazily to avoid circular dependency
     const { Client } = require('@elastic/elasticsearch') as { Client: typeof import('@elastic/elasticsearch').Client };
-    const esClient = new Client({
-      node: config.elasticsearch.node,
-      auth: {
-        username: config.elasticsearch.username,
-        password: config.elasticsearch.password,
-      },
-      ...(config.elasticsearch.caFingerprint
-        ? {
-            caFingerprint: config.elasticsearch.caFingerprint,
-            tls: { rejectUnauthorized: true },
-          }
-        : {}),
-    });
+    const { buildEsClientOptions } = require('../elasticsearch/client-options.js') as {
+      buildEsClientOptions: typeof import('../elasticsearch/client-options.js').buildEsClientOptions;
+    };
+    const esClient = new Client(buildEsClientOptions());
     _esTransport = new ElasticsearchTransport({
       client: esClient,
       index: config.logging.logIndex,

@@ -54,6 +54,17 @@ export class EndpointCardComponent implements OnInit {
 
   readonly liveReq = computed(() => buildLiveRequest(this.api, this.ep, this.spec, this.vals()));
 
+  readonly panelId = computed(() =>
+    `ep-panel-${this.ep.method}-${this.ep.path.replace(/[^a-zA-Z0-9]+/g, '-')}`,
+  );
+
+  readonly liveResponseText = computed(() => {
+    if (this.running()) return 'Sending request…';
+    const r = this.resp();
+    if (!r) return '';
+    return `Response received: ${r.code} in ${r.ms} ms`;
+  });
+
   ngOnInit(): void {
     this.spec = buildEndpointSpec(this.api, this.ep);
     this.allParams = [...this.spec.pathParams, ...this.spec.query];

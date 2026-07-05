@@ -48,15 +48,28 @@ const SENS_RANK: Record<SensitivityLevel, number> = {
   restricted: 3,
 };
 
-async function loadAllEntries(): Promise<RegistryEntry[]> {
+async function loadEntriesBySlugs(slugs: string[]): Promise<Map<string, RegistryEntry>> {
+  const unique = [...new Set(slugs.filter(Boolean))];
+  if (unique.length === 0) return new Map();
+
   const response = await esClient.search<RegistryEntry>({
     index: INDEX_NAMES.REGISTRY,
-    size: 500,
-    query: { match_all: {} },
+    size: unique.length,
+    query: { terms: { slug: unique } },
   });
-  return response.hits.hits
-    .map((h) => h._source)
-    .filter((s): s is RegistryEntry => s !== undefined);
+
+  const bySlug = new Map<string, RegistryEntry>();
+  for (const hit of response.hits.hits) {
+    if (hit._source) bySlug.set(hit._source.slug, hit._source);
+  }
+  return bySlug;
+}
+
+async function loadEntriesForDefinitions(
+  defs: CollectionDefinition[],
+): Promise<Map<string, RegistryEntry>> {
+  const slugs = defs.flatMap((d) => d.members.map((m) => m.id));
+  return loadEntriesBySlugs(slugs);
 }
 
 function resolveCollection(
@@ -84,8 +97,8 @@ function resolveCollection(
 
 router.get('/', async (_req: Request, res: Response, next: NextFunction) => {
   try {
-    const [all, defs] = await Promise.all([loadAllEntries(), allDefinitions()]);
-    const bySlug = new Map(all.map((e) => [e.slug, e]));
+    const defs = await allDefinitions();
+    const bySlug = await loadEntriesForDefinitions(defs);
     const collections = defs.map((def) => resolveCollection(def, bySlug));
     res.json(collections);
   } catch (err) {
@@ -153,8 +166,7 @@ router.post(
       await auditAction(req, 'CREATE_COLLECTION', def.id, { title: def.title, members: members.length });
       logger.info('Collection created', { correlationId: req.id, userId: req.user?.sub, collectionId: def.id });
 
-      const all = await loadAllEntries();
-      const bySlug = new Map(all.map((e) => [e.slug, e]));
+      const bySlug = await loadEntriesBySlugs(members.map((m) => m.id));
       res.status(201).json(resolveCollection(def, bySlug));
     } catch (err) {
       next(err);
@@ -171,8 +183,7 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
       res.status(404).json({ error: 'Not Found', message: `Collection ${id} not found` });
       return;
     }
-    const all = await loadAllEntries();
-    const bySlug = new Map(all.map((e) => [e.slug, e]));
+    const bySlug = await loadEntriesBySlugs(def.members.map((m) => m.id));
     res.json(resolveCollection(def, bySlug));
   } catch (err) {
     next(err);

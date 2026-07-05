@@ -220,6 +220,9 @@ export interface PolicyDocument {
   domains: TrustDomain[];
   updatedAt: string;
   updatedBy: string;
+  /** Elasticsearch optimistic-lock tokens — present when loaded from ES. */
+  _seqNo?: number;
+  _primaryTerm?: number;
 }
 
 export interface PendingStats {

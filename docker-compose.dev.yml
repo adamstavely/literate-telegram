@@ -1,0 +1,8 @@
+# Development overrides — hot-reload and direct backend access for debugging.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+services:
+  backend:
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend/src:/app/src:ro

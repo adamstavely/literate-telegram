@@ -61,6 +61,7 @@
                 tabindex="0"
                 (click)="setType(opt.value)"
                 (keydown.enter)="setType(opt.value)"
+                (keydown.space)="$event.preventDefault(); setType(opt.value)"
                 [attr.aria-pressed]="activeType() === opt.value"
               >
                 <span class="fi-icon"><app-icon [name]="opt.icon" [size]="15" aria-hidden="true"></app-icon></span>
@@ -82,6 +83,7 @@
                 tabindex="0"
                 (click)="setCategory(cat)"
                 (keydown.enter)="setCategory(cat)"
+                (keydown.space)="$event.preventDefault(); setCategory(cat)"
                 [attr.aria-pressed]="activeCategory() === cat"
               >
                 <span class="checkbox" [class.on]="activeCategory() === cat" aria-hidden="true">
@@ -106,6 +108,7 @@
                 tabindex="0"
                 (click)="setClient(client)"
                 (keydown.enter)="setClient(client)"
+                (keydown.space)="$event.preventDefault(); setClient(client)"
                 [attr.aria-pressed]="activeClient() === client"
               >
                 <span class="checkbox" [class.on]="activeClient() === client" aria-hidden="true">

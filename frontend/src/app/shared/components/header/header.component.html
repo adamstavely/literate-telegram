@@ -128,18 +128,30 @@
               <button class="notif-markall" type="button" (click)="markAllRead()">Mark all read</button>
             }
           </div>
-          <div class="notif-tabs">
+          <div class="notif-tabs" role="tablist" aria-label="Notification filter">
             <button
               type="button"
               class="notif-tab"
+              role="tab"
+              id="notif-tab-all"
+              aria-controls="notif-panel-all"
+              [attr.aria-selected]="notifTab() === 'all'"
+              [tabIndex]="notifTab() === 'all' ? 0 : -1"
               [class.on]="notifTab() === 'all'"
               (click)="setNotifTab('all')"
+              (keydown)="onNotifTabKeydown($event, 'all')"
             >All</button>
             <button
               type="button"
               class="notif-tab"
+              role="tab"
+              id="notif-tab-unread"
+              aria-controls="notif-panel-unread"
+              [attr.aria-selected]="notifTab() === 'unread'"
+              [tabIndex]="notifTab() === 'unread' ? 0 : -1"
               [class.on]="notifTab() === 'unread'"
               (click)="setNotifTab('unread')"
+              (keydown)="onNotifTabKeydown($event, 'unread')"
             >Unread@if (unreadCount() > 0) { · {{ unreadCount() }} }</button>
           </div>
           @if (notificationsError()) {
@@ -148,7 +160,12 @@
               <button type="button" class="inline-link" (click)="loadNotifications()">Retry</button>
             </div>
           }
-          <div class="notif-list">
+          <div
+            class="notif-list"
+            role="tabpanel"
+            [id]="notifTab() === 'all' ? 'notif-panel-all' : 'notif-panel-unread'"
+            [attr.aria-labelledby]="notifTab() === 'all' ? 'notif-tab-all' : 'notif-tab-unread'"
+          >
             @if (notificationsLoading()) {
               <div class="notif-empty" aria-busy="true">Loading…</div>
             } @else {

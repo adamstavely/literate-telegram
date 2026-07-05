@@ -36,18 +36,18 @@ RUN mkdir -p /var/cache/nginx/client_temp \
              /var/cache/nginx/fastcgi_temp \
              /var/cache/nginx/uwsgi_temp \
              /var/cache/nginx/scgi_temp \
-  && chown -R nginx:nginx /var/cache/nginx /var/log/nginx /etc/nginx/conf.d \
+  && chown -R nginx:nginx /var/cache/nginx /var/log/nginx /etc/nginx/conf.d /usr/share/nginx/html \
   && chmod -R 755 /var/cache/nginx
 
-# Substitute BACKEND_URL env var then start nginx
-# Default falls back to "backend:3000" if env var not set
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
-EXPOSE 80
+USER nginx
+
+EXPOSE 8080
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=3 \
-  CMD curl -fsS http://localhost:80/ || exit 1
+  CMD curl -fsS http://localhost:8080/ || exit 1
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]

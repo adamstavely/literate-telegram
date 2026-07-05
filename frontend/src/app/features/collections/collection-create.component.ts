@@ -1,8 +1,10 @@
 import { Component, signal, computed, inject, DestroyRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { switchMap } from 'rxjs/operators';
 import { RegistryService } from '../../core/services/registry.service';
+import { CollectionMemberKind } from '../../shared/types';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 
 const COL_ICONS = ['box', 'bolt', 'shield', 'inbox', 'install', 'code', 'globe', 'lock', 'warning', 'star', 'book', 'grid'];
@@ -11,7 +13,7 @@ const COL_ACCENTS = ['#5a63d8', '#2A6FDB', '#0d9aa6', '#1f9d62', '#c2820b', '#d4
 @Component({
   selector: 'app-collection-create',
   standalone: true,
-  imports: [FormsModule, IconComponent],
+  imports: [FormsModule, IconComponent, RouterLink],
   templateUrl: './collection-create.component.html',
 })
 export class CollectionCreateComponent {
@@ -61,16 +63,25 @@ export class CollectionCreateComponent {
     this.error.set(null);
 
     this.registry
-      .createCollection({
-        title: this.title().trim(),
-        desc: this.summary().trim(),
-        blurb: this.blurb().trim() || undefined,
-        icon: this.icon(),
-        accent: this.accent(),
-        // Member kind is cosmetic — the detail page groups by resolved entry type.
-        members: this.memberSlugs().map((id) => ({ kind: 'server', id })),
-      })
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .searchEntries({ size: 500 })
+      .pipe(
+        switchMap((catalog) => {
+          const bySlug = new Map(catalog.hits.map((e) => [e.slug, e]));
+          const members = this.memberSlugs().map((slug) => ({
+            kind: (bySlug.get(slug)?.type ?? 'server') as CollectionMemberKind,
+            id: slug,
+          }));
+          return this.registry.createCollection({
+            title: this.title().trim(),
+            desc: this.summary().trim(),
+            blurb: this.blurb().trim() || undefined,
+            icon: this.icon(),
+            accent: this.accent(),
+            members,
+          });
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe({
         next: (col) => {
           this.submitting.set(false);

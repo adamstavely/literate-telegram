@@ -98,16 +98,13 @@ services:
       # X-Forwarded-For. Trust the first proxy hop so req.ip (rate limiting +
       # audit attribution) reflects the real client, not the container IP.
       - TRUST_PROXY=1
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     networks:
       - interop-net
     depends_on:
       elasticsearch:
         condition: service_healthy
-    volumes:
-      # Mount source for hot-reload in dev; remove in production
-      - ./backend/src:/app/src:ro
     healthcheck:
       test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000/api/health/live',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))\""]
       interval: 15s
@@ -129,14 +126,14 @@ services:
     environment:
       - BACKEND_URL=backend:3000
     ports:
-      - "4200:80"
+      - "4200:8080"
     networks:
       - interop-net
     depends_on:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:80/ || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/ || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5

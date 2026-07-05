@@ -76,7 +76,7 @@
               <p class="field-hint" style="margin-top: -6px; margin-bottom: 12px">{{ kindMeta[kind].note }}</p>
               <div style="display: flex; flex-direction: column; gap: 10px">
                 @for (entry of entriesByKind(kind); track entry.id) {
-                  <div class="compose-card" (click)="openEntry(entry)" role="button" tabindex="0">
+                  <div class="compose-card" (click)="openEntry(entry)" (keydown.enter)="openEntry(entry)" (keydown.space)="$event.preventDefault(); openEntry(entry)" role="button" tabindex="0">
                     <div class="ec-logo" [style.color]="kindMeta[kind].color">
                       <app-icon [name]="kindMeta[kind].icon" [size]="17"></app-icon>
                     </div>

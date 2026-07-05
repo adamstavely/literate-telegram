@@ -174,12 +174,15 @@ export class PolicyComponent implements OnInit {
   readonly domains = signal<TrustDomain[]>(SEED_DOMAINS.map(d => ({ ...d })));
   readonly newDomain = signal('');
   readonly toast = signal<string | null>(null);
+  readonly toastError = signal(false);
   readonly pending = signal<PendingEntry[]>([]);
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly loadError = signal<string | null>(null);
   readonly pendingError = signal<string | null>(null);
 
+  private policySeqNo: number | undefined;
+  private policyPrimaryTerm: number | undefined;
   private snap = '';
 
   readonly sections = computed(() => {
@@ -228,6 +231,8 @@ export class PolicyComponent implements OnInit {
           this.policy.set({ ...doc.policy });
           this.rules.set(doc.rules.map(r => ({ ...r })));
           this.domains.set(doc.domains.map(d => ({ ...d })));
+          this.policySeqNo = doc._seqNo;
+          this.policyPrimaryTerm = doc._primaryTerm;
           this.snap = this.serialize();
           this.loading.set(false);
         },
@@ -332,6 +337,9 @@ export class PolicyComponent implements OnInit {
         policy: this.policy(),
         rules: this.rules(),
         domains: this.domains(),
+        ...(this.policySeqNo !== undefined && this.policyPrimaryTerm !== undefined
+          ? { ifSeqNo: this.policySeqNo, ifPrimaryTerm: this.policyPrimaryTerm }
+          : {}),
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -339,13 +347,17 @@ export class PolicyComponent implements OnInit {
           this.policy.set({ ...doc.policy });
           this.rules.set(doc.rules.map(r => ({ ...r })));
           this.domains.set(doc.domains.map(d => ({ ...d })));
+          this.policySeqNo = doc._seqNo;
+          this.policyPrimaryTerm = doc._primaryTerm;
           this.snap = this.serialize();
           this.saving.set(false);
+          this.toastError.set(false);
           this.toast.set('Policy saved · applies to new submissions immediately');
           setTimeout(() => this.toast.set(null), 2800);
         },
         error: () => {
           this.saving.set(false);
+          this.toastError.set(true);
           this.toast.set('Failed to save policy — please try again');
           setTimeout(() => this.toast.set(null), 2800);
         },

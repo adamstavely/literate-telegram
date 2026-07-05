@@ -198,6 +198,8 @@ export interface PolicyDocument {
   domains: TrustDomain[];
   updatedAt: string;
   updatedBy: string;
+  _seqNo?: number;
+  _primaryTerm?: number;
 }
 
 export interface PendingStats {

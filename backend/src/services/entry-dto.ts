@@ -45,6 +45,10 @@ function enumArray<T extends string>(value: unknown, allowed: readonly T[]): T[]
 const TRANSPORTS: readonly TransportType[] = ['stdio', 'http', 'sse'];
 const AUTONOMY: readonly AutonomyLevel[] = ['low', 'medium', 'high', 'full'];
 const API_STYLES: readonly ApiStyle[] = ['REST', 'GraphQL'];
+const REST_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const;
+const GQL_METHODS = ['QUERY', 'MUTATION', 'SUBSCRIPTION'] as const;
+const MAX_API_ENDPOINTS = 100;
+const MAX_API_FIELD_LEN = 2048;
 const SENSITIVITIES: readonly SensitivityLevel[] = [
   'public',
   'internal',
@@ -58,6 +62,38 @@ function boolean(value: unknown): boolean | undefined {
 
 function finiteNumber(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function isValidHttpUrl(value: string): boolean {
+  try {
+    const u = new URL(value);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function sanitizeApiEndpoint(
+  raw: unknown,
+  style: ApiStyle,
+): { method: string; path: string; summary: string } | null {
+  const e = (raw ?? {}) as RawBody;
+  const method = (str(e['method']) ?? (style === 'GraphQL' ? 'QUERY' : 'GET')).toUpperCase();
+  const allowed = style === 'GraphQL' ? GQL_METHODS : REST_METHODS;
+  if (!(allowed as readonly string[]).includes(method)) return null;
+
+  const path = (str(e['path']) ?? '').slice(0, MAX_API_FIELD_LEN);
+  if (style === 'REST') {
+    if (!path.startsWith('/') || !/^\/[\w\-./{}:]+$/.test(path)) return null;
+  } else if (path && !/^[\w]+$/.test(path)) {
+    return null;
+  }
+
+  return {
+    method,
+    path,
+    summary: (str(e['summary']) ?? '').slice(0, 500),
+  };
 }
 
 function sanitizeParams(value: unknown): ToolParam[] {
@@ -158,27 +194,25 @@ export function sanitizeSubmission(body: RawBody): Partial<RegistryEntry> {
       } as Partial<RegistryEntry>;
 
     case 'api': {
-      const entry: Record<string, unknown> = {
-        ...base,
-        style: enumValue(body['style'], API_STYLES, 'REST'),
-      };
+      const style = enumValue(body['style'], API_STYLES, 'REST');
+      const entry: Record<string, unknown> = { ...base, style };
       const endpoint = str(body['endpoint']);
-      if (endpoint !== undefined) entry['endpoint'] = endpoint;
+      if (endpoint !== undefined) {
+        if (isValidHttpUrl(endpoint)) entry['endpoint'] = endpoint.slice(0, MAX_API_FIELD_LEN);
+      }
       const wrappedBy = str(body['wrappedBy']);
-      if (wrappedBy !== undefined) entry['wrappedBy'] = wrappedBy;
+      if (wrappedBy !== undefined) entry['wrappedBy'] = wrappedBy.slice(0, MAX_API_FIELD_LEN);
       const baseUrl = str(body['baseUrl']);
-      if (baseUrl !== undefined) entry['baseUrl'] = baseUrl;
+      if (baseUrl !== undefined) {
+        if (isValidHttpUrl(baseUrl)) entry['baseUrl'] = baseUrl.slice(0, MAX_API_FIELD_LEN);
+      }
       const auth = str(body['auth']);
-      if (auth !== undefined) entry['auth'] = auth;
+      if (auth !== undefined) entry['auth'] = auth.slice(0, 256);
       if (Array.isArray(body['endpoints'])) {
-        entry['endpoints'] = body['endpoints'].map((raw) => {
-          const e = (raw ?? {}) as RawBody;
-          return {
-            method: (str(e['method']) ?? 'GET').toUpperCase(),
-            path: str(e['path']) ?? '',
-            summary: str(e['summary']) ?? '',
-          };
-        });
+        entry['endpoints'] = body['endpoints']
+          .slice(0, MAX_API_ENDPOINTS)
+          .map((raw) => sanitizeApiEndpoint(raw, style))
+          .filter((e): e is NonNullable<typeof e> => e !== null);
       }
       return entry as Partial<RegistryEntry>;
     }

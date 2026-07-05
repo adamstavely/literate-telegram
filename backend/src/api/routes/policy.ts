@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { body, validationResult } from 'express-validator';
 import { requireAuth, requireAdmin } from '../../middleware/auth.js';
 import { auditAction } from '../../middleware/audit.js';
-import { getPolicy, savePolicy } from '../../services/policy.js';
+import { getPolicy, savePolicy, PolicyVersionConflictError } from '../../services/policy.js';
 import { validatePolicyDocument } from '../../services/policy-validation.js';
 import { PolicyDocument } from '../../types/index.js';
 
@@ -25,6 +25,8 @@ router.put(
     body('policy').isObject(),
     body('rules').isArray(),
     body('domains').isArray(),
+    body('ifSeqNo').optional().isInt({ min: 0 }),
+    body('ifPrimaryTerm').optional().isInt({ min: 1 }),
   ],
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const errors = validationResult(req);
@@ -34,10 +36,10 @@ router.put(
     }
 
     try {
-      const { policy, rules, domains } = req.body as Pick<
+      const { policy, rules, domains, ifSeqNo, ifPrimaryTerm } = req.body as Pick<
         PolicyDocument,
         'policy' | 'rules' | 'domains'
-      >;
+      > & { ifSeqNo?: number; ifPrimaryTerm?: number };
 
       // Deep structural validation — a malformed policy drives real governance
       // decisions, so reject anything that isn't shaped correctly.
@@ -52,7 +54,13 @@ router.put(
         return;
       }
 
-      const saved = await savePolicy({ policy, rules, domains }, req.user!.sub);
+      const saved = await savePolicy(
+        { policy, rules, domains },
+        req.user!.sub,
+        ifSeqNo !== undefined && ifPrimaryTerm !== undefined
+          ? { ifSeqNo, ifPrimaryTerm }
+          : {},
+      );
 
       await auditAction(req, 'UPDATE_POLICY', 'default', {
         ruleCount: rules.length,
@@ -61,6 +69,14 @@ router.put(
 
       res.json(saved);
     } catch (err) {
+      if (err instanceof PolicyVersionConflictError) {
+        res.status(409).json({
+          error: 'Conflict',
+          message: 'Policy was modified by another admin. Reload and try again.',
+          correlationId: req.id,
+        });
+        return;
+      }
       next(err);
     }
   },

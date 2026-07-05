@@ -29,10 +29,12 @@ spec:
       {{- include "interop.imagePullSecrets" . | nindent 6 }}
       serviceAccountName: {{ include "interop.serviceAccountName" . }}
       securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+        runAsNonRoot: true
+        runAsUser: 101
+        fsGroup: 101
       containers:
         - name: frontend
-          image: "{{ if .Values.global.imageRegistry }}{{ .Values.global.imageRegistry }}/{{ end }}{{ .Values.image.frontend.repository }}:{{ .Values.image.frontend.tag }}"
+          image: "{{ if .Values.global.imageRegistry }}{{ .Values.global.imageRegistry }}/{{ end }}{{ .Values.image.frontend.repository }}:{{ .Values.image.frontend.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.frontend.pullPolicy }}
           securityContext:
             allowPrivilegeEscalation: false
@@ -45,7 +47,7 @@ spec:
               value: {{ .Values.frontend.backendUrl | default (printf "%s:3000" (include "interop.backend.serviceName" .)) | quote }}
           ports:
             - name: http
-              containerPort: 80
+              containerPort: 8080
               protocol: TCP
           readinessProbe:
             httpGet:

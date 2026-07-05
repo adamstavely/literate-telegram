@@ -23,7 +23,10 @@
     <div class="container" style="max-width: 1200px">
       <div class="callout" role="status" aria-live="polite" style="margin: 12px 0">
         <app-icon name="warning" [size]="16" aria-hidden="true"></app-icon>
-        <div>{{ relatedError() }} The main entry is shown, but some related items may be missing.</div>
+        <div>
+          {{ relatedError() }} The main entry is shown, but some related items may be missing.
+          <button type="button" class="inline-link" (click)="retryRelated()">Retry</button>
+        </div>
       </div>
     </div>
   }
@@ -155,7 +158,7 @@
         <app-sensitivity-panel [level]="parent.sensitivity" [inherited]="parent.name"></app-sensitivity-panel>
         <div class="aside-card" style="margin-top: 16px">
           <h2 class="section-title">Lives on</h2>
-          <div class="compose-card" style="padding: 12px" (click)="openServer(parent.slug)" role="button" tabindex="0">
+          <div class="compose-card" style="padding: 12px" (click)="openServer(parent.slug)" (keydown.enter)="openServer(parent.slug)" (keydown.space)="$event.preventDefault(); openServer(parent.slug)" role="button" tabindex="0">
             <div class="ec-logo" style="width: 32px; height: 32px">
               <app-icon name="server" [size]="16"></app-icon>
             </div>
@@ -365,7 +368,14 @@
             <div style="display: flex; flex-direction: column; gap: 10px">
               @for (tool of srv.tools; track tool.id) {
                 <div class="tool-item">
-                  <div class="tool-item-head" style="cursor: pointer" (click)="toggleToolExpand(tool.id)">
+                  <button
+                    type="button"
+                    class="tool-item-head"
+                    style="cursor: pointer; width: 100%; text-align: left; background: none; border: none; font: inherit; color: inherit; padding: 0; display: flex; align-items: center; gap: 8px"
+                    (click)="toggleToolExpand(tool.id)"
+                    [attr.aria-expanded]="openToolId() === tool.id"
+                    [attr.aria-controls]="'tool-params-' + tool.id"
+                  >
                     <app-icon name="tool" [size]="16" style="color: var(--ok)"></app-icon>
                     <span class="tool-name mono">{{ tool.name }}</span>
                     @if (!tool.readOnly) {
@@ -381,10 +391,10 @@
                       style="color: var(--faint); transition: .15s"
                       [style.transform]="openToolId() === tool.id ? 'rotate(180deg)' : ''"
                     ></app-icon>
-                  </div>
+                  </button>
                   <p class="tool-desc">{{ tool.summary }}</p>
                   @if (openToolId() === tool.id && tool.params.length > 0) {
-                    <div class="params">
+                    <div class="params" [id]="'tool-params-' + tool.id">
                       @for (param of tool.params; track param.name) {
                         <div class="param">
                           <span class="param-name">{{ param.name }}</span>

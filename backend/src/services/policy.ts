@@ -13,6 +13,19 @@ import {
 
 const POLICY_DOC_ID = 'default';
 
+/** Thrown when a policy save conflicts with a concurrent update. */
+export class PolicyVersionConflictError extends Error {
+  constructor() {
+    super('Policy was modified concurrently');
+    this.name = 'PolicyVersionConflictError';
+  }
+}
+
+export interface PolicySaveOptions {
+  ifSeqNo?: number;
+  ifPrimaryTerm?: number;
+}
+
 let cachedPolicy: PolicyDocument | null = null;
 let cacheTime = 0;
 const CACHE_TTL_MS = 30_000;
@@ -178,9 +191,14 @@ export async function getPolicy(forceFresh = false): Promise<PolicyDocument> {
     });
 
     if (response._source) {
-      cachedPolicy = response._source;
+      const doc: PolicyDocument = {
+        ...response._source,
+        _seqNo: response._seq_no,
+        _primaryTerm: response._primary_term,
+      };
+      cachedPolicy = doc;
       cacheTime = now;
-      return response._source;
+      return doc;
     }
   } catch {
     // Index or document may not exist yet — fall through to default.
@@ -190,8 +208,9 @@ export async function getPolicy(forceFresh = false): Promise<PolicyDocument> {
 }
 
 export async function savePolicy(
-  doc: Omit<PolicyDocument, 'id' | 'updatedAt' | 'updatedBy'>,
+  doc: Omit<PolicyDocument, 'id' | 'updatedAt' | 'updatedBy' | '_seqNo' | '_primaryTerm'>,
   updatedBy: string,
+  opts: PolicySaveOptions = {},
 ): Promise<PolicyDocument> {
   const saved: PolicyDocument = {
     id: POLICY_DOC_ID,
@@ -200,12 +219,27 @@ export async function savePolicy(
     updatedBy,
   };
 
-  await esClient.index({
+  const writeParams = {
     index: INDEX_NAMES.POLICY,
     id: POLICY_DOC_ID,
     document: saved,
-    refresh: 'wait_for',
-  });
+    refresh: 'wait_for' as const,
+    ...(opts.ifSeqNo !== undefined && opts.ifPrimaryTerm !== undefined
+      ? { if_seq_no: opts.ifSeqNo, if_primary_term: opts.ifPrimaryTerm }
+      : {}),
+  };
+
+  try {
+    const result = await esClient.index(writeParams);
+    saved._seqNo = result._seq_no;
+    saved._primaryTerm = result._primary_term;
+  } catch (err) {
+    const e = err as { statusCode?: number; meta?: { statusCode?: number } };
+    if (e?.statusCode === 409 || e?.meta?.statusCode === 409) {
+      throw new PolicyVersionConflictError();
+    }
+    throw err;
+  }
 
   cachedPolicy = saved;
   cacheTime = Date.now();

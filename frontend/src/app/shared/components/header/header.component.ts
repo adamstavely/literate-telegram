@@ -144,6 +144,37 @@ export class HeaderComponent implements OnInit, OnDestroy {
     this.notifTab.set(tab);
   }
 
+  onNotifTabKeydown(event: KeyboardEvent, current: 'all' | 'unread'): void {
+    const tabs: Array<'all' | 'unread'> = ['all', 'unread'];
+    const idx = tabs.indexOf(current);
+    if (idx < 0) return;
+
+    let next = idx;
+    switch (event.key) {
+      case 'ArrowRight':
+      case 'ArrowDown':
+        next = (idx + 1) % tabs.length;
+        break;
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        next = (idx - 1 + tabs.length) % tabs.length;
+        break;
+      case 'Home':
+        next = 0;
+        break;
+      case 'End':
+        next = tabs.length - 1;
+        break;
+      default:
+        return;
+    }
+
+    event.preventDefault();
+    const nextTab = tabs[next];
+    this.setNotifTab(nextTab);
+    document.getElementById(`notif-tab-${nextTab}`)?.focus();
+  }
+
   ngOnDestroy(): void {
     this.releaseFocusTrap?.();
     this.releaseAppsTrap?.();

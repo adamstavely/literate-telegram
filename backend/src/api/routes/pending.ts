@@ -404,6 +404,9 @@ router.put(
         entryType: entry.type,
       });
 
+      // Registry uniqueness is now the source of truth — release the submit lock.
+      await releaseSlug(entryType, entrySlug);
+
       res.json({
         id,
         status: 'approved',

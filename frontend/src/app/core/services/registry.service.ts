@@ -126,7 +126,10 @@ export class RegistryService {
   }
 
   savePolicy(
-    doc: Pick<PolicyDocument, 'policy' | 'rules' | 'domains'>,
+    doc: Pick<PolicyDocument, 'policy' | 'rules' | 'domains'> & {
+      ifSeqNo?: number;
+      ifPrimaryTerm?: number;
+    },
   ): Observable<PolicyDocument> {
     return this.http.put<PolicyDocument>(`${this.base}/policy`, doc);
   }

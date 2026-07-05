@@ -1,6 +1,7 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { BehaviorSubject, of, throwError } from 'rxjs';
+import { FocusTrap, FocusTrapFactory } from '@angular/cdk/a11y';
 import { HeaderComponent } from './header.component';
 import { AuthService } from '../../../core/services/auth.service';
 import { RegistryService } from '../../../core/services/registry.service';
@@ -8,6 +9,8 @@ import { RegistryService } from '../../../core/services/registry.service';
 describe('HeaderComponent notifications', () => {
   let fixture: ComponentFixture<HeaderComponent>;
   let registry: jasmine.SpyObj<RegistryService>;
+  let focusTrapFactory: jasmine.SpyObj<FocusTrapFactory>;
+  let trap: jasmine.SpyObj<FocusTrap>;
   const currentUser$ = new BehaviorSubject({
     sub: 'u1',
     name: 'Test User',
@@ -16,6 +19,12 @@ describe('HeaderComponent notifications', () => {
   });
 
   beforeEach(async () => {
+    trap = jasmine.createSpyObj('FocusTrap', ['destroy']);
+    (trap as FocusTrap & { focusInitialElementWhenReady: jasmine.Spy }).focusInitialElementWhenReady =
+      jasmine.createSpy('focusInitialElementWhenReady').and.returnValue(Promise.resolve());
+    focusTrapFactory = jasmine.createSpyObj('FocusTrapFactory', ['create']);
+    focusTrapFactory.create.and.returnValue(trap);
+
     registry = jasmine.createSpyObj('RegistryService', [
       'getNotifications',
       'markAllRead',
@@ -27,6 +36,7 @@ describe('HeaderComponent notifications', () => {
       imports: [HeaderComponent],
       providers: [
         provideRouter([]),
+        { provide: FocusTrapFactory, useValue: focusTrapFactory },
         {
           provide: AuthService,
           useValue: {
@@ -61,4 +71,14 @@ describe('HeaderComponent notifications', () => {
     fixture.componentInstance.onGlobalKeydown(new KeyboardEvent('keydown', { key: 'Escape' }));
     expect(fixture.componentInstance.notificationsOpen()).toBe(false);
   });
+
+  it('notification tabs expose tablist semantics', fakeAsync(() => {
+    fixture.componentInstance.toggleNotifications();
+    tick();
+    fixture.detectChanges();
+    const tablist = fixture.nativeElement.querySelector('.notif-tabs[role="tablist"]');
+    expect(tablist).toBeTruthy();
+    const tabs = tablist.querySelectorAll('[role="tab"]');
+    expect(tabs.length).toBe(2);
+  }));
 });

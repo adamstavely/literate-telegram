@@ -96,6 +96,47 @@ describe('sanitizeSubmission', () => {
     assert.equal(api.endpoint, 'https://api.example.com');
   });
 
+  test('rejects invalid API methods and paths', () => {
+    const api = sanitizeSubmission({
+      type: 'api',
+      name: 'A',
+      slug: 'a',
+      publisher: 'acme.com',
+      summary: 'a summary here',
+      description: 'a description that is long enough',
+      sensitivity: 'public',
+      categories: ['x'],
+      style: 'REST',
+      baseUrl: 'not-a-url',
+      endpoints: [
+        { method: 'DROP', path: '/ok', summary: 'bad method' },
+        { method: 'GET', path: 'no-leading-slash', summary: 'bad path' },
+        { method: 'GET', path: '/users/{id}', summary: 'good' },
+      ],
+    }) as Api;
+
+    assert.equal(api.baseUrl, undefined);
+    assert.deepEqual(api.endpoints, [{ method: 'GET', path: '/users/{id}', summary: 'good' }]);
+  });
+
+  test('accepts GraphQL operation names as paths', () => {
+    const api = sanitizeSubmission({
+      type: 'api',
+      name: 'Gql',
+      slug: 'gql',
+      publisher: 'acme.com',
+      summary: 'a summary here',
+      description: 'a description that is long enough',
+      sensitivity: 'public',
+      categories: ['x'],
+      style: 'GraphQL',
+      endpoints: [{ method: 'QUERY', path: 'GetUser', summary: 'fetch user' }],
+    }) as Api;
+
+    assert.equal(api.endpoints?.[0]?.method, 'QUERY');
+    assert.equal(api.endpoints?.[0]?.path, 'GetUser');
+  });
+
   test('coerces skill tokens and arrays', () => {
     const skill = sanitizeSubmission({
       type: 'skill',

@@ -492,11 +492,16 @@
   @if (toast()) {
     <div
       class="fade-up"
-      role="status"
+      [attr.role]="toastError() ? 'alert' : 'status'"
       aria-live="polite"
       style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:95;background:var(--ink);color:white;padding:12px 18px;border-radius:11px;box-shadow:var(--shadow-lg);display:flex;align-items:center;gap:10px;font-size:14px;"
     >
-      <app-icon name="check" [size]="16" style="color:#86efac;" aria-hidden="true"></app-icon>
+      <app-icon
+        [name]="toastError() ? 'close' : 'check'"
+        [size]="16"
+        [style.color]="toastError() ? '#ff9b91' : '#86efac'"
+        aria-hidden="true"
+      ></app-icon>
       <span>{{ toast() }}</span>
     </div>
   }

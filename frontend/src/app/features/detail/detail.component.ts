@@ -254,6 +254,9 @@ export class DetailComponent implements OnChanges {
       .subscribe({
       next: ({ parent, catalog }) => {
         const server = parent?.type === 'server' ? parent : null;
+        if (tool.parentServer && !server) {
+          this.relatedError.set('Could not load parent server.');
+        }
         if (server) this.parentServer.set(server);
         if (server) {
           const reachKeys = [
@@ -285,6 +288,14 @@ export class DetailComponent implements OnChanges {
         this.loading.set(false);
       },
     });
+  }
+
+  retryRelated(): void {
+    const entry = this.entry();
+    if (!entry) return;
+    this.relatedError.set(null);
+    this.loading.set(true);
+    this.loadRelated(entry);
   }
 
   setTab(tab: TabId): void {

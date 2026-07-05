@@ -1,9 +1,10 @@
+import { config } from '../config/index.js';
 import { esClient } from './client.js';
 
 const REGISTRY_INDEX = 'interop-registry';
 const PENDING_INDEX = 'interop-pending';
-const AUDIT_INDEX = 'interop-audit';
-const LOGS_INDEX = 'interop-logs';
+const AUDIT_INDEX = config.logging.auditIndex;
+const LOGS_INDEX = config.logging.logIndex;
 const NOTIFICATIONS_INDEX = 'interop-notifications';
 const NOTIFICATION_READS_INDEX = 'interop-notification-reads';
 const POLICY_INDEX = 'interop-policy';
@@ -177,7 +178,66 @@ async function createPendingIndex(): Promise<void> {
         overrideReason: { type: 'text' },
         entry: {
           type: 'object',
-          dynamic: true,
+          dynamic: false,
+          properties: {
+            id: { type: 'keyword' },
+            type: { type: 'keyword' },
+            name: { type: 'text', fields: { keyword: { type: 'keyword' } } },
+            slug: { type: 'keyword' },
+            publisher: { type: 'text', fields: { keyword: { type: 'keyword' } } },
+            summary: { type: 'text' },
+            description: { type: 'text' },
+            sensitivity: { type: 'keyword' },
+            categories: { type: 'keyword' },
+            version: { type: 'keyword' },
+            visibility: { type: 'keyword' },
+            transports: { type: 'keyword' },
+            auth: { type: 'keyword' },
+            clients: { type: 'keyword' },
+            license: { type: 'keyword' },
+            source: { type: 'keyword' },
+            tools: {
+              type: 'nested',
+              properties: {
+                id: { type: 'keyword' },
+                name: { type: 'text', fields: { keyword: { type: 'keyword' } } },
+                slug: { type: 'keyword' },
+                summary: { type: 'text' },
+                description: { type: 'text' },
+                parentServer: { type: 'keyword' },
+                returns: { type: 'keyword' },
+                readOnly: { type: 'boolean' },
+                params: {
+                  type: 'nested',
+                  properties: {
+                    name: { type: 'keyword' },
+                    type: { type: 'keyword' },
+                    description: { type: 'text' },
+                    required: { type: 'boolean' },
+                  },
+                },
+              },
+            },
+            triggers: { type: 'keyword' },
+            reaches: { type: 'keyword' },
+            tokens: { type: 'integer' },
+            model: { type: 'keyword' },
+            autonomy: { type: 'keyword' },
+            servers: { type: 'keyword' },
+            skills: { type: 'keyword' },
+            style: { type: 'keyword' },
+            endpoint: { type: 'keyword' },
+            wrappedBy: { type: 'keyword' },
+            baseUrl: { type: 'keyword' },
+            endpoints: {
+              type: 'nested',
+              properties: {
+                method: { type: 'keyword' },
+                path: { type: 'keyword' },
+                summary: { type: 'text' },
+              },
+            },
+          },
         },
       },
     },

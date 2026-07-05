@@ -14,10 +14,11 @@ export function isEsConflict(err: unknown): boolean {
 
 /**
  * True if a live registry entry, slug lock, or in-flight pending submission
- * already uses this type+slug.
+ * already uses this type+slug. Orphan locks (no matching registry/pending doc)
+ * are released and treated as available.
  */
 export async function slugTaken(type: string, slug: string): Promise<boolean> {
-  const [registry, pending, locks] = await Promise.all([
+  const [registry, pending, lockExists] = await Promise.all([
     esClient.count({
       index: INDEX_NAMES.REGISTRY,
       query: { bool: { filter: [{ term: { type } }, { term: { slug } }] } },
@@ -39,7 +40,40 @@ export async function slugTaken(type: string, slug: string): Promise<boolean> {
       id: typeSlugKey(type, slug),
     }),
   ]);
-  return registry.count > 0 || pending.count > 0 || locks;
+
+  if (registry.count > 0 || pending.count > 0) return true;
+  if (!lockExists) return false;
+
+  try {
+    const doc = await esClient.get<{ entryId?: string }>({
+      index: INDEX_NAMES.SLUG_LOCKS,
+      id: typeSlugKey(type, slug),
+    });
+    const entryId = doc._source?.entryId;
+    if (!entryId) {
+      await releaseSlug(type, slug);
+      return false;
+    }
+    const [regDoc, pendCount] = await Promise.all([
+      esClient.exists({ index: INDEX_NAMES.REGISTRY, id: entryId }),
+      esClient.count({
+        index: INDEX_NAMES.PENDING,
+        query: {
+          bool: {
+            filter: [
+              { term: { status: 'pending' } },
+              { term: { 'entry.id.keyword': entryId } },
+            ],
+          },
+        },
+      }),
+    ]);
+    if (regDoc || pendCount.count > 0) return true;
+    await releaseSlug(type, slug);
+    return false;
+  } catch {
+    return true;
+  }
 }
 
 /** Atomically claim a type+slug. Returns false if already taken. */

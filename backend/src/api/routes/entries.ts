@@ -372,6 +372,8 @@ router.post(
           risk,
         });
 
+        await releaseSlug(entryType, entrySlug);
+
         res.status(201).json({
           id: autoApproved.id,
           entryId,
@@ -394,8 +396,8 @@ router.post(
       };
 
       // Claim the slug atomically so two concurrent same-slug submissions can't
-      // both enter the review queue. The lock is held for the whole pending
-      // lifecycle: kept on approve (the slug is now live), released on reject.
+      // both enter the review queue. Released on approve/auto-approve once the
+      // registry doc is live; released on reject if submission never publishes.
       const pendType = partialEntry.type!;
       const pendSlug = partialEntry.slug!;
       if (!(await claimSlug(pendType, pendSlug, entryId))) {

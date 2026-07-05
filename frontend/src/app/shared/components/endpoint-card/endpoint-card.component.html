@@ -4,6 +4,7 @@
     type="button"
     (click)="toggleOpen()"
     [attr.aria-expanded]="open()"
+    [attr.aria-controls]="panelId()"
   >
     <span class="ep-verb-badge" [class]="'ep-verb-badge ' + verbClass()">{{ ep.method }}</span>
     <span class="ep-path mono">{{ ep.path }}</span>
@@ -12,27 +13,41 @@
   </button>
 
   @if (open()) {
-    <div class="ep-detail">
+    <div class="ep-detail" [id]="panelId()">
       <p class="ep-detail-desc">{{ ep.summary }}</p>
 
       <div class="ep-sec">
         <div class="ep-sec-title">{{ spec.isGql ? 'Arguments' : 'Parameters' }}</div>
         @if (allParams.length) {
-          <div class="param-table">
-            @for (p of allParams; track p.in + p.name) {
-              <div class="param-trow ep-param">
-                <span class="param-name mono">{{ p.name }}</span>
-                <span class="param-in" [class]="'param-in in-' + p.in">{{ p.in }}</span>
-                <span class="param-type mono">{{ p.type }}</span>
-                @if (p.required) {
-                  <span class="param-req">required</span>
-                } @else {
-                  <span class="param-opt">optional</span>
-                }
-                <span class="param-desc">{{ p.desc }}</span>
-              </div>
-            }
-          </div>
+          <table class="param-table" role="table">
+            <caption class="sr-only">{{ spec.isGql ? 'GraphQL arguments' : 'Request parameters' }}</caption>
+            <thead>
+              <tr>
+                <th scope="col">Name</th>
+                <th scope="col">In</th>
+                <th scope="col">Type</th>
+                <th scope="col">Required</th>
+                <th scope="col">Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (p of allParams; track p.in + p.name) {
+                <tr class="ep-param">
+                  <td class="param-name mono">{{ p.name }}</td>
+                  <td><span class="param-in" [class]="'param-in in-' + p.in">{{ p.in }}</span></td>
+                  <td class="param-type mono">{{ p.type }}</td>
+                  <td>
+                    @if (p.required) {
+                      <span class="param-req">required</span>
+                    } @else {
+                      <span class="param-opt">optional</span>
+                    }
+                  </td>
+                  <td class="param-desc">{{ p.desc }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
         } @else {
           <div class="field-hint" style="margin-top: 0">No parameters.</div>
         }
@@ -44,21 +59,35 @@
             {{ spec.isGql ? 'Input variables' : 'Request body' }}
             <span class="ep-sec-meta mono">{{ spec.isGql ? 'JSON' : 'application/json' }}</span>
           </div>
-          <div class="param-table">
-            @for (p of spec.body; track 'b' + p.name) {
-              <div class="param-trow ep-param">
-                <span class="param-name mono">{{ p.name }}</span>
-                <span class="param-in" [class]="'param-in in-' + spec.bodyIn">{{ spec.bodyIn }}</span>
-                <span class="param-type mono">{{ p.type }}</span>
-                @if (p.required) {
-                  <span class="param-req">required</span>
-                } @else {
-                  <span class="param-opt">optional</span>
-                }
-                <span class="param-desc">{{ p.desc }}</span>
-              </div>
-            }
-          </div>
+          <table class="param-table" role="table">
+            <caption class="sr-only">{{ spec.isGql ? 'Input variables' : 'Request body fields' }}</caption>
+            <thead>
+              <tr>
+                <th scope="col">Name</th>
+                <th scope="col">In</th>
+                <th scope="col">Type</th>
+                <th scope="col">Required</th>
+                <th scope="col">Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (p of spec.body; track 'b' + p.name) {
+                <tr class="ep-param">
+                  <td class="param-name mono">{{ p.name }}</td>
+                  <td><span class="param-in" [class]="'param-in in-' + spec.bodyIn">{{ spec.bodyIn }}</span></td>
+                  <td class="param-type mono">{{ p.type }}</td>
+                  <td>
+                    @if (p.required) {
+                      <span class="param-req">required</span>
+                    } @else {
+                      <span class="param-opt">optional</span>
+                    }
+                  </td>
+                  <td class="param-desc">{{ p.desc }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
         </div>
       }
 
@@ -131,11 +160,12 @@
             }
             @if (!tryOn()) { <span class="ep-sec-meta mono">200</span> }
           </div>
+          <div aria-live="polite" aria-atomic="true" class="sr-only">{{ liveResponseText() }}</div>
           @if (tryOn()) {
             @if (running()) {
-              <div class="ep-resp-empty"><span class="ep-spinner"></span>Awaiting response…</div>
+              <div class="ep-resp-empty" aria-busy="true"><span class="ep-spinner"></span>Awaiting response…</div>
             } @else if (resp()) {
-              <div class="result-pane">{{ resp()!.body }}</div>
+              <div class="result-pane" role="region" aria-label="Mock server response">{{ resp()!.body }}</div>
             } @else {
               <div class="ep-resp-empty">Press <b>Execute</b> to send the request and see the response.</div>
             }

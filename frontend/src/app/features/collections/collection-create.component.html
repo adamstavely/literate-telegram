@@ -1,5 +1,5 @@
 <div class="container" style="max-width: 720px; padding: 32px 0">
-  <a class="inline-link" (click)="cancel()" style="cursor: pointer">← Collections</a>
+  <a routerLink="/collections" class="inline-link">← Collections</a>
   <h1 class="h1" style="margin-top: 12px">Create a collection</h1>
   <p class="lede">Curate a stack of servers, skills, agents, and APIs that belong together.</p>
 
@@ -13,13 +13,13 @@
   <div class="wizard-main" style="margin-top: 20px">
     <div class="field">
       <label class="field-label" for="col-title">Title <span class="req-star">*</span></label>
-      <input id="col-title" class="input" [ngModel]="title()" (ngModelChange)="title.set($event)"
+      <input id="col-title" class="input" required aria-required="true" [ngModel]="title()" (ngModelChange)="title.set($event)"
         placeholder="e.g. Incident Response Stack" />
     </div>
 
     <div class="field">
       <label class="field-label" for="col-summary">Short description <span class="req-star">*</span></label>
-      <input id="col-summary" class="input" [ngModel]="summary()" (ngModelChange)="summary.set($event)"
+      <input id="col-summary" class="input" required aria-required="true" [ngModel]="summary()" (ngModelChange)="summary.set($event)"
         placeholder="One line — shows on the collection card." />
     </div>
 
@@ -32,13 +32,13 @@
 
     <div class="field">
       <label class="field-label" for="col-members">Members <span class="req-star">*</span></label>
-      <input id="col-members" class="input mono" [ngModel]="members()" (ngModelChange)="members.set($event)"
+      <input id="col-members" class="input mono" required aria-required="true" [ngModel]="members()" (ngModelChange)="members.set($event)"
         placeholder="Entry slugs, comma-separated — e.g. stripe, github-mcp, sentry" />
       <div class="field-hint">{{ memberSlugs().length }} member(s). Use registry entry slugs.</div>
     </div>
 
-    <div class="field">
-      <label class="field-label">Icon</label>
+    <fieldset class="field" style="border: none; padding: 0; margin: 0">
+      <legend class="field-label">Icon</legend>
       <div class="icon-pick">
         @for (ic of icons; track ic) {
           <button
@@ -56,10 +56,10 @@
           </button>
         }
       </div>
-    </div>
+    </fieldset>
 
-    <div class="field">
-      <label class="field-label">Accent</label>
+    <fieldset class="field" style="border: none; padding: 0; margin: 0">
+      <legend class="field-label">Accent</legend>
       <div class="accent-pick">
         @for (c of accents; track c) {
           <button
@@ -75,7 +75,7 @@
           </button>
         }
       </div>
-    </div>
+    </fieldset>
 
     <div class="wizard-foot">
       <button type="button" class="btn btn-secondary btn-md" (click)="cancel()">Cancel</button>
