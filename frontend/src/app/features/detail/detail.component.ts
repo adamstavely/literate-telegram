@@ -31,6 +31,7 @@ import { SensitivityBadgeComponent } from '../../shared/components/sensitivity-b
 import { SensitivityPanelComponent } from '../../shared/components/sensitivity-panel/sensitivity-panel.component';
 import { computeSkillSensitivity } from '../../shared/utils/skill-sensitivity';
 import { buildToolExample } from '../../shared/utils/tool-example';
+import { EndpointCardComponent } from '../../shared/components/endpoint-card/endpoint-card.component';
 
 type TabId = 'overview' | 'install' | 'tools' | 'reviews';
 
@@ -44,6 +45,7 @@ type TabId = 'overview' | 'install' | 'tools' | 'reviews';
     VerifiedMarkComponent,
     SensitivityBadgeComponent,
     SensitivityPanelComponent,
+    EndpointCardComponent,
   ],
   templateUrl: './detail.component.html',
 })

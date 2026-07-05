@@ -1,5 +1,6 @@
 import { Component, OnInit, signal, inject, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RegistryService } from '../../core/services/registry.service';
 import { Collection } from '../../shared/types';
@@ -8,7 +9,7 @@ import { CollectionCardComponent } from '../../shared/components/collection-card
 @Component({
   selector: 'app-collections',
   standalone: true,
-  imports: [CommonModule, CollectionCardComponent],
+  imports: [CommonModule, RouterLink, CollectionCardComponent],
   template: `
     <div class="container page">
       <div class="page-head">
@@ -18,6 +19,9 @@ import { CollectionCardComponent } from '../../shared/components/collection-card
           Hand-picked sets of agents, servers, and skills that work together — installed and governed as one.
           Start from a stack instead of wiring the pieces yourself.
         </p>
+        <a class="btn btn-primary btn-sm" routerLink="/collections/new" style="margin-top: 14px">
+          + New collection
+        </a>
       </div>
       @if (loading()) {
         <div class="skeleton" style="height: 200px"></div>

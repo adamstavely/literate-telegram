@@ -293,6 +293,22 @@
                 <span class="code-chip">{{ agent.model }}</span>
               </div>
             }
+            @if (asApi(); as api) {
+              @if (api.endpoints?.length) {
+                <div class="section">
+                  <h2 class="section-title">Endpoints</h2>
+                  <p class="field-hint" style="margin-top: 0; margin-bottom: 14px">
+                    {{ api.style }} · <span class="mono">{{ api.baseUrl }}</span>
+                    @if (api.auth) { · auth: {{ api.auth }} }
+                  </p>
+                  <div style="display: flex; flex-direction: column; gap: 10px">
+                    @for (ep of api.endpoints; track ep.method + ep.path) {
+                      <app-endpoint-card [api]="api" [ep]="ep" />
+                    }
+                  </div>
+                </div>
+              }
+            }
           </section>
         }
 

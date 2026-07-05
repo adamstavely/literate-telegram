@@ -44,6 +44,8 @@ export class HeaderComponent implements OnInit, OnDestroy {
   @ViewChild('notifBtn') notifBtn!: ElementRef<HTMLButtonElement>;
   @ViewChild('notifDropdown') notifDropdown!: ElementRef<HTMLDivElement>;
   @ViewChild('searchInput') searchInputRef!: ElementRef<HTMLInputElement>;
+  @ViewChild('appsBtn') appsBtn?: ElementRef<HTMLButtonElement>;
+  @ViewChild('appsPop') appsPop?: ElementRef<HTMLDivElement>;
 
   /** Whether the mobile nav menu is open. */
   readonly menuOpen = signal(false);
@@ -56,6 +58,25 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   /** Whether the user is an admin. */
   readonly isAdmin = computed(() => this.currentUser()?.roles?.includes('admin') ?? false);
+
+  /** Platform "app switcher" (waffle) menu. */
+  readonly appsOpen = signal(false);
+  readonly platformApps: Array<{
+    id: string;
+    name: string;
+    icon: string;
+    accent: string;
+    desc: string;
+    route?: string;
+    soon?: boolean;
+  }> = [
+    { id: 'registry', name: 'Registry', icon: 'box', accent: '#3b5bff', desc: 'Discover & publish servers, tools, and skills', route: '/' },
+    { id: 'gateway', name: 'Gateway', icon: 'globe', accent: '#0d9aa6', desc: 'Route traffic & serve virtual servers', soon: true },
+    { id: 'governance', name: 'Governance', icon: 'shield', accent: '#1f9d62', desc: 'Policies, approvals & data tiers', route: '/admin/policy' },
+    { id: 'insights', name: 'Insights', icon: 'bolt', accent: '#c2820b', desc: 'Usage, traffic & health', soon: true },
+    { id: 'admin', name: 'Admin', icon: 'user', accent: '#8b46d6', desc: 'Org, teams & access', route: '/admin' },
+    { id: 'docs', name: 'Docs', icon: 'book', accent: '#5a63d8', desc: 'Guides & API reference', route: '/docs' },
+  ];
 
   /** Current theme mode for the toggle button label. */
   readonly isDarkMode = signal(false);
@@ -129,6 +150,10 @@ export class HeaderComponent implements OnInit, OnDestroy {
     if (event.key === 'Escape' && this.notificationsOpen()) {
       this.closeNotifications();
     }
+    if (event.key === 'Escape' && this.appsOpen()) {
+      this.appsOpen.set(false);
+      this.appsBtn?.nativeElement.focus();
+    }
   }
 
   @HostListener('document:click', ['$event'])
@@ -139,6 +164,36 @@ export class HeaderComponent implements OnInit, OnDestroy {
     if (dropdown && btn && !dropdown.contains(target) && !btn.contains(target)) {
       this.closeNotifications();
     }
+    const appsPop = this.appsPop?.nativeElement;
+    const appsBtn = this.appsBtn?.nativeElement;
+    if (appsPop && appsBtn && !appsPop.contains(target) && !appsBtn.contains(target)) {
+      this.appsOpen.set(false);
+    }
+  }
+
+  toggleApps(): void {
+    this.appsOpen.update((v) => !v);
+  }
+
+  isCurrentApp(a: { id: string; route?: string }): boolean {
+    const url = this.router.url.split('?')[0];
+    if (a.id === 'registry') {
+      return (
+        url === '/' ||
+        url.startsWith('/entry') ||
+        url.startsWith('/collections') ||
+        url.startsWith('/register')
+      );
+    }
+    if (a.id === 'governance') return url.startsWith('/admin/policy');
+    if (a.id === 'admin') return url.startsWith('/admin') && !url.startsWith('/admin/policy');
+    return a.route ? url.startsWith(a.route) && a.route !== '/' : false;
+  }
+
+  navigateApp(a: { route?: string; soon?: boolean; id: string }): void {
+    if (a.soon || !a.route || this.isCurrentApp(a)) return;
+    this.appsOpen.set(false);
+    void this.router.navigate([a.route]);
   }
 
   toggleMenu(): void {

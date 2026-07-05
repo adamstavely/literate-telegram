@@ -1,0 +1,88 @@
+<div class="container" style="max-width: 720px; padding: 32px 0">
+  <a class="inline-link" (click)="cancel()" style="cursor: pointer">← Collections</a>
+  <h1 class="h1" style="margin-top: 12px">Create a collection</h1>
+  <p class="lede">Curate a stack of servers, skills, agents, and APIs that belong together.</p>
+
+  @if (error()) {
+    <div class="callout" role="alert" aria-live="assertive" style="margin: 14px 0">
+      <app-icon name="warning" [size]="16" aria-hidden="true"></app-icon>
+      <div>{{ error() }}</div>
+    </div>
+  }
+
+  <div class="wizard-main" style="margin-top: 20px">
+    <div class="field">
+      <label class="field-label" for="col-title">Title <span class="req-star">*</span></label>
+      <input id="col-title" class="input" [ngModel]="title()" (ngModelChange)="title.set($event)"
+        placeholder="e.g. Incident Response Stack" />
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="col-summary">Short description <span class="req-star">*</span></label>
+      <input id="col-summary" class="input" [ngModel]="summary()" (ngModelChange)="summary.set($event)"
+        placeholder="One line — shows on the collection card." />
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="col-blurb">About</label>
+      <textarea id="col-blurb" class="textarea" [ngModel]="blurb()" (ngModelChange)="blurb.set($event)"
+        placeholder="A paragraph for the collection page — what it's for and why these pieces belong together."></textarea>
+      <div class="field-hint">Optional. Defaults to the short description.</div>
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="col-members">Members <span class="req-star">*</span></label>
+      <input id="col-members" class="input mono" [ngModel]="members()" (ngModelChange)="members.set($event)"
+        placeholder="Entry slugs, comma-separated — e.g. stripe, github-mcp, sentry" />
+      <div class="field-hint">{{ memberSlugs().length }} member(s). Use registry entry slugs.</div>
+    </div>
+
+    <div class="field">
+      <label class="field-label">Icon</label>
+      <div class="icon-pick">
+        @for (ic of icons; track ic) {
+          <button
+            type="button"
+            class="icon-opt"
+            [class.on]="icon() === ic"
+            [style.color]="icon() === ic ? accent() : null"
+            [style.border-color]="icon() === ic ? accent() : null"
+            [style.background]="icon() === ic ? ('color-mix(in oklch, ' + accent() + ' 10%, var(--cm))') : null"
+            [attr.aria-pressed]="icon() === ic"
+            [attr.aria-label]="'Icon ' + ic"
+            (click)="setIcon(ic)"
+          >
+            <app-icon [name]="ic" [size]="18" aria-hidden="true" />
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="field-label">Accent</label>
+      <div class="accent-pick">
+        @for (c of accents; track c) {
+          <button
+            type="button"
+            class="accent-opt"
+            [class.on]="accent() === c"
+            [style.background]="c"
+            [attr.aria-pressed]="accent() === c"
+            [attr.aria-label]="'Accent ' + c"
+            (click)="setAccent(c)"
+          >
+            @if (accent() === c) { <app-icon name="check" [size]="13" aria-hidden="true" /> }
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="wizard-foot">
+      <button type="button" class="btn btn-secondary btn-md" (click)="cancel()">Cancel</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn btn-primary btn-md" [disabled]="!canSubmit()" (click)="submit()">
+        {{ submitting() ? 'Creating…' : 'Create collection' }}
+      </button>
+    </div>
+  </div>
+</div>
