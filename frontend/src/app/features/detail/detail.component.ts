@@ -277,6 +277,40 @@ export class DetailComponent implements OnChanges {
     this.activeTab.set(tab);
   }
 
+  /** Roving-tabindex arrow-key navigation for the tablist (WAI-ARIA tabs). */
+  onTabKeydown(event: KeyboardEvent, currentId: TabId): void {
+    const tabs = this.visibleTabs();
+    const idx = tabs.findIndex((t) => t.id === currentId);
+    if (idx < 0) return;
+
+    let next = idx;
+    switch (event.key) {
+      case 'ArrowRight':
+      case 'ArrowDown':
+        next = (idx + 1) % tabs.length;
+        break;
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        next = (idx - 1 + tabs.length) % tabs.length;
+        break;
+      case 'Home':
+        next = 0;
+        break;
+      case 'End':
+        next = tabs.length - 1;
+        break;
+      default:
+        return;
+    }
+
+    event.preventDefault();
+    const nextTab = tabs[next];
+    if (nextTab) {
+      this.setTab(nextTab.id);
+      document.getElementById(`tab-${nextTab.id}`)?.focus();
+    }
+  }
+
   toggleToolExpand(toolId: string, event?: Event): void {
     event?.stopPropagation();
     this.openToolId.set(this.openToolId() === toolId ? null : toolId);

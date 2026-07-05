@@ -109,14 +109,15 @@ router.get('/', async (req: Request, res: Response, next: NextFunction): Promise
       .map((h) => ({ source: h._source, esId: h._id }))
       .filter((h): h is { source: Notification; esId: string } =>
         h.source !== undefined && h.esId !== undefined)
-      .map(({ source, esId }) => {
+      .map(({ source }) => {
         // For global notifications the shared doc's `read` is meaningless; the
         // per-user receipt is the source of truth. Own notifications use the doc.
+        // The internal ES document id (_esId) is deliberately not exposed.
         const isGlobal = source.userId === undefined || source.userId === null;
         const read = isGlobal
           ? (receipts.get(source.id)?.read ?? false)
           : source.read;
-        return { ...source, read, _esId: esId };
+        return { ...source, read };
       });
 
     // Re-sort in memory: unread first, then newest first, since read state for

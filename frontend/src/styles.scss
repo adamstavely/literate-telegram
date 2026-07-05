@@ -9,6 +9,14 @@
   --font-sans: var(--sans);
   --font-mono: var(--mono);
   --accent-dark: var(--accent-ink);
+  /* WCAG 1.4.3: the canonical --faint (#9aa1ac ≈ 2.5:1 on white) fails the
+     4.5:1 minimum for the small text it's used on. Darken it to ~4.8:1. */
+  --faint: #6b7280;
+}
+
+[data-theme="dark"] {
+  /* On dark surfaces, lighten --faint so muted text keeps >= 4.5:1. */
+  --faint: #9aa2af;
 }
 
 [data-accent="iris"] { --accent: #6d4ade; --accent-ink: #5733c4; }
@@ -62,9 +70,100 @@
   display: contents;
 }
 
+/* Mobile navigation (WCAG 2.1.1): the primary nav is hidden below 940px, so a
+   hamburger toggle exposes it as a dropdown. Hidden on desktop where .nav shows. */
+.hamburger { display: none; }
+
+@media (max-width: 940px) {
+  .hdr-row { position: relative; }
+
+  .hamburger { display: inline-flex; }
+
+  .nav.open {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    gap: 2px;
+    padding: 8px 16px 12px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+    box-shadow: var(--shadow-md);
+    z-index: 50;
+  }
+
+  .nav.open .nav-item {
+    padding: 10px 8px;
+    border-radius: var(--radius-sm);
+  }
+}
+
+/* Tooltips must be reachable by keyboard, not hover-only (WCAG 1.4.13 / 2.1.1). */
+.tt-wrap:focus-within .tt,
+.tt-wrap:focus .tt {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
 .callout strong {
   color: var(--ink);
   font-weight: 600;
+}
+
+/* Accessible modal dialog (replaces window.prompt for admin reject/changes). */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.modal {
+  width: 100%;
+  max-width: 440px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md, 12px);
+  box-shadow: var(--shadow-lg);
+  padding: 20px;
+}
+
+.modal-title {
+  font-size: 17px;
+  font-weight: 640;
+  color: var(--ink);
+  margin: 0 0 2px;
+}
+
+.modal-sub {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0 0 14px;
+}
+
+.modal .input {
+  width: 100%;
+  resize: vertical;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.field-error {
+  color: var(--danger, #d4342c);
+  font-size: 12.5px;
+  margin-top: 6px;
 }
 
 .callout.accent strong {

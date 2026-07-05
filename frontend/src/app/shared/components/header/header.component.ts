@@ -117,10 +117,9 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   @HostListener('document:keydown', ['$event'])
   onGlobalKeydown(event: KeyboardEvent): void {
-    if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
-      event.preventDefault();
-      this.focusSearch();
-    }
+    // ⌘K / Ctrl+K is handled once at the app root, which dispatches
+    // 'interop:open-search' (see the listener wired in ngOnInit). Don't also
+    // handle it here or the shortcut fires twice.
     if (event.key === 'Escape' && this.notificationsOpen()) {
       this.notificationsOpen.set(false);
       this.notifBtn?.nativeElement.focus();
@@ -177,7 +176,15 @@ export class HeaderComponent implements OnInit, OnDestroy {
   }
 
   toggleNotifications(): void {
-    this.notificationsOpen.update(v => !v);
+    const willOpen = !this.notificationsOpen();
+    this.notificationsOpen.set(willOpen);
+    if (willOpen) {
+      // Move focus into the dialog when it opens so keyboard users land there.
+      queueMicrotask(() => this.notifDropdown?.nativeElement.focus());
+    } else {
+      // Return focus to the trigger when closing.
+      this.notifBtn?.nativeElement.focus();
+    }
   }
 
   loadNotifications(): void {

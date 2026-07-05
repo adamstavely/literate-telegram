@@ -74,6 +74,8 @@ function loadConfig(): Config {
   // The mock-token admin bypass is a local dev convenience. It must be opted
   // into explicitly (and never in production) so a leaked compose default can't
   // hand out admin in a shared environment.
+  const isProd = nodeEnv === 'production';
+
   const allowMockAuth =
     nodeEnv === 'development' && optionalEnv('ALLOW_MOCK_AUTH', 'false') === 'true';
 
@@ -99,12 +101,13 @@ function loadConfig(): Config {
       caFingerprint: caFingerprint && caFingerprint.length > 0 ? caFingerprint : undefined,
     },
     oidc: {
-      issuer: optionalEnv('OIDC_ISSUER', 'https://your-tenant.auth0.com/'),
-      audience: optionalEnv('OIDC_AUDIENCE', 'https://api.interop.io'),
-      jwksUri: optionalEnv(
-        'OIDC_JWKS_URI',
-        'https://your-tenant.auth0.com/.well-known/jwks.json'
-      ),
+      // In production these must be supplied explicitly — the placeholder
+      // tenant defaults would silently accept nobody (or the wrong issuer).
+      issuer: isProd ? requireEnv('OIDC_ISSUER') : optionalEnv('OIDC_ISSUER', 'https://your-tenant.auth0.com/'),
+      audience: isProd ? requireEnv('OIDC_AUDIENCE') : optionalEnv('OIDC_AUDIENCE', 'https://api.interop.io'),
+      jwksUri: isProd
+        ? requireEnv('OIDC_JWKS_URI')
+        : optionalEnv('OIDC_JWKS_URI', 'https://your-tenant.auth0.com/.well-known/jwks.json'),
     },
     cors: {
       allowedOrigins,
@@ -127,7 +130,13 @@ function loadConfig(): Config {
 
 export const config = loadConfig();
 
-// Validate OIDC config is present when not in test mode
-if (config.nodeEnv !== 'test') {
-  requireEnv; // imported but used selectively at runtime
+// Reject leftover placeholder OIDC values in production — they would otherwise
+// point token verification at a tenant that isn't ours.
+if (config.nodeEnv === 'production') {
+  const placeholders = [config.oidc.issuer, config.oidc.jwksUri];
+  if (placeholders.some((v) => v.includes('your-tenant'))) {
+    throw new Error(
+      'OIDC configuration still contains placeholder values (your-tenant.*). Set OIDC_ISSUER / OIDC_JWKS_URI to real values in production.',
+    );
+  }
 }

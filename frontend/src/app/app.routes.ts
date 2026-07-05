@@ -57,5 +57,10 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/docs/docs.component').then(m => m.DocsComponent),
   },
-  { path: '**', redirectTo: '' },
+  {
+    path: '**',
+    loadComponent: () =>
+      import('./features/not-found/not-found.component').then(m => m.NotFoundComponent),
+    title: 'Not found — Interop',
+  },
 ];
