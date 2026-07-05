@@ -57,8 +57,10 @@ export class AdminComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly focusTrapFactory = inject(FocusTrapFactory);
   private releaseFocusTrap: (() => void) | null = null;
+  private releaseApproveTrap: (() => void) | null = null;
 
   @ViewChild('rejectModal') rejectModalRef?: ElementRef<HTMLDivElement>;
+  @ViewChild('approveModal') approveModalRef?: ElementRef<HTMLDivElement>;
 
   readonly items = signal<PendingEntry[]>([]);
   readonly loading = signal(true);
@@ -72,6 +74,7 @@ export class AdminComponent implements OnInit {
 
   /** Accessible reject / request-changes dialog state (replaces window.prompt). */
   readonly rejectDialog = signal<{ entry: PendingEntry; mode: 'reject' | 'changes' } | null>(null);
+  readonly approveDialog = signal<PendingEntry | null>(null);
   readonly rejectReason = signal('');
   readonly rejectError = signal<string | null>(null);
 
@@ -139,6 +142,22 @@ export class AdminComponent implements OnInit {
       } else if (!open) {
         this.releaseFocusTrap?.();
         this.releaseFocusTrap = null;
+      }
+    });
+
+    effect(() => {
+      const open = this.approveDialog();
+      if (open && this.approveModalRef?.nativeElement) {
+        queueMicrotask(() => {
+          const el = this.approveModalRef?.nativeElement;
+          if (el) {
+            this.releaseApproveTrap?.();
+            this.releaseApproveTrap = activateFocusTrap(this.focusTrapFactory, el);
+          }
+        });
+      } else if (!open) {
+        this.releaseApproveTrap?.();
+        this.releaseApproveTrap = null;
       }
     });
   }
@@ -299,6 +318,21 @@ export class AdminComponent implements OnInit {
   }
 
   approve(entry: PendingEntry): void {
+    this.approveDialog.set(entry);
+  }
+
+  cancelApproveDialog(): void {
+    this.approveDialog.set(null);
+  }
+
+  confirmApproveDialog(): void {
+    const entry = this.approveDialog();
+    if (!entry) return;
+    this.approveDialog.set(null);
+    this.executeApprove(entry);
+  }
+
+  private executeApprove(entry: PendingEntry): void {
     this.actionInProgress.set(entry.id);
 
     this.registry

@@ -248,3 +248,77 @@
     </div>
   </div>
 }
+
+@if (approveDialog(); as entry) {
+  <div class="modal-overlay" (click)="cancelApproveDialog()">
+    <div
+      #approveModal
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Confirm approval"
+      (click)="$event.stopPropagation()"
+      (keydown.escape)="cancelApproveDialog()"
+    >
+      <h2 class="modal-title">Publish to registry?</h2>
+      <p class="modal-sub">
+        <b>{{ entry.entry.name }}</b> will go live immediately. This cannot be undone from the queue.
+      </p>
+      @if (entry.flags.length > 0) {
+        <div class="flag-list" style="margin-bottom: 12px">
+          @for (flag of entry.flags; track flag) {
+            <div class="flag" [class.high]="flagHighClass(entry.risk)">
+              <app-icon name="warning" [size]="14" aria-hidden="true"></app-icon>
+              {{ flag }}
+            </div>
+          }
+        </div>
+      }
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary btn-sm" (click)="cancelApproveDialog()">
+          Cancel
+        </button>
+        <button type="button" class="btn btn-accent btn-sm" (click)="confirmApproveDialog()">
+          Approve and publish
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (approveDialog(); as entry) {
+  <div class="modal-overlay" (click)="cancelApproveDialog()">
+    <div
+      #approveModal
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Confirm approval"
+      (click)="$event.stopPropagation()"
+      (keydown.escape)="cancelApproveDialog()"
+    >
+      <h2 class="modal-title">Publish to registry?</h2>
+      <p class="modal-sub">
+        <b>{{ entry.entry.name }}</b> will go live immediately. This cannot be undone from the queue.
+      </p>
+      @if (entry.flags.length > 0) {
+        <div class="flag-list" style="margin-bottom: 12px">
+          @for (flag of entry.flags; track flag) {
+            <div class="flag" [class.high]="flagHighClass(entry.risk)">
+              <app-icon name="warning" [size]="14" aria-hidden="true"></app-icon>
+              {{ flag }}
+            </div>
+          }
+        </div>
+      }
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary btn-sm" (click)="cancelApproveDialog()">
+          Cancel
+        </button>
+        <button type="button" class="btn btn-accent btn-sm" (click)="confirmApproveDialog()">
+          Approve and publish
+        </button>
+      </div>
+    </div>
+  </div>
+}

@@ -23,7 +23,9 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(outgoing).pipe(
     catchError((error: unknown) => {
-      if (error instanceof HttpErrorResponse && error.status === 401) {
+      // Only clear the session when a bearer token was sent and rejected —
+      // anonymous 401s (e.g. optional-auth endpoints) must not log the user out.
+      if (error instanceof HttpErrorResponse && error.status === 401 && token) {
         auth.logout();
         sessionStorage.setItem(AUTH_FLASH_KEY, 'Your session expired. Please sign in again.');
         void router.navigate(['/']);

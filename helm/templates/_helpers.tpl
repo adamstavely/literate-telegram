@@ -50,6 +50,15 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
+Seed-job selector labels (post-install hook).
+*/}}
+{{- define "interop.seedJob.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "interop.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: seed-job
+{{- end }}
+
+{{/*
 Backend-specific selector labels.
 */}}
 {{- define "interop.backend.selectorLabels" -}}
