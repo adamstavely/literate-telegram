@@ -64,6 +64,8 @@ export class DetailComponent implements OnChanges {
   readonly relatedAgents = signal<Agent[]>([]);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
+  /** Non-blocking notice when related data (parent server, related items) fails. */
+  readonly relatedError = signal<string | null>(null);
   readonly activeTab = signal<TabId>('overview');
   readonly copied = signal(false);
   readonly openToolId = signal<string | null>(null);
@@ -211,6 +213,7 @@ export class DetailComponent implements OnChanges {
     this.parentServer.set(null);
     this.relatedSkills.set([]);
     this.relatedAgents.set([]);
+    this.relatedError.set(null);
     this.activeTab.set('overview');
     this.openToolId.set(null);
   }
@@ -225,7 +228,11 @@ export class DetailComponent implements OnChanges {
             this.allServers.set(res.hits.filter((e): e is Server => e.type === 'server'));
             this.loading.set(false);
           },
-          error: () => this.loading.set(false),
+          error: (err: unknown) => {
+            console.error('Failed to load related servers', err);
+            this.relatedError.set('Some related data could not be loaded.');
+            this.loading.set(false);
+          },
         });
       return;
     }
@@ -271,7 +278,11 @@ export class DetailComponent implements OnChanges {
         }
         this.loading.set(false);
       },
-      error: () => this.loading.set(false),
+      error: (err: unknown) => {
+        console.error('Failed to load related entries', err);
+        this.relatedError.set('Some related data could not be loaded.');
+        this.loading.set(false);
+      },
     });
   }
 

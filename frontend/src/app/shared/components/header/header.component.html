@@ -20,6 +20,7 @@
     </a>
 
     <button
+      #hamburgerBtn
       class="hamburger iconbtn"
       type="button"
       (click)="toggleMenu()"
@@ -30,7 +31,7 @@
       <app-icon [name]="menuOpen() ? 'close' : 'list'" [size]="20" aria-hidden="true" />
     </button>
 
-    <nav id="primary-nav" class="nav" [class.open]="menuOpen()" aria-label="Primary navigation">
+    <nav #primaryNav id="primary-nav" class="nav" [class.open]="menuOpen()" aria-label="Primary navigation">
       <a
         class="nav-item"
         routerLink="/"

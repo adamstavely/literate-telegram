@@ -57,6 +57,26 @@ export async function claimSlug(type: string, slug: string, entryId: string): Pr
   }
 }
 
+/**
+ * Claim a type+slug, or accept it if this same entry already owns the lock.
+ * The submit path claims the lock; approve then re-checks with this so an
+ * entry's own lock (held since submission) doesn't read as a conflict, while a
+ * lock held by a *different* entry still blocks. Legacy pending entries with no
+ * lock yet are claimed here.
+ */
+export async function claimOrOwnSlug(type: string, slug: string, entryId: string): Promise<boolean> {
+  if (await claimSlug(type, slug, entryId)) return true;
+  try {
+    const doc = await esClient.get<{ entryId?: string }>({
+      index: INDEX_NAMES.SLUG_LOCKS,
+      id: typeSlugKey(type, slug),
+    });
+    return doc._source?.entryId === entryId;
+  } catch {
+    return false;
+  }
+}
+
 export async function releaseSlug(type: string, slug: string): Promise<void> {
   await esClient
     .delete({

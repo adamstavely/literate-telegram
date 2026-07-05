@@ -40,12 +40,16 @@ export class HeaderComponent implements OnInit, OnDestroy {
   private readonly destroyRef = inject(DestroyRef);
   private readonly focusTrapFactory = inject(FocusTrapFactory);
   private releaseFocusTrap: (() => void) | null = null;
+  private releaseAppsTrap: (() => void) | null = null;
+  private releaseMenuTrap: (() => void) | null = null;
 
   @ViewChild('notifBtn') notifBtn!: ElementRef<HTMLButtonElement>;
   @ViewChild('notifDropdown') notifDropdown!: ElementRef<HTMLDivElement>;
   @ViewChild('searchInput') searchInputRef!: ElementRef<HTMLInputElement>;
   @ViewChild('appsBtn') appsBtn?: ElementRef<HTMLButtonElement>;
   @ViewChild('appsPop') appsPop?: ElementRef<HTMLDivElement>;
+  @ViewChild('hamburgerBtn') hamburgerBtn?: ElementRef<HTMLButtonElement>;
+  @ViewChild('primaryNav') primaryNav?: ElementRef<HTMLElement>;
 
   /** Whether the mobile nav menu is open. */
   readonly menuOpen = signal(false);
@@ -140,7 +144,11 @@ export class HeaderComponent implements OnInit, OnDestroy {
     this.notifTab.set(tab);
   }
 
-  ngOnDestroy(): void {}
+  ngOnDestroy(): void {
+    this.releaseFocusTrap?.();
+    this.releaseAppsTrap?.();
+    this.releaseMenuTrap?.();
+  }
 
   @HostListener('document:keydown', ['$event'])
   onGlobalKeydown(event: KeyboardEvent): void {
@@ -151,8 +159,10 @@ export class HeaderComponent implements OnInit, OnDestroy {
       this.closeNotifications();
     }
     if (event.key === 'Escape' && this.appsOpen()) {
-      this.appsOpen.set(false);
-      this.appsBtn?.nativeElement.focus();
+      this.closeApps();
+    }
+    if (event.key === 'Escape' && this.menuOpen()) {
+      this.closeMenu();
     }
   }
 
@@ -166,13 +176,33 @@ export class HeaderComponent implements OnInit, OnDestroy {
     }
     const appsPop = this.appsPop?.nativeElement;
     const appsBtn = this.appsBtn?.nativeElement;
-    if (appsPop && appsBtn && !appsPop.contains(target) && !appsBtn.contains(target)) {
-      this.appsOpen.set(false);
+    if (this.appsOpen() && appsPop && appsBtn && !appsPop.contains(target) && !appsBtn.contains(target)) {
+      this.closeApps();
     }
   }
 
   toggleApps(): void {
-    this.appsOpen.update((v) => !v);
+    if (this.appsOpen()) {
+      this.closeApps();
+      return;
+    }
+    this.appsOpen.set(true);
+    queueMicrotask(() => {
+      const el = this.appsPop?.nativeElement;
+      if (el) {
+        this.releaseAppsTrap = activateFocusTrap(
+          this.focusTrapFactory,
+          el,
+          this.appsBtn?.nativeElement,
+        );
+      }
+    });
+  }
+
+  closeApps(): void {
+    this.appsOpen.set(false);
+    this.releaseAppsTrap?.();
+    this.releaseAppsTrap = null;
   }
 
   isCurrentApp(a: { id: string; route?: string }): boolean {
@@ -192,16 +222,33 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   navigateApp(a: { route?: string; soon?: boolean; id: string }): void {
     if (a.soon || !a.route || this.isCurrentApp(a)) return;
-    this.appsOpen.set(false);
+    this.closeApps();
     void this.router.navigate([a.route]);
   }
 
   toggleMenu(): void {
-    this.menuOpen.update(v => !v);
+    if (this.menuOpen()) {
+      this.closeMenu();
+      return;
+    }
+    this.menuOpen.set(true);
+    queueMicrotask(() => {
+      const el = this.primaryNav?.nativeElement;
+      if (el) {
+        this.releaseMenuTrap = activateFocusTrap(
+          this.focusTrapFactory,
+          el,
+          this.hamburgerBtn?.nativeElement,
+        );
+      }
+    });
   }
 
   closeMenu(): void {
+    if (!this.menuOpen()) return;
     this.menuOpen.set(false);
+    this.releaseMenuTrap?.();
+    this.releaseMenuTrap = null;
   }
 
   toggleTheme(): void {

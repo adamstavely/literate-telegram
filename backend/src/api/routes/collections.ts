@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { esClient } from '../../elasticsearch/client.js';
 import { INDEX_NAMES } from '../../elasticsearch/indices.js';
 import { COLLECTION_DEFINITIONS } from '../../data/collections.js';
-import { requireAuth } from '../../middleware/auth.js';
+import { requireAuth, requireAdmin } from '../../middleware/auth.js';
 import { auditAction } from '../../middleware/audit.js';
 import {
   Collection,
@@ -93,10 +93,12 @@ router.get('/', async (_req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-// POST /api/collections — create a curated collection (icon + accent + members)
+// POST /api/collections — create a curated collection (icon + accent + members).
+// Curated collections are a governance surface, so creation is admin-only.
 router.post(
   '/',
   requireAuth,
+  requireAdmin,
   [
     body('title').isString().trim().isLength({ min: 2, max: 100 }).withMessage('Title must be 2-100 characters'),
     body('desc').isString().trim().isLength({ min: 3, max: 280 }).withMessage('Description is required'),

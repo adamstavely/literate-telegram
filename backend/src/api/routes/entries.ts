@@ -345,9 +345,13 @@ router.post(
             refresh: 'wait_for',
           });
         } catch (indexErr) {
-          await runCompensation('auto-approve:rollback-registry', async () => {
-            await esClient.delete({ index: INDEX_NAMES.REGISTRY, id: entryId, refresh: 'wait_for' });
-          });
+          await runCompensation(
+            'auto-approve:rollback-registry',
+            async () => {
+              await esClient.delete({ index: INDEX_NAMES.REGISTRY, id: entryId, refresh: 'wait_for' });
+            },
+            { entryId, type: entryType, slug: entrySlug },
+          );
           await releaseSlug(entryType, entrySlug);
           throw indexErr;
         }
@@ -389,12 +393,31 @@ router.post(
         flags,
       };
 
-      await esClient.index({
-        index: INDEX_NAMES.PENDING,
-        id: pending.id,
-        document: pending,
-        refresh: 'wait_for',
-      });
+      // Claim the slug atomically so two concurrent same-slug submissions can't
+      // both enter the review queue. The lock is held for the whole pending
+      // lifecycle: kept on approve (the slug is now live), released on reject.
+      const pendType = partialEntry.type!;
+      const pendSlug = partialEntry.slug!;
+      if (!(await claimSlug(pendType, pendSlug, entryId))) {
+        res.status(409).json({
+          error: 'Conflict',
+          message: `An entry with slug "${pendSlug}" already exists for type "${pendType}".`,
+          correlationId: req.id,
+        });
+        return;
+      }
+
+      try {
+        await esClient.index({
+          index: INDEX_NAMES.PENDING,
+          id: pending.id,
+          document: pending,
+          refresh: 'wait_for',
+        });
+      } catch (indexErr) {
+        await releaseSlug(pendType, pendSlug);
+        throw indexErr;
+      }
 
       await auditAction(req, 'SUBMIT_ENTRY', pending.id, {
         entryType: partialEntry.type,

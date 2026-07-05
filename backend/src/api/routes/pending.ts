@@ -8,8 +8,7 @@ import { PendingEntry, PendingStats, RegistryEntry, RiskLevel } from '../../type
 import { logger } from '../../logger/logger.js';
 import { getPolicy, evaluatePolicyEnforcement, reviewDueAt } from '../../services/policy.js';
 import { sanitizeSubmission } from '../../services/entry-dto.js';
-import { slugTaken, claimSlug, releaseSlug, isEsConflict } from '../../services/slug-locks.js';
-import { runCompensation } from '../../services/compensation.js';
+import { claimOrOwnSlug, releaseSlug, isEsConflict } from '../../services/slug-locks.js';
 
 const router = Router();
 
@@ -314,54 +313,16 @@ router.put(
       const entryType = entry.type;
       const entrySlug = entry.slug;
 
-      if (await slugTaken(entryType, entrySlug)) {
+      // The slug lock is claimed at submission and held through the pending
+      // lifecycle; confirm this entry owns it (or claim it for legacy pending
+      // docs). A lock held by a *different* entry still blocks.
+      if (!(await claimOrOwnSlug(entryType, entrySlug, entry.id))) {
         res.status(409).json({
           error: 'Conflict',
           message: `An entry with slug "${entrySlug}" already exists for type "${entryType}".`,
           correlationId: req.id,
         });
         return;
-      }
-
-      if (!(await claimSlug(entryType, entrySlug, entry.id))) {
-        res.status(409).json({
-          error: 'Conflict',
-          message: `An entry with slug "${entrySlug}" already exists for type "${entryType}".`,
-          correlationId: req.id,
-        });
-        return;
-      }
-
-      // Claim the approval first under an optimistic lock. If another approver
-      // won the race the version conflicts and we stop before touching the
-      // registry, so the entry is published exactly once.
-      try {
-        await esClient.update({
-          index: INDEX_NAMES.PENDING,
-          id: pendingDocId,
-          doc: {
-            status: 'approved',
-            approvedBy: approver,
-            approvedAt: now,
-            policyOverride: wasOverridden,
-            ...(wasOverridden ? { overrideReason } : {}),
-            ...(finalApprovals ? { approvals: finalApprovals } : {}),
-          },
-          if_seq_no: seqNo,
-          if_primary_term: primaryTerm,
-          refresh: 'wait_for',
-        });
-      } catch (e) {
-        await releaseSlug(entryType, entrySlug);
-        if (isVersionConflict(e)) {
-          res.status(409).json({
-            error: 'Conflict',
-            message: 'Entry was approved or modified concurrently. Please retry.',
-            correlationId: req.id,
-          });
-          return;
-        }
-        throw e;
       }
 
       // Re-sanitize the stored blob before publishing — never trust a pending
@@ -380,32 +341,49 @@ router.put(
         ...(dueAt ? { reviewDueAt: dueAt } : {}),
       };
 
-      // Publish to the registry. If this fails after we've already flipped the
-      // pending doc to 'approved', compensate by rolling it back to 'pending' so
-      // the two stores don't drift and the entry can be re-approved later.
+      // Publish to the registry FIRST (idempotent on entry.id). Doing this
+      // before flipping the pending doc means a crash between the two writes
+      // leaves the entry still 'pending' — safe and re-approvable — rather than
+      // 'approved' with no registry doc. Concurrent approvers publish the same
+      // document; the optimistic pending update below then elects a single
+      // winner, so the extra write is a harmless idempotent no-op.
+      await esClient.index({
+        index: INDEX_NAMES.REGISTRY,
+        id: entry.id,
+        document: publishedEntry,
+        refresh: 'wait_for',
+      });
+
+      // Claim the approval under an optimistic lock. A losing concurrent approver
+      // conflicts here (the identical registry doc is already published) and 409s.
+      // On any failure the pending doc stays 'pending' and the slug lock is
+      // retained — the entry is live and re-approvable, no divergence.
       try {
-        await esClient.index({
-          index: INDEX_NAMES.REGISTRY,
-          id: entry.id,
-          document: publishedEntry,
+        await esClient.update({
+          index: INDEX_NAMES.PENDING,
+          id: pendingDocId,
+          doc: {
+            status: 'approved',
+            approvedBy: approver,
+            approvedAt: now,
+            policyOverride: wasOverridden,
+            ...(wasOverridden ? { overrideReason } : {}),
+            ...(finalApprovals ? { approvals: finalApprovals } : {}),
+          },
+          if_seq_no: seqNo,
+          if_primary_term: primaryTerm,
           refresh: 'wait_for',
         });
-      } catch (publishErr) {
-        await runCompensation('approve:rollback-pending', async () => {
-          await esClient.update({
-            index: INDEX_NAMES.PENDING,
-            id: pendingDocId,
-            doc: {
-              status: 'pending',
-              approvedBy: null,
-              approvedAt: null,
-              policyOverride: null,
-            },
-            refresh: 'wait_for',
+      } catch (e) {
+        if (isVersionConflict(e)) {
+          res.status(409).json({
+            error: 'Conflict',
+            message: 'Entry was approved or modified concurrently. Please retry.',
+            correlationId: req.id,
           });
-        });
-        await releaseSlug(entryType, entrySlug);
-        throw publishErr;
+          return;
+        }
+        throw e;
       }
 
       await auditAction(req, 'APPROVE_ENTRY', id, {
@@ -512,6 +490,11 @@ router.put(
           return;
         }
         throw e;
+      }
+
+      // The entry is abandoned — free its slug so it can be resubmitted.
+      if (pending.entry.type && pending.entry.slug) {
+        await releaseSlug(pending.entry.type, pending.entry.slug);
       }
 
       await auditAction(req, 'REJECT_ENTRY', id, {
