@@ -1,6 +1,7 @@
 import { Injectable, OnDestroy, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
+import { safePageLocation } from '../utils/page-location';
 
 type LogLevel = 'info' | 'warn' | 'error';
 
@@ -73,7 +74,7 @@ export class LoggingService implements OnDestroy {
       message,
       context,
       timestamp: new Date().toISOString(),
-      url: window.location.href,
+      url: safePageLocation(),
       userAgent: navigator.userAgent,
     };
 

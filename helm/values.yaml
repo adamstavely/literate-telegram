@@ -9,10 +9,12 @@ image:
   frontend:
     repository: interop/frontend
     tag: ""   # Defaults to Chart.appVersion when empty
+    digest: ""  # Optional sha256 digest (e.g. sha256:abc...) — takes precedence over tag
     pullPolicy: IfNotPresent
   backend:
     repository: interop/backend
     tag: ""   # Defaults to Chart.appVersion when empty
+    digest: ""  # Optional sha256 digest (e.g. sha256:abc...) — takes precedence over tag
     pullPolicy: IfNotPresent
 
 # ---------------------------------------------------------------------------
@@ -185,6 +187,7 @@ affinity: {}
 # Network policies
 # ---------------------------------------------------------------------------
 networkPolicy:
+  enabled: true
   # Restrict frontend ingress to the ingress controller namespace (common default).
   frontendRestrictIngress: true
   # Namespace where the ingress controller runs (e.g. ingress-nginx, traefik).

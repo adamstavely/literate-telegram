@@ -10,8 +10,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
   const router = inject(Router);
 
-  // Only attach the token for requests to our API.
-  const isApiRequest = req.url.includes('/api');
+  // Only attach the token for requests to our API (relative /api/* paths).
+  const isApiRequest = req.url.startsWith('/api/');
   if (!isApiRequest) {
     return next(req);
   }

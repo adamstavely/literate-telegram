@@ -55,7 +55,9 @@ async function start(): Promise<void> {
   process.on('unhandledRejection', (reason) => {
     logger.error('Unhandled rejection', {
       reason: reason instanceof Error ? reason.message : String(reason),
+      stack: reason instanceof Error ? reason.stack : undefined,
     });
+    process.exit(1);
   });
 }
 

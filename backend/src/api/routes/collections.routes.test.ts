@@ -59,6 +59,46 @@ describe('GET /api/collections', () => {
     assert.ok(col.count >= 1);
     assert.ok(col.entries.some((e: { slug: string }) => e.slug === memberSlug));
   });
+
+  test('filters collection members by caller visibility', async () => {
+    const def = COLLECTION_DEFINITIONS[0];
+    assert.ok(def);
+    const publicSlug = 'github';
+
+    stubEs('search', async (params: { index?: string }) => {
+      if (params.index === 'interop-collections') {
+        return { hits: { hits: [] } };
+      }
+      if (params.index === 'interop-registry') {
+        return {
+          hits: {
+            hits: [{
+              _source: {
+                id: 'entry-public',
+                type: 'server',
+                slug: publicSlug,
+                name: 'GitHub',
+                summary: 's',
+                description: 'd',
+                sensitivity: 'public',
+                visibility: 'public',
+                installs: 3,
+              },
+            }],
+          },
+        };
+      }
+      return { hits: { hits: [] } };
+    });
+
+    const res = await request(app).get('/api/collections');
+    assert.equal(res.status, 200);
+    const col = res.body.find((c: { id: string }) => c.id === def.id);
+    assert.ok(col);
+    assert.ok(col.members.every((m: { id: string }) => m.id === publicSlug));
+    assert.ok(col.entries.every((e: { slug: string }) => e.slug === publicSlug));
+    assert.ok(col.count < def.members.length);
+  });
 });
 
 describe('POST /api/collections', () => {

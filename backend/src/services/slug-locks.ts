@@ -35,8 +35,8 @@ export async function slugTaken(type: string, slug: string): Promise<boolean> {
         bool: {
           filter: [
             { term: { status: 'pending' } },
-            { term: { 'entry.type.keyword': type } },
-            { term: { 'entry.slug.keyword': slug } },
+            { term: { 'entry.type': type } },
+            { term: { 'entry.slug': slug } },
           ],
         },
       },
@@ -68,7 +68,7 @@ export async function slugTaken(type: string, slug: string): Promise<boolean> {
           bool: {
             filter: [
               { term: { status: 'pending' } },
-              { term: { 'entry.id.keyword': entryId } },
+              { term: { 'entry.id': entryId } },
             ],
           },
         },
@@ -123,18 +123,20 @@ export async function claimOrOwnSlug(type: string, slug: string, entryId: string
   }
 }
 
-export async function releaseSlug(type: string, slug: string): Promise<void> {
+export async function releaseSlug(type: string, slug: string): Promise<boolean> {
   try {
     await esClient.delete({
       index: INDEX_NAMES.SLUG_LOCKS,
       id: typeSlugKey(type, slug),
       refresh: 'wait_for',
     });
+    return true;
   } catch (err) {
     logger.warn('Failed to release slug lock', {
       type,
       slug,
       error: err instanceof Error ? err.message : String(err),
     });
+    return false;
   }
 }

@@ -639,15 +639,25 @@ Chart in `helm/` (`interop`, appVersion 1.0.0). `helm install interop ./helm -n 
 
 ## 10. CI
 
-`.github/workflows/ci.yml` runs on push to `main` and on PRs, three jobs:
+`.github/workflows/ci.yml` runs on push to `main` and on PRs, six jobs:
 
 1. **styles-sync** — `node scripts/check-styles-sync.mjs` (vendor CSS == canonical).
 2. **backend** — `npm ci && npm run build && npm test`.
 3. **frontend** — `npm ci && npm run build && npm run test:ci` (with
    `browser-actions/setup-chrome`).
+4. **docker** — builds backend and frontend Docker images.
+5. **helm** — `helm lint`, `helm template`, and NetworkPolicy structure checks
+   (`scripts/check-helm-networkpolicy.mjs`).
+6. **compose** — validates compose configs and runs a smoke test against
+   `/api/health/ready` (Elasticsearch readiness, not just process liveness).
 
-All three must be green. Node 20 in CI; note the backend test script uses `find`
+All six must be green. Node 20 in CI; note the backend test script uses `find`
 to enumerate test files so it works on Node 20 (its `--test` glob is Node 21+).
+
+**Multi-replica rate limits:** the backend uses an in-memory rate-limit store by
+default (per pod). For a cluster-wide budget across replicas, configure a shared
+store (e.g. Redis) at the orchestrator layer — see
+`backend/src/middleware/rate-limit.ts`.
 
 ---
 

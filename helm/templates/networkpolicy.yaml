@@ -1,3 +1,4 @@
+{{- if .Values.networkPolicy.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -126,6 +127,7 @@ spec:
       {{- include "interop.elasticsearch.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
+    - Egress
   ingress:
     - from:
         - podSelector:
@@ -141,4 +143,13 @@ spec:
       ports:
         - protocol: TCP
           port: 9200
+  egress:
+    # Elasticsearch does not require outbound cluster access; allow DNS only.
+    - ports:
+        - protocol: UDP
+          port: 53
+    - ports:
+        - protocol: TCP
+          port: 53
+{{- end }}
 {{- end }}

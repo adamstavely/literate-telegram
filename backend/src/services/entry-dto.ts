@@ -25,9 +25,11 @@ function str(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined;
 }
 
-function stringArray(value: unknown): string[] | undefined {
+function stringArray(value: unknown, maxLen = MAX_NESTED_STRING_LEN): string[] | undefined {
   if (!Array.isArray(value)) return undefined;
-  return value.filter((v): v is string => typeof v === 'string');
+  return value
+    .filter((v): v is string => typeof v === 'string')
+    .map((v) => v.slice(0, maxLen));
 }
 
 /** Keep only values that are members of the allowed set. */
@@ -49,6 +51,11 @@ const REST_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const;
 const GQL_METHODS = ['QUERY', 'MUTATION', 'SUBSCRIPTION'] as const;
 const MAX_API_ENDPOINTS = 100;
 const MAX_API_FIELD_LEN = 2048;
+const MAX_TOOLS = 50;
+const MAX_PARAMS = 50;
+const MAX_TRIGGERS = 50;
+const MAX_REACHES = 50;
+const MAX_NESTED_STRING_LEN = 512;
 const SENSITIVITIES: readonly SensitivityLevel[] = [
   'public',
   'internal',
@@ -98,12 +105,12 @@ function sanitizeApiEndpoint(
 
 function sanitizeParams(value: unknown): ToolParam[] {
   if (!Array.isArray(value)) return [];
-  return value.map((raw) => {
+  return value.slice(0, MAX_PARAMS).map((raw) => {
     const p = (raw ?? {}) as RawBody;
     return {
-      name: str(p['name']) ?? '',
-      type: str(p['type']) ?? '',
-      description: str(p['description']) ?? '',
+      name: (str(p['name']) ?? '').slice(0, MAX_NESTED_STRING_LEN),
+      type: (str(p['type']) ?? '').slice(0, MAX_NESTED_STRING_LEN),
+      description: (str(p['description']) ?? '').slice(0, MAX_NESTED_STRING_LEN),
       required: boolean(p['required']) ?? false,
     };
   });
@@ -162,7 +169,9 @@ export function sanitizeSubmission(body: RawBody): Partial<RegistryEntry> {
         clients: stringArray(body['clients']) ?? [],
         license: str(body['license']) ?? '',
         source: str(body['source']) ?? '',
-        tools: Array.isArray(body['tools']) ? body['tools'].map(sanitizeTool) : [],
+        tools: Array.isArray(body['tools'])
+          ? body['tools'].slice(0, MAX_TOOLS).map(sanitizeTool)
+          : [],
         // rating is a server-controlled popularity signal, never submitter-set.
         rating: 0,
       } as Partial<RegistryEntry>;
@@ -179,8 +188,8 @@ export function sanitizeSubmission(body: RawBody): Partial<RegistryEntry> {
     case 'skill':
       return {
         ...base,
-        triggers: stringArray(body['triggers']) ?? [],
-        reaches: stringArray(body['reaches']) ?? [],
+        triggers: (stringArray(body['triggers']) ?? []).slice(0, MAX_TRIGGERS),
+        reaches: (stringArray(body['reaches']) ?? []).slice(0, MAX_REACHES),
         tokens: finiteNumber(body['tokens']) ?? 0,
       } as Partial<RegistryEntry>;
 

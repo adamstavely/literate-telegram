@@ -154,4 +154,42 @@ describe('sanitizeSubmission', () => {
     assert.deepEqual(skill.triggers, ['when x']);
     assert.equal(skill.tokens, 0);
   });
+
+  test('caps nested array sizes on server tools and skill fields', () => {
+    const tools = Array.from({ length: 60 }, (_, i) => ({
+      name: `t${i}`,
+      slug: `t${i}`,
+    }));
+    const server = sanitizeSubmission({
+      type: 'server',
+      name: 'Srv',
+      slug: 'srv',
+      publisher: 'acme.com',
+      summary: 'a summary here',
+      description: 'a description that is long enough',
+      sensitivity: 'public',
+      categories: ['x'],
+      tools,
+    }) as Server;
+
+    assert.equal(server.tools.length, 50);
+
+    const triggers = Array.from({ length: 60 }, (_, i) => `trigger-${i}`);
+    const reaches = Array.from({ length: 60 }, (_, i) => `reach-${i}`);
+    const skill = sanitizeSubmission({
+      type: 'skill',
+      name: 'S',
+      slug: 's',
+      publisher: 'acme.com',
+      summary: 'a summary here',
+      description: 'a description that is long enough',
+      sensitivity: 'public',
+      categories: ['x'],
+      triggers,
+      reaches,
+    }) as Skill;
+
+    assert.equal(skill.triggers?.length, 50);
+    assert.equal(skill.reaches?.length, 50);
+  });
 });

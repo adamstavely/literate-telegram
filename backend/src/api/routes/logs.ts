@@ -22,6 +22,7 @@ router.post(
   '/',
   ingestRateLimiter,
   optionalAuth,
+  // Unauthenticated by design — bounded by ingestRateLimiter and batch size (50).
   [
     body('entries').isArray({ min: 1, max: 50 }),
     body('entries.*.level').isIn(['info', 'warn', 'error']),

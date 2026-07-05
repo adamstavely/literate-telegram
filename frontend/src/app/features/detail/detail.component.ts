@@ -15,6 +15,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin, of, Subject } from 'rxjs';
 import { catchError, switchMap, takeUntil } from 'rxjs/operators';
 import { RegistryService } from '../../core/services/registry.service';
+import { LoggingService } from '../../core/services/logging.service';
 import {
   RegistryEntry,
   EntryType,
@@ -54,6 +55,7 @@ export class DetailComponent implements OnChanges {
   @Input() slug!: string;
 
   private readonly registry = inject(RegistryService);
+  private readonly logging = inject(LoggingService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -183,7 +185,7 @@ export class DetailComponent implements OnChanges {
           this.resetEntryState();
           return this.registry.getEntry(type as EntryType, slug).pipe(
             catchError((err: unknown) => {
-              console.error(err);
+              this.logging.error('Failed to load entry', err);
               this.error.set('Entry not found or failed to load.');
               this.loading.set(false);
               return of(null);
@@ -230,7 +232,7 @@ export class DetailComponent implements OnChanges {
             this.loading.set(false);
           },
           error: (err: unknown) => {
-            console.error('Failed to load related servers', err);
+            this.logging.error('Failed to load related servers', err);
             this.relatedError.set('Some related data could not be loaded.');
             this.loading.set(false);
           },
@@ -283,7 +285,7 @@ export class DetailComponent implements OnChanges {
         this.loading.set(false);
       },
       error: (err: unknown) => {
-        console.error('Failed to load related entries', err);
+        this.logging.error('Failed to load related entries', err);
         this.relatedError.set('Some related data could not be loaded.');
         this.loading.set(false);
       },

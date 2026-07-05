@@ -15,6 +15,7 @@ jobs:
         with:
           node-version: '20'
       - run: node scripts/check-styles-sync.mjs
+      - run: node scripts/check-nginx-security-headers.mjs
 
   backend:
     name: Backend (typecheck + tests)
@@ -73,6 +74,8 @@ jobs:
       - uses: azure/setup-helm@v4
       - run: helm lint ./helm --set elasticsearch.password=ci-test-password
       - run: helm template interop ./helm --set elasticsearch.password=ci-test-password > /dev/null
+      - name: NetworkPolicy structure check
+        run: node scripts/check-helm-networkpolicy.mjs
 
   compose:
     name: Compose config validate
@@ -86,5 +89,5 @@ jobs:
         run: |
           docker compose up -d --wait --timeout 180
           curl -fsS http://localhost:4200/ > /dev/null
-          curl -fsS http://localhost:4200/api/health/live > /dev/null
+          curl -fsS http://localhost:4200/api/health/ready > /dev/null
           docker compose down

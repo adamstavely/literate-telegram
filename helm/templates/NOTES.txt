@@ -29,10 +29,11 @@ Then open http://localhost:8080
  Backend API
 -----------------------------------------------------------------------------
 
-To test the health endpoint from inside the cluster:
+To test the health endpoint from inside the cluster (via the frontend pod — arbitrary debug pods are blocked by NetworkPolicy):
 
-  kubectl run -it --rm debug --image=curlimages/curl --restart=Never \
-    -- curl http://{{ include "interop.backend.serviceName" . }}.{{ .Release.Namespace }}.svc.cluster.local:3000/api/health
+  kubectl exec -n {{ .Release.Namespace }} \
+    deploy/{{ include "interop.fullname" . }}-frontend -- \
+    wget -qO- http://{{ include "interop.backend.serviceName" . }}:{{ .Values.service.backend.port }}/api/health/ready
 
 -----------------------------------------------------------------------------
  Elasticsearch

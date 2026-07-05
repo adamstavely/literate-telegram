@@ -143,3 +143,18 @@ imagePullSecrets:
 {{- end }}
 {{- end }}
 {{- end }}
+
+{{/*
+Render a container image reference with optional digest pinning.
+Usage: {{ include "interop.imageRef" (dict "root" . "image" .Values.image.backend) }}
+*/}}
+{{- define "interop.imageRef" -}}
+{{- $root := .root -}}
+{{- $image := .image -}}
+{{- $repo := printf "%s%s" (ternary (printf "%s/" $root.Values.global.imageRegistry) "" (ne $root.Values.global.imageRegistry "")) $image.repository -}}
+{{- if $image.digest -}}
+{{- printf "%s@%s" $repo $image.digest -}}
+{{- else -}}
+{{- printf "%s:%s" $repo ($image.tag | default $root.Chart.AppVersion) -}}
+{{- end -}}
+{{- end }}
