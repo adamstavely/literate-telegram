@@ -8,8 +8,9 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { RegistryService } from '../../core/services/registry.service';
+import { AuthService } from '../../core/services/auth.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { EntryType } from '../../shared/types';
 
@@ -28,8 +29,12 @@ interface WizardStep {
 export class RegisterComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly registry = inject(RegistryService);
+  private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+
+  /** Only admins can author collections (POST /api/collections requires admin). */
+  readonly isAdmin = toSignal(this.auth.isAdmin$, { initialValue: this.auth.isAdmin() });
 
   readonly currentStep = signal(1);
   readonly submitting = signal(false);

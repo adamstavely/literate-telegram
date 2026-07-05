@@ -175,6 +175,104 @@ describe('PUT /api/pending/:id/approve', () => {
       'pending must not be flipped to approved when publish fails',
     );
   });
+
+  test('rolls back the published registry doc when the pending flip fails', async () => {
+    const deleteCalls: Array<{ index?: string; id?: string }> = [];
+
+    stubEs('search', async () => pendingSearchHit());
+    // Policy read for enforcement; the post-failure recheck reads the pending
+    // doc back and finds it still 'pending' (no concurrent approver won).
+    stubEs('get', async (args: { index?: string }) =>
+      String(args.index).includes('pending')
+        ? { _source: { status: 'pending' } }
+        : { _source: DEFAULT_POLICY_DOCUMENT },
+    );
+    stubEs('create', async () => ({})); // claimSlug succeeds
+    stubEs('index', async () => ({})); // registry publish succeeds
+    stubEs('update', async () => {
+      throw new Error('transient flip failure'); // non-conflict error
+    });
+    stubEs('delete', async (args: { index?: string; id?: string }) => {
+      deleteCalls.push(args);
+      return {};
+    });
+
+    const res = await request(app)
+      .put('/api/pending/pending-1/approve')
+      .set(AUTH)
+      .send({});
+
+    assert.equal(res.status, 500);
+    // The just-published registry doc is an orphan (flip never landed, and the
+    // recheck confirmed no concurrent approve won) — it must be deleted.
+    assert.ok(
+      deleteCalls.some((c) => String(c.index).includes('registry') && c.id === 'entry-1'),
+      'orphaned registry doc must be rolled back',
+    );
+  });
+
+  test('surfaces reconciliation when the registry rollback also fails', async () => {
+    stubEs('search', async () => pendingSearchHit());
+    stubEs('get', async (args: { index?: string }) =>
+      String(args.index).includes('pending')
+        ? { _source: { status: 'pending' } }
+        : { _source: DEFAULT_POLICY_DOCUMENT },
+    );
+    stubEs('create', async () => ({}));
+    // index() is used both for the registry publish (must succeed) and for the
+    // reconciliation audit record written on rollback exhaustion.
+    stubEs('index', async () => ({}));
+    stubEs('update', async () => {
+      throw new Error('transient flip failure');
+    });
+    stubEs('delete', async () => {
+      throw new Error('elasticsearch unavailable'); // rollback can never complete
+    });
+
+    const res = await request(app)
+      .put('/api/pending/pending-1/approve')
+      .set(AUTH)
+      .send({});
+
+    assert.equal(res.status, 500);
+    assert.equal(res.body.reconciliation, 'required');
+    assert.equal(res.body.entryId, 'entry-1');
+  });
+
+  test('keeps the registry doc when a concurrent approver already won', async () => {
+    const deleteCalls: Array<{ index?: string; id?: string }> = [];
+
+    stubEs('search', async () => pendingSearchHit());
+    // The recheck finds the pending doc already 'approved' — a concurrent
+    // approver won, so their identical registry doc must stay.
+    stubEs('get', async (args: { index?: string }) =>
+      String(args.index).includes('pending')
+        ? { _source: { status: 'approved' } }
+        : { _source: DEFAULT_POLICY_DOCUMENT },
+    );
+    stubEs('create', async () => ({}));
+    stubEs('index', async () => ({}));
+    stubEs('update', async () => {
+      const err = new Error('version conflict') as Error & { statusCode: number };
+      err.statusCode = 409;
+      throw err;
+    });
+    stubEs('delete', async (args: { index?: string; id?: string }) => {
+      deleteCalls.push(args);
+      return {};
+    });
+
+    const res = await request(app)
+      .put('/api/pending/pending-1/approve')
+      .set(AUTH)
+      .send({});
+
+    assert.equal(res.status, 409);
+    assert.ok(
+      !deleteCalls.some((c) => String(c.index).includes('registry')),
+      'a concurrently-approved registry doc must not be deleted',
+    );
+  });
 });
 
 describe('PUT /api/pending/:id/reject', () => {
@@ -208,5 +306,28 @@ describe('PUT /api/pending/:id/reject', () => {
 
     assert.equal(res.status, 409);
     assert.match(res.body.message, /modified concurrently/);
+  });
+
+  test('removes an orphaned registry doc on reject (defense in depth)', async () => {
+    const deleteCalls: Array<{ index?: string; id?: string }> = [];
+
+    stubEs('search', async () => pendingSearchHit());
+    stubEs('update', async () => ({})); // flip to rejected succeeds
+    stubEs('delete', async (args: { index?: string; id?: string }) => {
+      deleteCalls.push(args);
+      return {}; // an orphan existed and was deleted
+    });
+
+    const res = await request(app)
+      .put('/api/pending/pending-1/reject')
+      .set(AUTH)
+      .send({ reason: 'Does not meet quality bar for publication.' });
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.status, 'rejected');
+    assert.ok(
+      deleteCalls.some((c) => String(c.index).includes('registry') && c.id === 'entry-1'),
+      'reject must clean up any orphaned registry doc for the entry',
+    );
   });
 });
