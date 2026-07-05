@@ -57,6 +57,11 @@ export class AppComponent implements OnInit {
     this.authFlash.set(null);
   }
 
+  signInFromFlash(): void {
+    this.authFlash.set(null);
+    this.auth.login();
+  }
+
   /**
    * Global keyboard shortcut: ⌘K / Ctrl+K opens the search palette.
    * Dispatches a custom event that the header/search palette listens to.

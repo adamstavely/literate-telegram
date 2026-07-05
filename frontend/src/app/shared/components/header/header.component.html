@@ -282,6 +282,16 @@
       >
         Sign out
       </button>
+    } @else {
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm"
+        style="margin-left: 8px"
+        (click)="login()"
+        aria-label="Sign in"
+      >
+        Sign in
+      </button>
     }
   </div>
 </header>
