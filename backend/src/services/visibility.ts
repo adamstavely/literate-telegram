@@ -16,12 +16,14 @@ export function registryVisibilityFilter(req: Request): Record<string, unknown> 
   }
 
   const allowed = req.user ? AUTHENTICATED_VISIBILITIES : PUBLIC_VISIBILITIES;
+  const should: Record<string, unknown>[] = [{ terms: { visibility: allowed } }];
+  // Legacy entries without a visibility field are treated as org-scoped (not public).
+  if (req.user) {
+    should.push({ bool: { must_not: { exists: { field: 'visibility' } } } });
+  }
   return {
     bool: {
-      should: [
-        { terms: { visibility: allowed } },
-        { bool: { must_not: { exists: { field: 'visibility' } } } },
-      ],
+      should,
       minimum_should_match: 1,
     },
   };
@@ -32,7 +34,7 @@ export function entryVisibleToCaller(
   req: Request,
 ): boolean {
   if (isAdmin(req)) return true;
-  const visibility = entry.visibility ?? 'public';
+  const visibility = entry.visibility ?? 'org';
   if (visibility === 'public') return true;
   if (!req.user) return false;
   if (visibility === 'org') return true;

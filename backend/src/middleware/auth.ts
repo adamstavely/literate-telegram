@@ -26,6 +26,10 @@ interface TokenClaims extends JWTPayload {
   scope?: string;
 }
 
+function isValidSub(sub: unknown): sub is string {
+  return typeof sub === 'string' && sub.trim().length > 0;
+}
+
 function extractUser(payload: TokenClaims): AuthenticatedUser {
   // Support both custom claim namespace and direct roles claim
   const roles =
@@ -34,7 +38,7 @@ function extractUser(payload: TokenClaims): AuthenticatedUser {
     [];
 
   return {
-    sub: payload.sub ?? '',
+    sub: payload.sub!.trim(),
     email: payload.email,
     name: payload.name,
     roles: normalizeRoles(roles),
@@ -80,6 +84,14 @@ export async function requireAuth(
 
   try {
     const { payload } = await verifyToken(token);
+    if (!isValidSub(payload.sub)) {
+      res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Token missing required subject claim',
+        correlationId: req.id,
+      });
+      return;
+    }
     req.user = extractUser(payload);
     next();
   } catch (err) {
@@ -124,7 +136,9 @@ export async function optionalAuth(
 
   try {
     const { payload } = await verifyToken(token);
-    req.user = extractUser(payload);
+    if (isValidSub(payload.sub)) {
+      req.user = extractUser(payload);
+    }
   } catch {
     // Not a valid token; continue without user context
   }

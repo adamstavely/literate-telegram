@@ -237,11 +237,7 @@ export class PolicyComponent implements OnInit {
           this.loading.set(false);
         },
         error: () => {
-          this.policy.set({ ...DEFAULT_POLICY });
-          this.rules.set(DEFAULT_RULES.map(r => ({ ...r })));
-          this.domains.set(SEED_DOMAINS.map(d => ({ ...d })));
-          this.snap = this.serialize();
-          this.loadError.set('Could not load policy from server — showing defaults.');
+          this.loadError.set('Could not load policy from server.');
           this.loading.set(false);
         },
       });

@@ -2,6 +2,7 @@ import { Injectable, OnDestroy, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { AuthService } from './auth.service';
+import { safePageLocation } from '../utils/page-location';
 
 interface ClientAuditEvent {
   userId: string | null;
@@ -64,7 +65,7 @@ export class AuditService implements OnDestroy {
       resource,
       resourceId,
       timestamp: new Date().toISOString(),
-      pageUrl: window.location.href,
+      pageUrl: safePageLocation(),
       metadata,
     };
 

@@ -55,7 +55,10 @@ router.put(
         return;
       }
 
-      if (config.nodeEnv === 'production' && (ifSeqNo === undefined || ifPrimaryTerm === undefined)) {
+      if (
+        config.nodeEnv !== 'development' &&
+        (ifSeqNo === undefined || ifPrimaryTerm === undefined)
+      ) {
         res.status(428).json({
           error: 'Precondition Required',
           message: 'Policy save requires ifSeqNo and ifPrimaryTerm from the latest GET /api/policy response.',

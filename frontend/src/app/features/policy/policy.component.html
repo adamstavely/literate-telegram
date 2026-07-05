@@ -24,9 +24,11 @@
       <app-icon name="warning" [size]="16" aria-hidden="true"></app-icon>
       {{ loadError() }}
     </div>
-  }
-
-  @if (loading()) {
+    <p style="margin-top: 16px; color: var(--muted);">
+      Policy settings could not be loaded. Reload the page or return to
+      <a routerLink="/admin">Admin</a> and try again.
+    </p>
+  } @else if (loading()) {
     <div role="status" aria-busy="true" aria-label="Loading policy settings" style="margin-top: 24px">
       <div class="skeleton"></div>
       <div class="skeleton"></div>

@@ -31,4 +31,24 @@ describe('visibility', () => {
     assert.equal(entryVisibleToCaller({ visibility: 'private' }, req), true);
     assert.deepEqual(registryVisibilityFilter(req), { match_all: {} });
   });
+
+  test('legacy entries without visibility default to org scope', () => {
+    assert.equal(entryVisibleToCaller({}, mockReq()), false);
+    const req = mockReq({ sub: 'u1', roles: ['user'] });
+    assert.equal(entryVisibleToCaller({}, req), true);
+  });
+
+  test('anonymous ES filter excludes legacy entries without visibility', () => {
+    const filter = registryVisibilityFilter(mockReq()) as {
+      bool: { should: unknown[] };
+    };
+    assert.equal(filter.bool.should.length, 1);
+  });
+
+  test('authenticated ES filter includes legacy entries without visibility', () => {
+    const filter = registryVisibilityFilter(mockReq({ sub: 'u1', roles: ['user'] })) as {
+      bool: { should: unknown[] };
+    };
+    assert.equal(filter.bool.should.length, 2);
+  });
 });

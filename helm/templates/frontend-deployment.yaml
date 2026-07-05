@@ -34,7 +34,7 @@ spec:
         fsGroup: 101
       containers:
         - name: frontend
-          image: "{{ if .Values.global.imageRegistry }}{{ .Values.global.imageRegistry }}/{{ end }}{{ .Values.image.frontend.repository }}:{{ .Values.image.frontend.tag | default .Chart.AppVersion }}"
+          image: {{ include "interop.imageRef" (dict "root" . "image" .Values.image.frontend) | quote }}
           imagePullPolicy: {{ .Values.image.frontend.pullPolicy }}
           securityContext:
             allowPrivilegeEscalation: false
