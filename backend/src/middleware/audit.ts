@@ -45,6 +45,9 @@ export function auditMiddleware(req: Request, res: Response, next: NextFunction)
       req.path.includes('/pending');
 
     if (!shouldAudit) return;
+    // Routes that call auditAction() already emit a semantic event — skip the
+    // generic "POST /api/..." duplicate.
+    if (req.semanticAuditRecorded) return;
 
     const responseTime = Date.now() - startTime;
     const { resource, resourceId } = deriveResource(req.method, req.path);
@@ -76,6 +79,7 @@ export async function auditAction(
   resourceId?: string,
   metadata?: Record<string, unknown>
 ): Promise<void> {
+  req.semanticAuditRecorded = true;
   const { resource } = deriveResource(req.method, req.path);
 
   const event: AuditEvent = {

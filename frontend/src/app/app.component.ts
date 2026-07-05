@@ -5,6 +5,7 @@ import {
   CUSTOM_ELEMENTS_SCHEMA,
   inject,
   DestroyRef,
+  signal,
 } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -13,12 +14,14 @@ import { AuthService } from './core/services/auth.service';
 import { LoggingService } from './core/services/logging.service';
 import { AppTheme } from './shared/types';
 import { HeaderComponent } from './shared/components/header/header.component';
+import { AUTH_FLASH_KEY } from './core/interceptors/auth.interceptor';
+import { IconComponent } from './shared/components/icon/icon.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
-  imports: [RouterOutlet, HeaderComponent],
+  imports: [RouterOutlet, HeaderComponent, IconComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
 })
@@ -28,7 +31,15 @@ export class AppComponent implements OnInit {
   private readonly logging = inject(LoggingService);
   private readonly destroyRef = inject(DestroyRef);
 
+  readonly authFlash = signal<string | null>(null);
+
   ngOnInit(): void {
+    const flash = sessionStorage.getItem(AUTH_FLASH_KEY);
+    if (flash) {
+      this.authFlash.set(flash);
+      sessionStorage.removeItem(AUTH_FLASH_KEY);
+    }
+
     // React to theme changes and keep the DOM in sync.
     this.themeService.theme$
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -40,6 +51,10 @@ export class AppComponent implements OnInit {
           accent: theme.accent,
         });
       });
+  }
+
+  dismissAuthFlash(): void {
+    this.authFlash.set(null);
   }
 
   /**

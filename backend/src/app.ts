@@ -2,11 +2,11 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import compression from 'compression';
-import { rateLimit } from 'express-rate-limit';
 import { config } from './config/index.js';
 import { requestLoggingMiddleware } from './middleware/logging.js';
 import { optionalAuth } from './middleware/auth.js';
 import { auditMiddleware } from './middleware/audit.js';
+import { createGlobalRateLimiter } from './middleware/rate-limit.js';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
 import apiRouter from './api/router.js';
 
@@ -15,7 +15,9 @@ const app = express();
 app.set('trust proxy', config.trustProxy);
 
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  crossOriginResourcePolicy: { policy: 'same-origin' },
+  crossOriginOpenerPolicy: { policy: 'same-origin' },
+  xssFilter: false,
 }));
 
 app.use(cors({
@@ -42,22 +44,8 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 app.use(requestLoggingMiddleware);
 
-const limiter = rateLimit({
-  windowMs: config.rateLimit.windowMs,
-  max: config.rateLimit.max,
-  standardHeaders: true,
-  legacyHeaders: false,
-  skip: (req) => /^\/api\/health(\/|$)/.test(req.path),
-  handler: (req, res) => {
-    res.status(429).json({
-      error: 'Too Many Requests',
-      message: 'Rate limit exceeded. Please try again later.',
-      correlationId: req.id,
-    });
-  },
-});
-app.use(limiter);
 app.use(optionalAuth);
+app.use(createGlobalRateLimiter());
 app.use(auditMiddleware);
 app.use('/api', apiRouter);
 app.use(notFoundHandler);

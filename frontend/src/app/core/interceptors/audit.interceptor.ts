@@ -1,4 +1,4 @@
-import { HttpInterceptorFn } from '@angular/common/http';
+import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { tap } from 'rxjs/operators';
 import { AuditService } from '../services/audit.service';
@@ -41,6 +41,16 @@ export const auditInterceptor: HttpInterceptorFn = (req, next) => {
         audit.recordAction(action, resource, resourceId, {
           method: cloned.method,
           url: cloned.url,
+          result: 'success',
+        });
+      },
+      error: (error: unknown) => {
+        const status = error instanceof HttpErrorResponse ? error.status : undefined;
+        audit.recordAction(action, resource, resourceId, {
+          method: cloned.method,
+          url: cloned.url,
+          result: 'failure',
+          status,
         });
       },
     }),

@@ -1,5 +1,14 @@
 <div class="app">
   <a class="skip-link" href="#main-content">Skip to main content</a>
+  @if (authFlash()) {
+    <div class="container" style="padding-top: 12px">
+      <div class="callout" role="alert" aria-live="assertive">
+        <app-icon name="warning" [size]="16" aria-hidden="true"></app-icon>
+        <div style="flex: 1">{{ authFlash() }}</div>
+        <button type="button" class="btn btn-ghost btn-sm" (click)="dismissAuthFlash()">Dismiss</button>
+      </div>
+    </div>
+  }
   <app-header></app-header>
   <main id="main-content" class="app-main" role="main" aria-label="Main content">
     <router-outlet></router-outlet>

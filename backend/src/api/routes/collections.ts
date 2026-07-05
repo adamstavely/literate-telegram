@@ -49,11 +49,15 @@ const SENS_RANK: Record<SensitivityLevel, number> = {
   restricted: 3,
 };
 
-async function loadEntriesBySlugs(
-  slugs: string[],
+function memberKey(member: CollectionMember): string {
+  return `${member.kind}:${member.id}`;
+}
+
+async function loadEntriesByMembers(
+  members: CollectionMember[],
   req: Request,
 ): Promise<Map<string, RegistryEntry>> {
-  const unique = [...new Set(slugs.filter(Boolean))];
+  const unique = [...new Map(members.map((m) => [memberKey(m), m])).values()];
   if (unique.length === 0) return new Map();
 
   const response = await esClient.search<RegistryEntry>({
@@ -61,34 +65,40 @@ async function loadEntriesBySlugs(
     size: unique.length,
     query: {
       bool: {
-        filter: [{ terms: { slug: unique } }, registryVisibilityFilter(req)],
+        filter: [registryVisibilityFilter(req)],
+        should: unique.map((m) => ({
+          bool: {
+            filter: [{ term: { slug: m.id } }, { term: { type: m.kind } }],
+          },
+        })),
+        minimum_should_match: 1,
       },
     },
   });
 
-  const bySlug = new Map<string, RegistryEntry>();
+  const byMember = new Map<string, RegistryEntry>();
   for (const hit of response.hits.hits) {
     if (hit._source && entryVisibleToCaller(hit._source, req)) {
-      bySlug.set(hit._source.slug, hit._source);
+      byMember.set(`${hit._source.type}:${hit._source.slug}`, hit._source);
     }
   }
-  return bySlug;
+  return byMember;
 }
 
 async function loadEntriesForDefinitions(
   defs: CollectionDefinition[],
   req: Request,
 ): Promise<Map<string, RegistryEntry>> {
-  const slugs = defs.flatMap((d) => d.members.map((m) => m.id));
-  return loadEntriesBySlugs(slugs, req);
+  const members = defs.flatMap((d) => d.members);
+  return loadEntriesByMembers(members, req);
 }
 
 function resolveCollection(
   def: (typeof COLLECTION_DEFINITIONS)[number],
-  bySlug: Map<string, RegistryEntry>,
+  byMember: Map<string, RegistryEntry>,
 ): Collection {
   const entries = def.members
-    .map((m) => bySlug.get(m.id))
+    .map((m) => byMember.get(memberKey(m)))
     .filter((e): e is RegistryEntry => e !== undefined);
 
   const sensitivity = entries.reduce<SensitivityLevel>(
@@ -109,8 +119,8 @@ function resolveCollection(
 router.get('/', optionalAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const defs = await allDefinitions();
-    const bySlug = await loadEntriesForDefinitions(defs, req);
-    const collections = defs.map((def) => resolveCollection(def, bySlug));
+    const byMember = await loadEntriesForDefinitions(defs, req);
+    const collections = defs.map((def) => resolveCollection(def, byMember));
     res.json(collections);
   } catch (err) {
     next(err);
@@ -144,15 +154,34 @@ router.post(
       };
 
       const slug = b.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-      const members: CollectionMember[] = b.members
-        .filter((m) => typeof m?.id === 'string' && m.id.trim() !== '')
-        .map((m) => ({
-          kind: MEMBER_KINDS.includes(m.kind as CollectionMemberKind) ? (m.kind as CollectionMemberKind) : 'server',
-          id: String(m.id).trim(),
-        }));
+      const members: CollectionMember[] = [];
+      for (const raw of b.members) {
+        if (typeof raw?.id !== 'string' || raw.id.trim() === '') continue;
+        if (!MEMBER_KINDS.includes(raw.kind as CollectionMemberKind)) {
+          res.status(422).json({
+            error: 'Validation Error',
+            message: `Invalid member kind "${String(raw.kind)}" — must be one of: ${MEMBER_KINDS.join(', ')}`,
+            correlationId: req.id,
+          });
+          return;
+        }
+        members.push({ kind: raw.kind as CollectionMemberKind, id: raw.id.trim() });
+      }
 
       if (members.length === 0) {
         res.status(422).json({ error: 'Validation Error', message: 'At least one valid member is required', correlationId: req.id });
+        return;
+      }
+
+      const byMember = await loadEntriesByMembers(members, req);
+      const missing = members.filter((m) => !byMember.has(memberKey(m)));
+      if (missing.length > 0) {
+        res.status(422).json({
+          error: 'Validation Error',
+          message: 'One or more member slugs were not found in the registry.',
+          missing: missing.map((m) => ({ kind: m.kind, id: m.id })),
+          correlationId: req.id,
+        });
         return;
       }
 
@@ -177,11 +206,7 @@ router.post(
       await auditAction(req, 'CREATE_COLLECTION', def.id, { title: def.title, members: members.length });
       logger.info('Collection created', { correlationId: req.id, userId: req.user?.sub, collectionId: def.id });
 
-      const bySlug = await loadEntriesBySlugs(
-        members.map((m) => m.id),
-        req,
-      );
-      res.status(201).json(resolveCollection(def, bySlug));
+      res.status(201).json(resolveCollection(def, byMember));
     } catch (err) {
       next(err);
     }
@@ -197,8 +222,8 @@ router.get('/:id', optionalAuth, async (req: Request, res: Response, next: NextF
       res.status(404).json({ error: 'Not Found', message: `Collection ${id} not found` });
       return;
     }
-    const bySlug = await loadEntriesBySlugs(def.members.map((m) => m.id), req);
-    res.json(resolveCollection(def, bySlug));
+    const byMember = await loadEntriesByMembers(def.members, req);
+    res.json(resolveCollection(def, byMember));
   } catch (err) {
     next(err);
   }

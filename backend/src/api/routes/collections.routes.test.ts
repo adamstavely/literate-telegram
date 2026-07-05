@@ -20,8 +20,9 @@ describe('GET /api/collections', () => {
   test('resolves members by slug without relying on a bulk 500 cap', async () => {
     const def = COLLECTION_DEFINITIONS[0];
     assert.ok(def);
-    const memberSlug = def.members[0]?.id;
-    assert.ok(memberSlug);
+    const member = def.members[0];
+    assert.ok(member);
+    const memberSlug = member.id;
 
     stubEs('search', async (params: { index?: string; query?: { bool?: { filter?: unknown[] } } }) => {
       if (params.index === 'interop-collections') {
@@ -34,7 +35,7 @@ describe('GET /api/collections', () => {
               {
                 _source: {
                   id: 'entry-1',
-                  type: 'server',
+                  type: member.kind,
                   slug: memberSlug,
                   name: 'Member',
                   summary: 's',
@@ -57,6 +58,79 @@ describe('GET /api/collections', () => {
     assert.ok(col);
     assert.ok(col.count >= 1);
     assert.ok(col.entries.some((e: { slug: string }) => e.slug === memberSlug));
+  });
+});
+
+describe('POST /api/collections', () => {
+  beforeEach(() => restoreEs());
+  afterEach(() => restoreEs());
+
+  test('returns 422 when member slug is not in registry', async () => {
+    stubEs('search', async (params: { index?: string }) => {
+      if (params.index === 'interop-registry') {
+        return { hits: { hits: [] } };
+      }
+      return { hits: { hits: [] } };
+    });
+
+    const res = await request(app)
+      .post('/api/collections')
+      .set(AUTH)
+      .send({
+        title: 'Test Collection',
+        desc: 'A test collection for validation.',
+        icon: 'box',
+        accent: '#3b5bff',
+        members: [{ kind: 'server', id: 'missing-slug' }],
+      });
+
+    assert.equal(res.status, 422);
+    assert.ok(Array.isArray(res.body.missing));
+  });
+
+  test('creates collection when all member slugs exist', async () => {
+    let indexed = false;
+    stubEs('search', async (params: { index?: string }) => {
+      if (params.index === 'interop-registry') {
+        return {
+          hits: {
+            hits: [{
+              _source: {
+                id: 'entry-1',
+                type: 'server',
+                slug: 'existing-server',
+                name: 'Server',
+                summary: 's',
+                description: 'd',
+                sensitivity: 'public',
+                visibility: 'public',
+                installs: 1,
+              },
+            }],
+          },
+        };
+      }
+      return { hits: { hits: [] } };
+    });
+    stubEs('index', async () => {
+      indexed = true;
+      return {};
+    });
+
+    const res = await request(app)
+      .post('/api/collections')
+      .set(AUTH)
+      .send({
+        title: 'Valid Collection',
+        desc: 'All members resolve in the registry.',
+        icon: 'box',
+        accent: '#3b5bff',
+        members: [{ kind: 'server', id: 'existing-server' }],
+      });
+
+    assert.equal(res.status, 201);
+    assert.equal(indexed, true);
+    assert.equal(res.body.count, 1);
   });
 });
 

@@ -1,8 +1,9 @@
 import { Request } from 'express';
 import { RegistryEntry, Visibility } from '../types/index.js';
+import { hasRole } from '../middleware/roles.js';
 
 function isAdmin(req: Request): boolean {
-  return req.user?.roles?.includes('admin') ?? false;
+  return hasRole(req.user, 'admin');
 }
 
 const PUBLIC_VISIBILITIES: Visibility[] = ['public'];

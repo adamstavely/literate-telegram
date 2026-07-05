@@ -46,9 +46,19 @@ spec:
     - Ingress
     - Egress
   ingress:
+    {{- if .Values.networkPolicy.frontendRestrictIngress }}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.networkPolicy.ingressControllerNamespace | quote }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- else }}
     - ports:
         - protocol: TCP
           port: 8080
+    {{- end }}
   egress:
     - to:
         - podSelector:

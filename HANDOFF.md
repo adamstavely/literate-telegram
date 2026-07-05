@@ -578,10 +578,13 @@ docker compose up --build
 cd backend && npm ci && npm run seed   # once ES is healthy
 ```
 
-Services: `elasticsearch` (:9200), `backend` (:3000), `frontend` (:4200), and an
-optional `kibana` (`--profile observability`, :5601). The backend mounts
-`./backend/src` read-only for hot reload and has `TRUST_PROXY=1` (traffic arrives
-via the nginx proxy).
+Default stack: `elasticsearch` (internal only), `backend` (proxied via frontend nginx at `/api`, `TRUST_PROXY=1`), `frontend` (:4200). Optional `kibana` (`--profile observability`, :5601).
+
+**Dev overlay** (`docker-compose.dev.yml`): publishes ES :9200 and backend :3000, sets `TRUST_PROXY=0`, and runs `tsx watch` for backend hot-reload:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+```
 
 ### 8.2 Services directly
 

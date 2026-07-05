@@ -2,13 +2,17 @@
 # Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 services:
   backend:
+    build:
+      target: builder
+    command: ["npx", "tsx", "watch", "src/index.ts"]
+    working_dir: /build
     environment:
       # Direct :3000 access must not trust X-Forwarded-For (XFF spoofing risk).
       - TRUST_PROXY=0
     ports:
       - "3000:3000"
     volumes:
-      - ./backend/src:/app/src:ro
+      - ./backend/src:/build/src:ro
 
   elasticsearch:
     ports:

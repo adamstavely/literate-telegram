@@ -38,6 +38,8 @@ export class CollectionCreateComponent {
     this.members().split(',').map((s) => s.trim()).filter(Boolean),
   );
 
+  readonly memberError = signal<string | null>(null);
+
   readonly canSubmit = computed(() =>
     this.title().trim().length >= 2 &&
     this.summary().trim().length >= 3 &&
@@ -61,16 +63,27 @@ export class CollectionCreateComponent {
     if (!this.canSubmit()) return;
     this.submitting.set(true);
     this.error.set(null);
+    this.memberError.set(null);
 
     this.registry
       .searchEntries({ size: 500 })
       .pipe(
         switchMap((catalog) => {
           const bySlug = new Map(catalog.hits.map((e) => [e.slug, e]));
-          const members = this.memberSlugs().map((slug) => ({
-            kind: (bySlug.get(slug)?.type ?? 'server') as CollectionMemberKind,
-            id: slug,
-          }));
+          const slugs = this.memberSlugs();
+          const unknown = slugs.filter((slug) => !bySlug.has(slug));
+          if (unknown.length > 0) {
+            this.memberError.set(`Unknown slugs: ${unknown.join(', ')}`);
+            this.submitting.set(false);
+            throw new Error('unknown-members');
+          }
+          const members = slugs.map((slug) => {
+            const entry = bySlug.get(slug)!;
+            return {
+              kind: entry.type as CollectionMemberKind,
+              id: slug,
+            };
+          });
           return this.registry.createCollection({
             title: this.title().trim(),
             desc: this.summary().trim(),
@@ -87,8 +100,9 @@ export class CollectionCreateComponent {
           this.submitting.set(false);
           void this.router.navigate(['/collections', col.id]);
         },
-        error: () => {
+        error: (err) => {
           this.submitting.set(false);
+          if (err instanceof Error && err.message === 'unknown-members') return;
           this.error.set('Could not create the collection. Check the fields and try again.');
         },
       });

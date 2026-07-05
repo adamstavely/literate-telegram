@@ -25,4 +25,10 @@ describe('visibility', () => {
     assert.equal(entryVisibleToCaller({ visibility: 'private' }, req), true);
     assert.deepEqual(registryVisibilityFilter(req), { match_all: {} });
   });
+
+  test('admins with mixed-case Admin role are recognized', () => {
+    const req = mockReq({ sub: 'a1', roles: ['Admin'] });
+    assert.equal(entryVisibleToCaller({ visibility: 'private' }, req), true);
+    assert.deepEqual(registryVisibilityFilter(req), { match_all: {} });
+  });
 });

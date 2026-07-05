@@ -95,7 +95,7 @@
                   <div class="set-d">Write tools stay disabled until an admin explicitly enables them.</div>
                 </div>
                 <div class="set-control">
-                  <div class="switch" [class.on]="policy().readOnlyDefault" role="switch" tabindex="0" [attr.aria-checked]="policy().readOnlyDefault" (keydown.enter)="setPolicy('readOnlyDefault', !policy().readOnlyDefault)" (keydown.space)="$event.preventDefault(); setPolicy('readOnlyDefault', !policy().readOnlyDefault)" (click)="setPolicy('readOnlyDefault', !policy().readOnlyDefault)"></div>
+                  <div class="switch" [class.on]="policy().readOnlyDefault" role="switch" tabindex="0" aria-label="Read-only by default" [attr.aria-checked]="policy().readOnlyDefault" (keydown.enter)="setPolicy('readOnlyDefault', !policy().readOnlyDefault)" (keydown.space)="$event.preventDefault(); setPolicy('readOnlyDefault', !policy().readOnlyDefault)" (click)="setPolicy('readOnlyDefault', !policy().readOnlyDefault)"></div>
                 </div>
               </div>
               <div class="set-row">
@@ -104,7 +104,7 @@
                   <div class="set-d">Each tool must be individually allowlisted into a virtual server before any caller sees it.</div>
                 </div>
                 <div class="set-control">
-                  <div class="switch" [class.on]="policy().perToolApproval" role="switch" tabindex="0" [attr.aria-checked]="policy().perToolApproval" (keydown.enter)="setPolicy('perToolApproval', !policy().perToolApproval)" (keydown.space)="$event.preventDefault(); setPolicy('perToolApproval', !policy().perToolApproval)" (click)="setPolicy('perToolApproval', !policy().perToolApproval)"></div>
+                  <div class="switch" [class.on]="policy().perToolApproval" role="switch" tabindex="0" aria-label="Per-tool approval" [attr.aria-checked]="policy().perToolApproval" (keydown.enter)="setPolicy('perToolApproval', !policy().perToolApproval)" (keydown.space)="$event.preventDefault(); setPolicy('perToolApproval', !policy().perToolApproval)" (click)="setPolicy('perToolApproval', !policy().perToolApproval)"></div>
                 </div>
               </div>
               <div class="set-row">
@@ -113,7 +113,7 @@
                   <div class="set-d">Mutating tools are held even if the publisher shipped them enabled.</div>
                 </div>
                 <div class="set-control">
-                  <div class="switch" [class.on]="policy().blockWriteUntilReview" role="switch" tabindex="0" [attr.aria-checked]="policy().blockWriteUntilReview" (keydown.enter)="setPolicy('blockWriteUntilReview', !policy().blockWriteUntilReview)" (keydown.space)="$event.preventDefault(); setPolicy('blockWriteUntilReview', !policy().blockWriteUntilReview)" (click)="setPolicy('blockWriteUntilReview', !policy().blockWriteUntilReview)"></div>
+                  <div class="switch" [class.on]="policy().blockWriteUntilReview" role="switch" tabindex="0" aria-label="Block writes until reviewed" [attr.aria-checked]="policy().blockWriteUntilReview" (keydown.enter)="setPolicy('blockWriteUntilReview', !policy().blockWriteUntilReview)" (keydown.space)="$event.preventDefault(); setPolicy('blockWriteUntilReview', !policy().blockWriteUntilReview)" (click)="setPolicy('blockWriteUntilReview', !policy().blockWriteUntilReview)"></div>
                 </div>
               </div>
               <div class="set-row">
@@ -122,7 +122,7 @@
                   <div class="set-d">Anything a high-severity rule blocks is held out of the catalog entirely until cleared.</div>
                 </div>
                 <div class="set-control">
-                  <div class="switch" [class.on]="policy().quarantineHighRisk" role="switch" tabindex="0" [attr.aria-checked]="policy().quarantineHighRisk" (keydown.enter)="setPolicy('quarantineHighRisk', !policy().quarantineHighRisk)" (keydown.space)="$event.preventDefault(); setPolicy('quarantineHighRisk', !policy().quarantineHighRisk)" (click)="setPolicy('quarantineHighRisk', !policy().quarantineHighRisk)"></div>
+                  <div class="switch" [class.on]="policy().quarantineHighRisk" role="switch" tabindex="0" aria-label="Quarantine high-risk submissions" [attr.aria-checked]="policy().quarantineHighRisk" (keydown.enter)="setPolicy('quarantineHighRisk', !policy().quarantineHighRisk)" (keydown.space)="$event.preventDefault(); setPolicy('quarantineHighRisk', !policy().quarantineHighRisk)" (click)="setPolicy('quarantineHighRisk', !policy().quarantineHighRisk)"></div>
                 </div>
               </div>
             </div>
@@ -149,7 +149,7 @@
                   <div class="set-d">Every submission lands in the moderation queue. Turn off only with auto-approve rules below.</div>
                 </div>
                 <div class="set-control">
-                  <div class="switch" [class.on]="policy().requireReview" role="switch" tabindex="0" [attr.aria-checked]="policy().requireReview" (keydown.enter)="setPolicy('requireReview', !policy().requireReview)" (keydown.space)="$event.preventDefault(); setPolicy('requireReview', !policy().requireReview)" (click)="setPolicy('requireReview', !policy().requireReview)"></div>
+                  <div class="switch" [class.on]="policy().requireReview" role="switch" tabindex="0" aria-label="Require review before publish" [attr.aria-checked]="policy().requireReview" (keydown.enter)="setPolicy('requireReview', !policy().requireReview)" (keydown.space)="$event.preventDefault(); setPolicy('requireReview', !policy().requireReview)" (click)="setPolicy('requireReview', !policy().requireReview)"></div>
                 </div>
               </div>
               <div class="set-row">
@@ -161,7 +161,7 @@
                   <div class="set-d">Servers from an allowlisted, verified domain skip the queue when no rule flags them.</div>
                 </div>
                 <div class="set-control">
-                  <div class="switch" [class.on]="policy().autoApproveVerified" role="switch" tabindex="0" [attr.aria-checked]="policy().autoApproveVerified" (keydown.enter)="setPolicy('autoApproveVerified', !policy().autoApproveVerified)" (keydown.space)="$event.preventDefault(); setPolicy('autoApproveVerified', !policy().autoApproveVerified)" (click)="setPolicy('autoApproveVerified', !policy().autoApproveVerified)"></div>
+                  <div class="switch" [class.on]="policy().autoApproveVerified" role="switch" tabindex="0" aria-label="Auto-approve verified publishers" [attr.aria-checked]="policy().autoApproveVerified" (keydown.enter)="setPolicy('autoApproveVerified', !policy().autoApproveVerified)" (keydown.space)="$event.preventDefault(); setPolicy('autoApproveVerified', !policy().autoApproveVerified)" (click)="setPolicy('autoApproveVerified', !policy().autoApproveVerified)"></div>
                 </div>
               </div>
               <div class="set-row">
@@ -170,7 +170,7 @@
                   <div class="set-d">Skills request no credentials, so they can publish without review unless a content rule flags them.</div>
                 </div>
                 <div class="set-control">
-                  <div class="switch" [class.on]="policy().autoApproveSkills" role="switch" tabindex="0" [attr.aria-checked]="policy().autoApproveSkills" (keydown.enter)="setPolicy('autoApproveSkills', !policy().autoApproveSkills)" (keydown.space)="$event.preventDefault(); setPolicy('autoApproveSkills', !policy().autoApproveSkills)" (click)="setPolicy('autoApproveSkills', !policy().autoApproveSkills)"></div>
+                  <div class="switch" [class.on]="policy().autoApproveSkills" role="switch" tabindex="0" aria-label="Auto-approve skills" [attr.aria-checked]="policy().autoApproveSkills" (keydown.enter)="setPolicy('autoApproveSkills', !policy().autoApproveSkills)" (keydown.space)="$event.preventDefault(); setPolicy('autoApproveSkills', !policy().autoApproveSkills)" (click)="setPolicy('autoApproveSkills', !policy().autoApproveSkills)"></div>
                 </div>
               </div>
               <div class="set-row">
@@ -179,7 +179,7 @@
                   <div class="set-d">High-severity submissions need a second admin to sign off before going live.</div>
                 </div>
                 <div class="set-control">
-                  <div class="switch" [class.on]="policy().twoApproversHighRisk" role="switch" tabindex="0" [attr.aria-checked]="policy().twoApproversHighRisk" (keydown.enter)="setPolicy('twoApproversHighRisk', !policy().twoApproversHighRisk)" (keydown.space)="$event.preventDefault(); setPolicy('twoApproversHighRisk', !policy().twoApproversHighRisk)" (click)="setPolicy('twoApproversHighRisk', !policy().twoApproversHighRisk)"></div>
+                  <div class="switch" [class.on]="policy().twoApproversHighRisk" role="switch" tabindex="0" aria-label="Two approvers for high risk" [attr.aria-checked]="policy().twoApproversHighRisk" (keydown.enter)="setPolicy('twoApproversHighRisk', !policy().twoApproversHighRisk)" (keydown.space)="$event.preventDefault(); setPolicy('twoApproversHighRisk', !policy().twoApproversHighRisk)" (click)="setPolicy('twoApproversHighRisk', !policy().twoApproversHighRisk)"></div>
                 </div>
               </div>
             </div>
@@ -290,7 +290,7 @@
                         <option [value]="o.v">{{ o.label }}</option>
                       }
                     </select>
-                    <div class="switch" [class.on]="r.enabled" role="switch" tabindex="0" [attr.aria-checked]="r.enabled" (keydown.enter)="setRule(r.id, { enabled: !r.enabled })" (keydown.space)="$event.preventDefault(); setRule(r.id, { enabled: !r.enabled })" (click)="setRule(r.id, { enabled: !r.enabled })"></div>
+                    <div class="switch" [class.on]="r.enabled" role="switch" tabindex="0" [attr.aria-label]="r.name" [attr.aria-checked]="r.enabled" (keydown.enter)="setRule(r.id, { enabled: !r.enabled })" (keydown.space)="$event.preventDefault(); setRule(r.id, { enabled: !r.enabled })" (click)="setRule(r.id, { enabled: !r.enabled })"></div>
                   </div>
                 </div>
               }
@@ -356,7 +356,7 @@
                   <div class="set-d">A domain isn't trusted until the publisher proves control with a TXT record.</div>
                 </div>
                 <div class="set-control">
-                  <div class="switch on" role="switch" tabindex="0" aria-checked="true"></div>
+                  <div class="switch on" role="switch" tabindex="0" aria-label="Require DNS verification" aria-checked="true" aria-disabled="true"></div>
                 </div>
               </div>
               <div class="set-row">
@@ -365,7 +365,7 @@
                   <div class="set-d">Community entries from unlisted domains still appear in browse, marked unverified.</div>
                 </div>
                 <div class="set-control">
-                  <div class="switch on" role="switch" tabindex="0" aria-checked="true"></div>
+                  <div class="switch on" role="switch" tabindex="0" aria-label="Show unverified publishers" aria-checked="true" aria-disabled="true"></div>
                 </div>
               </div>
             </div>
@@ -397,7 +397,7 @@
                     <div class="set-d">{{ tr.d }}</div>
                   </div>
                   <div class="set-control">
-                    <div class="switch" [class.on]="policy().transports[tr.id]" role="switch" tabindex="0" [attr.aria-checked]="policy().transports[tr.id]" (keydown.enter)="setTransport(tr.id, !policy().transports[tr.id])" (keydown.space)="$event.preventDefault(); setTransport(tr.id, !policy().transports[tr.id])" (click)="setTransport(tr.id, !policy().transports[tr.id])"></div>
+                    <div class="switch" [class.on]="policy().transports[tr.id]" role="switch" tabindex="0" [attr.aria-label]="'Allow transport ' + tr.label" [attr.aria-checked]="policy().transports[tr.id]" (keydown.enter)="setTransport(tr.id, !policy().transports[tr.id])" (keydown.space)="$event.preventDefault(); setTransport(tr.id, !policy().transports[tr.id])" (click)="setTransport(tr.id, !policy().transports[tr.id])"></div>
                   </div>
                 </div>
               }
@@ -424,7 +424,7 @@
                     </div>
                   </div>
                   <div class="set-control">
-                    <div class="switch" [class.on]="policy().auth[a]" role="switch" tabindex="0" [attr.aria-checked]="policy().auth[a]" (keydown.enter)="setAuth(a, !policy().auth[a])" (keydown.space)="$event.preventDefault(); setAuth(a, !policy().auth[a])" (click)="setAuth(a, !policy().auth[a])"></div>
+                    <div class="switch" [class.on]="policy().auth[a]" role="switch" tabindex="0" [attr.aria-label]="'Allow auth ' + a" [attr.aria-checked]="policy().auth[a]" (keydown.enter)="setAuth(a, !policy().auth[a])" (keydown.space)="$event.preventDefault(); setAuth(a, !policy().auth[a])" (click)="setAuth(a, !policy().auth[a])"></div>
                   </div>
                 </div>
               }
@@ -451,7 +451,7 @@
                   <div class="set-d">Heuristics flag instructions that try to override the agent or coerce tool calls.</div>
                 </div>
                 <div class="set-control">
-                  <div class="switch" [class.on]="policy().scanInjection" role="switch" tabindex="0" [attr.aria-checked]="policy().scanInjection" (keydown.enter)="setPolicy('scanInjection', !policy().scanInjection)" (keydown.space)="$event.preventDefault(); setPolicy('scanInjection', !policy().scanInjection)" (click)="setPolicy('scanInjection', !policy().scanInjection)"></div>
+                  <div class="switch" [class.on]="policy().scanInjection" role="switch" tabindex="0" aria-label="Scan for prompt injection" [attr.aria-checked]="policy().scanInjection" (keydown.enter)="setPolicy('scanInjection', !policy().scanInjection)" (keydown.space)="$event.preventDefault(); setPolicy('scanInjection', !policy().scanInjection)" (click)="setPolicy('scanInjection', !policy().scanInjection)"></div>
                 </div>
               </div>
               <div class="set-row">
@@ -460,7 +460,7 @@
                   <div class="set-d">A skill must declare the phrases that load it, so progressive disclosure works.</div>
                 </div>
                 <div class="set-control">
-                  <div class="switch" [class.on]="policy().requireTriggers" role="switch" tabindex="0" [attr.aria-checked]="policy().requireTriggers" (keydown.enter)="setPolicy('requireTriggers', !policy().requireTriggers)" (keydown.space)="$event.preventDefault(); setPolicy('requireTriggers', !policy().requireTriggers)" (click)="setPolicy('requireTriggers', !policy().requireTriggers)"></div>
+                  <div class="switch" [class.on]="policy().requireTriggers" role="switch" tabindex="0" aria-label="Require trigger phrases" [attr.aria-checked]="policy().requireTriggers" (keydown.enter)="setPolicy('requireTriggers', !policy().requireTriggers)" (keydown.space)="$event.preventDefault(); setPolicy('requireTriggers', !policy().requireTriggers)" (click)="setPolicy('requireTriggers', !policy().requireTriggers)"></div>
                 </div>
               </div>
               <div class="set-row">
@@ -469,7 +469,7 @@
                   <div class="set-d">Reject a SKILL.md that would consume more than the agent's per-skill context allowance.</div>
                 </div>
                 <div class="set-control">
-                  <div class="switch" [class.on]="policy().tokenCap" role="switch" tabindex="0" [attr.aria-checked]="policy().tokenCap" (keydown.enter)="setPolicy('tokenCap', !policy().tokenCap)" (keydown.space)="$event.preventDefault(); setPolicy('tokenCap', !policy().tokenCap)" (click)="setPolicy('tokenCap', !policy().tokenCap)"></div>
+                  <div class="switch" [class.on]="policy().tokenCap" role="switch" tabindex="0" aria-label="Enforce token budget" [attr.aria-checked]="policy().tokenCap" (keydown.enter)="setPolicy('tokenCap', !policy().tokenCap)" (keydown.space)="$event.preventDefault(); setPolicy('tokenCap', !policy().tokenCap)" (click)="setPolicy('tokenCap', !policy().tokenCap)"></div>
                 </div>
               </div>
             </div>

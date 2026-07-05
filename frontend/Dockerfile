@@ -1,7 +1,7 @@
 # ============================================================
 # Stage 1 — builder
 # ============================================================
-FROM node:20-alpine AS builder
+FROM node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 AS builder
 
 WORKDIR /build
 
@@ -17,7 +17,7 @@ RUN npm run build
 # ============================================================
 # Stage 2 — runner (nginx)
 # ============================================================
-FROM nginx:1.25-alpine AS runner
+FROM nginx:1.25-alpine@sha256:516475cc129da42866742567714ddc681e5eed7b9ee0b9e9c015e464b4221a00 AS runner
 
 # Remove default nginx config and content. Install curl so the HEALTHCHECK
 # doesn't depend on wget being present in the base image.
