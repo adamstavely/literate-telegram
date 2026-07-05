@@ -133,17 +133,10 @@ export class AuthService implements OnDestroy {
   // ── Internals ──────────────────────────────────────────────────────────────
 
   private _readStoredUser(): AuthenticatedUser | null {
-    let raw = localStorage.getItem(this.STORAGE_KEY);
-    if (!raw && !environment.production) {
-      this._setMockUser({
-        sub: 'dev-user-1',
-        email: 'dev@example.com',
-        name: 'Dev User',
-        roles: ['admin'],
-        accessToken: 'mock-token',
-      });
-      raw = localStorage.getItem(this.STORAGE_KEY);
-    }
+    // Do NOT auto-seed a session. Previously dev auto-logged-in as an admin on
+    // every fresh load, silently granting admin. Start logged out; the Sign in
+    // control calls login(), which seeds the mock user in non-prod.
+    const raw = localStorage.getItem(this.STORAGE_KEY);
     if (!raw) return null;
     try {
       const payload = JSON.parse(raw) as MockAuthPayload;

@@ -153,9 +153,15 @@ function checkPolicyConstraints(
   return extraScore;
 }
 
-export async function getPolicy(): Promise<PolicyDocument> {
+/**
+ * Load the active policy. The cache is process-local (each replica caches
+ * independently for up to CACHE_TTL_MS), which is fine for the high-frequency
+ * submission path but not for governance decisions — pass forceFresh at approve
+ * time so an approval never runs against a stale policy on one replica.
+ */
+export async function getPolicy(forceFresh = false): Promise<PolicyDocument> {
   const now = Date.now();
-  if (cachedPolicy && now - cacheTime < CACHE_TTL_MS) {
+  if (!forceFresh && cachedPolicy && now - cacheTime < CACHE_TTL_MS) {
     return cachedPolicy;
   }
 
@@ -292,6 +298,25 @@ export function evaluatePolicyEnforcement(
 /** Skill token budget enforced when policy.tokenCap is enabled. */
 export const DEFAULT_MAX_SKILL_TOKENS = 8000;
 
+/** True if the entry exposes any write-capable (non read-only) tool. */
+function isWriteCapable(entry: Partial<RegistryEntry>): boolean {
+  if (entry.type === 'tool') return (entry as Tool).readOnly === false;
+  if (entry.type === 'server') {
+    return ((entry as Server).tools ?? []).some((t) => t.readOnly === false);
+  }
+  return false;
+}
+
+/**
+ * When the entry must next be re-reviewed, per policy.republishAfterDays.
+ * Returns undefined when the toggle is off (0 / unset).
+ */
+export function reviewDueAt(doc: PolicyDocument, fromIso: string): string | undefined {
+  const days = doc.policy.republishAfterDays;
+  if (!days || days <= 0) return undefined;
+  return new Date(new Date(fromIso).getTime() + days * 86_400_000).toISOString();
+}
+
 export function isPublisherDomainVerified(
   publisher: string | undefined,
   doc: PolicyDocument,
@@ -332,6 +357,9 @@ export function applySubmissionPolicy(
   const flags: string[] = [];
   const adjusted: Partial<RegistryEntry> = { ...entry };
 
+  // defaultVisibility — the submitter never sets visibility; policy does.
+  adjusted.visibility = doc.policy.defaultVisibility;
+
   // readOnlyDefault — writes must be opted into by an admin, not the submitter.
   if (doc.policy.readOnlyDefault) {
     if (adjusted.type === 'tool') {
@@ -363,6 +391,14 @@ export function applySubmissionPolicy(
     (r) => r.action === 'block' || r.action === 'reject' || r.action === 'review',
   );
 
+  // Lifecycle toggles that force manual review rather than auto-publish:
+  //  - blockWriteUntilReview: write-capable entries wait for a reviewer.
+  //  - perToolApproval: a server's tools are each approved during review.
+  const hasTools = adjusted.type === 'server' && ((adjusted as Server).tools?.length ?? 0) > 0;
+  const lifecycleGate =
+    (doc.policy.blockWriteUntilReview && isWriteCapable(adjusted)) ||
+    (doc.policy.perToolApproval && hasTools);
+
   // An explicit category opt-in: trusted publisher, or the skills fast-path.
   const categoryAutoApprove =
     (doc.policy.autoApproveVerified && isPublisherDomainVerified(adjusted.publisher, doc)) ||
@@ -371,6 +407,7 @@ export function applySubmissionPolicy(
   const autoApprove =
     risk === 'low' &&
     !gatingRule &&
+    !lifecycleGate &&
     !tokenCapExceeded &&
     rejectRules.length === 0 &&
     (!doc.policy.requireReview || categoryAutoApprove);

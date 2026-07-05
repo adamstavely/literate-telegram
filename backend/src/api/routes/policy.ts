@@ -3,6 +3,7 @@ import { body, validationResult } from 'express-validator';
 import { requireAuth, requireAdmin } from '../../middleware/auth.js';
 import { auditAction } from '../../middleware/audit.js';
 import { getPolicy, savePolicy } from '../../services/policy.js';
+import { validatePolicyDocument } from '../../services/policy-validation.js';
 import { PolicyDocument } from '../../types/index.js';
 
 const router = Router();
@@ -37,6 +38,19 @@ router.put(
         PolicyDocument,
         'policy' | 'rules' | 'domains'
       >;
+
+      // Deep structural validation — a malformed policy drives real governance
+      // decisions, so reject anything that isn't shaped correctly.
+      const structuralErrors = validatePolicyDocument({ policy, rules, domains });
+      if (structuralErrors.length > 0) {
+        res.status(422).json({
+          error: 'Validation Error',
+          message: 'Policy document failed structural validation.',
+          details: structuralErrors,
+          correlationId: req.id,
+        });
+        return;
+      }
 
       const saved = await savePolicy({ policy, rules, domains }, req.user!.sub);
 

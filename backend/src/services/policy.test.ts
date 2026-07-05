@@ -4,6 +4,7 @@ import {
   assessRiskWithPolicy,
   applySubmissionPolicy,
   evaluatePolicyEnforcement,
+  reviewDueAt,
 } from './policy.js';
 import { DEFAULT_POLICY_DOCUMENT } from '../data/default-policy.js';
 import { PolicyDocument, RegistryEntry } from '../types/index.js';
@@ -82,6 +83,40 @@ describe('applySubmissionPolicy', () => {
     assert.equal(decision.rejectRules.length, 0);
   });
 
+  test('stamps entry visibility from policy.defaultVisibility', () => {
+    const doc = clonePolicy();
+    doc.policy.defaultVisibility = 'private';
+    const entry = {
+      type: 'skill',
+      name: 's',
+      publisher: 'anthropic.com',
+      sensitivity: 'public',
+      triggers: ['when asked'],
+      tokens: 10,
+    } as unknown as Partial<RegistryEntry>;
+
+    const decision = applySubmissionPolicy(entry, doc);
+    assert.equal((decision.entry as { visibility?: string }).visibility, 'private');
+  });
+
+  test('blockWriteUntilReview prevents auto-approve of a write-capable tool', () => {
+    const doc = clonePolicy();
+    doc.policy.readOnlyDefault = false; // allow a write tool through
+    doc.policy.autoApproveSkills = true;
+    doc.policy.blockWriteUntilReview = true;
+    const entry = {
+      type: 'tool',
+      name: 'writer',
+      publisher: 'anthropic.com',
+      sensitivity: 'public',
+      readOnly: false,
+    } as unknown as Partial<RegistryEntry>;
+
+    const decision = applySubmissionPolicy(entry, doc);
+    assert.equal((decision.entry as { readOnly?: boolean }).readOnly, false);
+    assert.equal(decision.autoApprove, false);
+  });
+
   test('a fired reject-action rule surfaces in rejectRules', () => {
     const doc = clonePolicy();
     const execRule = doc.rules.find((r) => r.id === 'arbitrary-exec');
@@ -117,5 +152,20 @@ describe('evaluatePolicyEnforcement', () => {
     assert.ok(enforcement.risk === 'high' || enforcement.risk === 'critical');
     assert.equal(enforcement.quarantined, true);
     assert.equal(enforcement.requiresTwoApprovers, true);
+  });
+});
+
+describe('reviewDueAt', () => {
+  test('returns a date republishAfterDays out when enabled', () => {
+    const doc = clonePolicy();
+    doc.policy.republishAfterDays = 90;
+    const due = reviewDueAt(doc, '2026-01-01T00:00:00.000Z');
+    assert.equal(due, '2026-04-01T00:00:00.000Z');
+  });
+
+  test('returns undefined when the toggle is off', () => {
+    const doc = clonePolicy();
+    doc.policy.republishAfterDays = 0;
+    assert.equal(reviewDueAt(doc, '2026-01-01T00:00:00.000Z'), undefined);
   });
 });

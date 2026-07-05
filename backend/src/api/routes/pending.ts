@@ -6,7 +6,7 @@ import { requireAuth, requireAdmin } from '../../middleware/auth.js';
 import { auditAction } from '../../middleware/audit.js';
 import { PendingEntry, PendingStats, RegistryEntry, RiskLevel } from '../../types/index.js';
 import { logger } from '../../logger/logger.js';
-import { getPolicy, evaluatePolicyEnforcement } from '../../services/policy.js';
+import { getPolicy, evaluatePolicyEnforcement, reviewDueAt } from '../../services/policy.js';
 import { sanitizeSubmission } from '../../services/entry-dto.js';
 
 const router = Router();
@@ -214,8 +214,9 @@ router.put(
         typeof body.overrideReason === 'string' ? body.overrideReason.trim() : '';
 
       // Enforce the active governance policy at approval time. Without this the
-      // Policy page toggles and per-rule actions are purely cosmetic.
-      const policyDoc = await getPolicy();
+      // Policy page toggles and per-rule actions are purely cosmetic. Read fresh
+      // (bypass the per-replica cache) so approvals never use a stale policy.
+      const policyDoc = await getPolicy(true);
       const enforcement = evaluatePolicyEnforcement(pending.entry, policyDoc);
 
       // 'reject'-action rules are a hard stop — the entry must be rejected.
@@ -341,6 +342,9 @@ router.put(
 
       // Re-sanitize the stored blob before publishing — never trust a pending
       // document (it may predate the allowlist or have been tampered with).
+      // Re-apply server-controlled lifecycle fields the sanitizer strips.
+      const storedEntry = entry as { visibility?: 'private' | 'org' | 'public' };
+      const dueAt = reviewDueAt(policyDoc, now);
       const publishedEntry = {
         ...sanitizeSubmission(entry as unknown as Record<string, unknown>),
         id: entry.id,
@@ -348,6 +352,8 @@ router.put(
         installs: entry.installs ?? 0,
         createdAt: entry.createdAt ?? now,
         updatedAt: now,
+        visibility: storedEntry.visibility ?? policyDoc.policy.defaultVisibility,
+        ...(dueAt ? { reviewDueAt: dueAt } : {}),
       };
 
       // Publish to the registry. If this fails after we've already flipped the

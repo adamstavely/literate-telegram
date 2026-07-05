@@ -18,7 +18,7 @@ export const INDEX_NAMES = {
   POLICY: POLICY_INDEX,
 } as const;
 
-async function createILMPolicy(policyName: string, maxAgeDays: number): Promise<void> {
+async function createILMPolicy(policyName: string, maxAgeDays: number): Promise<boolean> {
   try {
     await esClient.ilm.putLifecycle({
       name: policyName,
@@ -42,8 +42,10 @@ async function createILMPolicy(policyName: string, maxAgeDays: number): Promise<
         },
       },
     });
+    return true;
   } catch {
     // ILM might not be available in all ES configurations; proceed without it
+    return false;
   }
 }
 
@@ -84,6 +86,8 @@ async function createRegistryIndex(): Promise<void> {
         version: { type: 'keyword' },
         createdAt: { type: 'date' },
         updatedAt: { type: 'date' },
+        visibility: { type: 'keyword' },
+        reviewDueAt: { type: 'date' },
         // Server fields
         transports: { type: 'keyword' },
         auth: { type: 'keyword' },
@@ -174,10 +178,14 @@ async function createPendingIndex(): Promise<void> {
 async function createAuditIndex(): Promise<void> {
   if (await indexExists(AUDIT_INDEX)) return;
 
-  await createILMPolicy('interop-audit-policy', 90);
+  // Attach the ILM policy via a rollover write-alias: writes target the alias
+  // (AUDIT_INDEX), which points at the current backing index. Without the alias
+  // the policy's rollover action has nothing to act on.
+  const ilmOk = await createILMPolicy('interop-audit-policy', 90);
 
   await esClient.indices.create({
-    index: AUDIT_INDEX,
+    index: `${AUDIT_INDEX}-000001`,
+    aliases: { [AUDIT_INDEX]: { is_write_index: true } },
     mappings: {
       dynamic: false,
       properties: {
@@ -200,6 +208,9 @@ async function createAuditIndex(): Promise<void> {
     settings: {
       number_of_shards: 1,
       number_of_replicas: 1,
+      ...(ilmOk
+        ? { lifecycle: { name: 'interop-audit-policy', rollover_alias: AUDIT_INDEX } }
+        : {}),
     },
   });
 }
@@ -207,10 +218,11 @@ async function createAuditIndex(): Promise<void> {
 async function createLogsIndex(): Promise<void> {
   if (await indexExists(LOGS_INDEX)) return;
 
-  await createILMPolicy('interop-logs-policy', 30);
+  const ilmOk = await createILMPolicy('interop-logs-policy', 30);
 
   await esClient.indices.create({
-    index: LOGS_INDEX,
+    index: `${LOGS_INDEX}-000001`,
+    aliases: { [LOGS_INDEX]: { is_write_index: true } },
     mappings: {
       dynamic: false,
       properties: {
@@ -234,6 +246,9 @@ async function createLogsIndex(): Promise<void> {
     settings: {
       number_of_shards: 1,
       number_of_replicas: 1,
+      ...(ilmOk
+        ? { lifecycle: { name: 'interop-logs-policy', rollover_alias: LOGS_INDEX } }
+        : {}),
     },
   });
 }

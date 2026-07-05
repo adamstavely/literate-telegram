@@ -120,8 +120,37 @@ export class RegisterComponent implements OnInit {
     this.form.patchValue({ type });
   }
 
+  /** Form controls that gate advancing past each step. */
+  private fieldsForStep(step: number): string[] {
+    switch (step) {
+      case 2: return ['name', 'publisher', 'summary', 'description'];
+      case 4: return ['sensitivity'];
+      default: return [];
+    }
+  }
+
+  isStepValid(step: number): boolean {
+    // Step 3 is type-specific; validate by value since these controls have no
+    // always-on validators (they'd otherwise break unrelated entry types).
+    if (step === 3) {
+      if (this.isServer) {
+        return ((this.form.get('transports')?.value ?? []) as string[]).length > 0;
+      }
+      if (this.isTool) return !!(this.form.get('parentServer')?.value as string)?.trim();
+      if (this.isApi) return !!(this.form.get('style')?.value as string);
+      return true;
+    }
+    return this.fieldsForStep(step).every(f => this.form.get(f)?.valid ?? true);
+  }
+
   nextStep(): void {
-    if (this.currentStep() < 5) {
+    const step = this.currentStep();
+    if (!this.isStepValid(step)) {
+      // Surface the errors for the incomplete fields and stay on this step.
+      this.fieldsForStep(step).forEach(f => this.form.get(f)?.markAsTouched());
+      return;
+    }
+    if (step < 5) {
       this.currentStep.update(s => s + 1);
     }
   }

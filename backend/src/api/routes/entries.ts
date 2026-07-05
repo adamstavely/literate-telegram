@@ -14,7 +14,7 @@ import {
   EntryType,
 } from '../../types/index.js';
 import { logger } from '../../logger/logger.js';
-import { getPolicy, assessRiskWithPolicy, applySubmissionPolicy } from '../../services/policy.js';
+import { getPolicy, assessRiskWithPolicy, applySubmissionPolicy, reviewDueAt } from '../../services/policy.js';
 import { sanitizeSubmission } from '../../services/entry-dto.js';
 
 const router = Router();
@@ -322,10 +322,16 @@ router.post(
 
       if (decision.autoApprove) {
         // Policy allows immediate publication — skip the review queue.
+        const dueAt = reviewDueAt(policyDoc, now);
         await esClient.index({
           index: INDEX_NAMES.REGISTRY,
           id: entryId,
-          document: { ...partialEntry, verified: true, updatedAt: now },
+          document: {
+            ...partialEntry,
+            verified: true,
+            updatedAt: now,
+            ...(dueAt ? { reviewDueAt: dueAt } : {}),
+          },
           refresh: 'wait_for',
         });
 
