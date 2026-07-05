@@ -10,7 +10,6 @@ import {
 import { RouterOutlet } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ThemeService } from './core/services/theme.service';
-import { AuthService } from './core/services/auth.service';
 import { LoggingService } from './core/services/logging.service';
 import { AppTheme } from './shared/types';
 import { HeaderComponent } from './shared/components/header/header.component';
@@ -27,7 +26,6 @@ import { IconComponent } from './shared/components/icon/icon.component';
 })
 export class AppComponent implements OnInit {
   private readonly themeService = inject(ThemeService);
-  readonly auth = inject(AuthService);
   private readonly logging = inject(LoggingService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -55,11 +53,6 @@ export class AppComponent implements OnInit {
 
   dismissAuthFlash(): void {
     this.authFlash.set(null);
-  }
-
-  signInFromFlash(): void {
-    this.authFlash.set(null);
-    this.auth.login();
   }
 
   /**
