@@ -178,6 +178,7 @@ export class PolicyComponent implements OnInit {
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly loadError = signal<string | null>(null);
+  readonly pendingError = signal<string | null>(null);
 
   private snap = '';
 
@@ -244,8 +245,11 @@ export class PolicyComponent implements OnInit {
       .getPending({ status: 'pending' })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: result => this.pending.set(result.hits),
-        error: () => {},
+        next: result => {
+          this.pending.set(result.hits);
+          this.pendingError.set(null);
+        },
+        error: () => this.pendingError.set('Could not load pending submissions for flag counts.'),
       });
   }
 

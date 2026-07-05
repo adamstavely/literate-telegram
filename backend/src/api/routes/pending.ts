@@ -8,13 +8,14 @@ import { PendingEntry, PendingStats, RegistryEntry, RiskLevel } from '../../type
 import { logger } from '../../logger/logger.js';
 import { getPolicy, evaluatePolicyEnforcement, reviewDueAt } from '../../services/policy.js';
 import { sanitizeSubmission } from '../../services/entry-dto.js';
+import { slugTaken, claimSlug, releaseSlug, isEsConflict } from '../../services/slug-locks.js';
+import { runCompensation } from '../../services/compensation.js';
 
 const router = Router();
 
 /** True if an Elasticsearch error is an optimistic-locking version conflict. */
 function isVersionConflict(err: unknown): boolean {
-  const e = err as { statusCode?: number; meta?: { statusCode?: number } };
-  return e?.statusCode === 409 || e?.meta?.statusCode === 409;
+  return isEsConflict(err);
 }
 
 // All routes require authentication + admin role
@@ -193,6 +194,7 @@ router.put(
       }
 
       const pending = pendingHit._source;
+      const pendingDocId = pendingHit._id;
       const seqNo = pendingHit._seq_no;
       const primaryTerm = pendingHit._primary_term;
 
@@ -269,7 +271,7 @@ router.put(
           try {
             await esClient.update({
               index: INDEX_NAMES.PENDING,
-              id: pendingHit._id,
+              id: pendingDocId,
               doc: { approvals: [...approvals] },
               if_seq_no: seqNo,
               if_primary_term: primaryTerm,
@@ -309,13 +311,34 @@ router.put(
         : undefined;
       const wasOverridden = blockedReasons.length > 0;
 
+      const entryType = entry.type;
+      const entrySlug = entry.slug;
+
+      if (await slugTaken(entryType, entrySlug)) {
+        res.status(409).json({
+          error: 'Conflict',
+          message: `An entry with slug "${entrySlug}" already exists for type "${entryType}".`,
+          correlationId: req.id,
+        });
+        return;
+      }
+
+      if (!(await claimSlug(entryType, entrySlug, entry.id))) {
+        res.status(409).json({
+          error: 'Conflict',
+          message: `An entry with slug "${entrySlug}" already exists for type "${entryType}".`,
+          correlationId: req.id,
+        });
+        return;
+      }
+
       // Claim the approval first under an optimistic lock. If another approver
       // won the race the version conflicts and we stop before touching the
       // registry, so the entry is published exactly once.
       try {
         await esClient.update({
           index: INDEX_NAMES.PENDING,
-          id: pendingHit._id,
+          id: pendingDocId,
           doc: {
             status: 'approved',
             approvedBy: approver,
@@ -329,6 +352,7 @@ router.put(
           refresh: 'wait_for',
         });
       } catch (e) {
+        await releaseSlug(entryType, entrySlug);
         if (isVersionConflict(e)) {
           res.status(409).json({
             error: 'Conflict',
@@ -367,10 +391,10 @@ router.put(
           refresh: 'wait_for',
         });
       } catch (publishErr) {
-        await esClient
-          .update({
+        await runCompensation('approve:rollback-pending', async () => {
+          await esClient.update({
             index: INDEX_NAMES.PENDING,
-            id: pendingHit._id,
+            id: pendingDocId,
             doc: {
               status: 'pending',
               approvedBy: null,
@@ -378,8 +402,9 @@ router.put(
               policyOverride: null,
             },
             refresh: 'wait_for',
-          })
-          .catch(() => undefined);
+          });
+        });
+        await releaseSlug(entryType, entrySlug);
         throw publishErr;
       }
 
@@ -433,6 +458,7 @@ router.put(
       const pendingResponse = await esClient.search<PendingEntry>({
         index: INDEX_NAMES.PENDING,
         size: 1,
+        seq_no_primary_term: true,
         query: { bool: { filter: [{ term: { id } }] } },
       });
 
@@ -447,6 +473,9 @@ router.put(
       }
 
       const pending = pendingHit._source;
+      const pendingDocId = pendingHit._id;
+      const seqNo = pendingHit._seq_no;
+      const primaryTerm = pendingHit._primary_term;
 
       if (pending.status !== 'pending') {
         res.status(409).json({
@@ -459,17 +488,31 @@ router.put(
 
       const now = new Date().toISOString();
 
-      await esClient.update({
-        index: INDEX_NAMES.PENDING,
-        id: pendingHit._id,
-        doc: {
-          status: 'rejected',
-          rejectReason: reason,
-          rejectedBy: req.user!.sub,
-          rejectedAt: now,
-        },
-        refresh: 'wait_for',
-      });
+      try {
+        await esClient.update({
+          index: INDEX_NAMES.PENDING,
+          id: pendingDocId,
+          doc: {
+            status: 'rejected',
+            rejectReason: reason,
+            rejectedBy: req.user!.sub,
+            rejectedAt: now,
+          },
+          if_seq_no: seqNo,
+          if_primary_term: primaryTerm,
+          refresh: 'wait_for',
+        });
+      } catch (e) {
+        if (isVersionConflict(e)) {
+          res.status(409).json({
+            error: 'Conflict',
+            message: 'Entry was modified concurrently. Please retry.',
+            correlationId: req.id,
+          });
+          return;
+        }
+        throw e;
+      }
 
       await auditAction(req, 'REJECT_ENTRY', id, {
         reason,

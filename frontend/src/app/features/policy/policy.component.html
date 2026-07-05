@@ -19,6 +19,13 @@
     </div>
   </div>
 
+  @if (loadError()) {
+    <div class="callout" role="alert" style="margin-bottom: 16px">
+      <app-icon name="warning" [size]="16" aria-hidden="true"></app-icon>
+      {{ loadError() }}
+    </div>
+  }
+
   <div class="policy-layout">
     <nav class="policy-nav" aria-label="Policy sections">
       @for (sec of sections(); track sec.id) {
@@ -218,11 +225,20 @@
         }
 
         @if (activeSection() === 'rules') {
+          @if (pendingError()) {
+            <div class="callout" role="alert" style="margin-bottom:16px;">
+              {{ pendingError() }}
+            </div>
+          }
           <div class="callout" style="margin-bottom:16px;">
             <app-icon name="warning" [size]="15" aria-hidden="true"></app-icon>
             <div>
-              Your enabled rules produced <b>{{ totalFlags() }} flag{{ totalFlags() === 1 ? '' : 's' }}</b>
-              across the <b>{{ pending().length }}</b> submissions currently in the queue.
+              @if (pendingError()) {
+                Flag counts are unavailable — queue data could not be loaded.
+              } @else {
+                Your enabled rules produced <b>{{ totalFlags() }} flag{{ totalFlags() === 1 ? '' : 's' }}</b>
+                across the <b>{{ pending().length }}</b> submissions currently in the queue.
+              }
               <a routerLink="/admin" style="color:var(--accent-ink);cursor:pointer;font-weight:600;">Open queue →</a>
             </div>
           </div>
@@ -299,7 +315,7 @@
                       <app-icon name="verified" [size]="13" aria-hidden="true"></app-icon>
                     }
                     {{ dm.d }}
-                    <button type="button" (click)="removeDomain(dm.d)" [attr.title]="'Remove ' + dm.d">
+                    <button type="button" (click)="removeDomain(dm.d)" [attr.title]="'Remove ' + dm.d" [attr.aria-label]="'Remove domain ' + dm.d">
                       <app-icon name="close" [size]="13" aria-hidden="true"></app-icon>
                     </button>
                   </span>

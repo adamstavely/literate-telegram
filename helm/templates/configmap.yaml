@@ -16,3 +16,4 @@ data:
   RATE_LIMIT_MAX: {{ .Values.backend.env.RATE_LIMIT_MAX | default "200" | quote }}
   LOG_INDEX: {{ .Values.backend.env.LOG_INDEX | default "interop-logs" | quote }}
   AUDIT_INDEX: {{ .Values.backend.env.AUDIT_INDEX | default "interop-audit" | quote }}
+  TRUST_PROXY: {{ .Values.backend.env.TRUST_PROXY | default "1" | quote }}

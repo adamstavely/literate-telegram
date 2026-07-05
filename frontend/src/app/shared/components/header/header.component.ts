@@ -21,6 +21,8 @@ import { ThemeService } from '../../../core/services/theme.service';
 import { RegistryService } from '../../../core/services/registry.service';
 import { IconComponent } from '../icon/icon.component';
 import { AvatarComponent } from '../avatar/avatar.component';
+import { FocusTrapFactory } from '@angular/cdk/a11y';
+import { activateFocusTrap } from '../../utils/focus-trap.util';
 import { AuthenticatedUser, Notification } from '../../types';
 
 @Component({
@@ -36,6 +38,8 @@ export class HeaderComponent implements OnInit, OnDestroy {
   private readonly registryService = inject(RegistryService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly focusTrapFactory = inject(FocusTrapFactory);
+  private releaseFocusTrap: (() => void) | null = null;
 
   @ViewChild('notifBtn') notifBtn!: ElementRef<HTMLButtonElement>;
   @ViewChild('notifDropdown') notifDropdown!: ElementRef<HTMLDivElement>;
@@ -60,6 +64,8 @@ export class HeaderComponent implements OnInit, OnDestroy {
   readonly notificationsOpen = signal(false);
   readonly notifTab = signal<'all' | 'unread'>('all');
   readonly notifications = signal<Notification[]>([]);
+  readonly notificationsLoading = signal(false);
+  readonly notificationsError = signal<string | null>(null);
   readonly unreadCount = computed(() => this.notifications().filter(n => !n.read).length);
   readonly filteredNotifications = computed(() =>
     this.notifTab() === 'unread'
@@ -121,8 +127,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
     // 'interop:open-search' (see the listener wired in ngOnInit). Don't also
     // handle it here or the shortcut fires twice.
     if (event.key === 'Escape' && this.notificationsOpen()) {
-      this.notificationsOpen.set(false);
-      this.notifBtn?.nativeElement.focus();
+      this.closeNotifications();
     }
   }
 
@@ -132,7 +137,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
     const dropdown = this.notifDropdown?.nativeElement;
     const btn = this.notifBtn?.nativeElement;
     if (dropdown && btn && !dropdown.contains(target) && !btn.contains(target)) {
-      this.notificationsOpen.set(false);
+      this.closeNotifications();
     }
   }
 
@@ -177,20 +182,43 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   toggleNotifications(): void {
     const willOpen = !this.notificationsOpen();
-    this.notificationsOpen.set(willOpen);
     if (willOpen) {
-      // Move focus into the dialog when it opens so keyboard users land there.
-      queueMicrotask(() => this.notifDropdown?.nativeElement.focus());
+      this.notificationsOpen.set(true);
+      this.loadNotifications();
+      queueMicrotask(() => {
+        const el = this.notifDropdown?.nativeElement;
+        if (el) {
+          this.releaseFocusTrap = activateFocusTrap(
+            this.focusTrapFactory,
+            el,
+            this.notifBtn?.nativeElement,
+          );
+        }
+      });
     } else {
-      // Return focus to the trigger when closing.
-      this.notifBtn?.nativeElement.focus();
+      this.closeNotifications();
     }
   }
 
+  closeNotifications(): void {
+    this.notificationsOpen.set(false);
+    this.releaseFocusTrap?.();
+    this.releaseFocusTrap = null;
+    this.notifBtn?.nativeElement.focus();
+  }
+
   loadNotifications(): void {
+    this.notificationsLoading.set(true);
+    this.notificationsError.set(null);
     this.registryService.getNotifications().subscribe({
-      next: notifs => this.notifications.set(notifs),
-      error: () => {},
+      next: notifs => {
+        this.notifications.set(notifs);
+        this.notificationsLoading.set(false);
+      },
+      error: () => {
+        this.notificationsError.set('Could not load notifications.');
+        this.notificationsLoading.set(false);
+      },
     });
   }
 
@@ -198,6 +226,9 @@ export class HeaderComponent implements OnInit, OnDestroy {
     this.registryService.markAllRead().subscribe({
       next: () => {
         this.notifications.update(notifs => notifs.map(n => ({ ...n, read: true })));
+      },
+      error: () => {
+        this.notificationsError.set('Could not mark notifications as read.');
       },
     });
   }
@@ -208,6 +239,9 @@ export class HeaderComponent implements OnInit, OnDestroy {
         this.notifications.update(notifs =>
           notifs.map(n => n.id === id ? { ...n, read: true } : n)
         );
+      },
+      error: () => {
+        this.notificationsError.set('Could not update notification.');
       },
     });
   }

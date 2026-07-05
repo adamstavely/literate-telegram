@@ -42,6 +42,8 @@ export class BrowseComponent implements OnInit {
   readonly stats = signal<RegistryStats | null>(null);
   readonly statsError = signal(false);
   readonly featuredCollections = signal<Collection[]>([]);
+  readonly collectionsError = signal<string | null>(null);
+  readonly collectionsLoading = signal(false);
 
   readonly searchQuery = signal('');
   readonly activeType = signal<EntryType | ''>('');
@@ -93,22 +95,8 @@ export class BrowseComponent implements OnInit {
   ];
 
   ngOnInit(): void {
-    // Load stats
-    this.registry.getStats().subscribe({
-      next: s => {
-        this.stats.set(s);
-        this.statsError.set(false);
-      },
-      error: (err: unknown) => {
-        this.statsError.set(true);
-        console.error('Failed to load registry stats', err);
-      },
-    });
-
-    this.registry.getCollections().subscribe({
-      next: cols => this.featuredCollections.set(cols.slice(0, 4)),
-      error: (err: unknown) => console.error('Failed to load featured collections', err),
-    });
+    this.loadStats();
+    this.loadCollections();
 
     // Read initial params from URL
     this.route.queryParams.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
@@ -232,6 +220,31 @@ export class BrowseComponent implements OnInit {
   retrySearch(): void {
     this.error.set(null);
     this._triggerSearch();
+  }
+
+  loadStats(): void {
+    this.registry.getStats().subscribe({
+      next: s => {
+        this.stats.set(s);
+        this.statsError.set(false);
+      },
+      error: () => this.statsError.set(true),
+    });
+  }
+
+  loadCollections(): void {
+    this.collectionsLoading.set(true);
+    this.collectionsError.set(null);
+    this.registry.getCollections().subscribe({
+      next: cols => {
+        this.featuredCollections.set(cols.slice(0, 4));
+        this.collectionsLoading.set(false);
+      },
+      error: () => {
+        this.collectionsError.set('Could not load featured collections.');
+        this.collectionsLoading.set(false);
+      },
+    });
   }
 
   trackEntry(_index: number, entry: RegistryEntry): string {

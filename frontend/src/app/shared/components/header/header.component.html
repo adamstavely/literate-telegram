@@ -141,7 +141,16 @@
               (click)="setNotifTab('unread')"
             >Unread@if (unreadCount() > 0) { · {{ unreadCount() }} }</button>
           </div>
+          @if (notificationsError()) {
+            <div class="callout" role="alert" style="margin: 10px 12px 0">
+              {{ notificationsError() }}
+              <button type="button" class="inline-link" (click)="loadNotifications()">Retry</button>
+            </div>
+          }
           <div class="notif-list">
+            @if (notificationsLoading()) {
+              <div class="notif-empty" aria-busy="true">Loading…</div>
+            } @else {
             @for (notif of filteredNotifications(); track notif.id) {
               <div
                 class="notif-item"
@@ -168,17 +177,18 @@
                 }
               </div>
             }
-            @if (filteredNotifications().length === 0) {
+            @if (filteredNotifications().length === 0 && !notificationsError()) {
               <div class="notif-empty">
                 <div class="notif-empty-ic"><app-icon name="check" [size]="20" aria-hidden="true" /></div>
                 <div style="font-size: 14px; font-weight: 540; color: var(--ink)">You're all caught up</div>
                 <div style="font-size: 12.5px; margin-top: 3px">No unread notifications.</div>
               </div>
             }
+            }
           </div>
           @if (isAdmin()) {
             <div class="notif-foot">
-              <button type="button" routerLink="/admin" (click)="notificationsOpen.set(false)">Open admin queue</button>
+              <button type="button" routerLink="/admin" (click)="closeNotifications()">Open admin queue</button>
             </div>
           }
         </div>

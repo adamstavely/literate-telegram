@@ -21,6 +21,11 @@ import { CollectionCardComponent } from '../../shared/components/collection-card
       </div>
       @if (loading()) {
         <div class="skeleton" style="height: 200px"></div>
+      } @else if (error()) {
+        <div class="callout" role="alert">
+          {{ error() }}
+          <button type="button" class="inline-link" (click)="loadCollections()">Retry</button>
+        </div>
       } @else {
         <div class="grid col-grid">
           @for (col of collections(); track col.id) {
@@ -37,8 +42,15 @@ export class CollectionsComponent implements OnInit {
 
   readonly collections = signal<Collection[]>([]);
   readonly loading = signal(true);
+  readonly error = signal<string | null>(null);
 
   ngOnInit(): void {
+    this.loadCollections();
+  }
+
+  loadCollections(): void {
+    this.loading.set(true);
+    this.error.set(null);
     this.registry
       .getCollections()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -47,7 +59,10 @@ export class CollectionsComponent implements OnInit {
           this.collections.set(cols);
           this.loading.set(false);
         },
-        error: () => this.loading.set(false),
+        error: () => {
+          this.error.set('Failed to load collections.');
+          this.loading.set(false);
+        },
       });
   }
 }

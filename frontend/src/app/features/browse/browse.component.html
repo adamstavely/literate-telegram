@@ -17,6 +17,12 @@
         </div>
       </div>
       <div class="hero-meta" role="complementary" aria-label="Registry statistics">
+        @if (statsError()) {
+          <div class="callout" role="alert" style="grid-column: 1 / -1; margin-bottom: 8px">
+            Registry statistics unavailable.
+            <button type="button" class="inline-link" (click)="loadStats()">Retry</button>
+          </div>
+        }
         <div class="hero-stat">
           <div class="n mono">{{ statsError() ? '—' : (statCount('agent') | number) }}</div>
           <div class="l"><app-icon name="agent" [size]="14" aria-hidden="true"></app-icon>agents</div>
@@ -115,21 +121,32 @@
       </aside>
 
       <div class="browse-results" role="region" aria-label="Registry results">
-        @if (showFeaturedStrip() && featuredCollections().length > 0) {
+        @if (showFeaturedStrip()) {
           <section class="feat-collections" aria-label="Curated collections">
             <div class="feat-head">
               <h2 class="feat-title">Curated collections</h2>
               <div style="flex: 1"></div>
-              <a class="feat-all" routerLink="/collections">
-                View all
-                <app-icon name="arrowRight" [size]="14" aria-hidden="true"></app-icon>
-              </a>
+              @if (!collectionsError()) {
+                <a class="feat-all" routerLink="/collections">
+                  View all
+                  <app-icon name="arrowRight" [size]="14" aria-hidden="true"></app-icon>
+                </a>
+              }
             </div>
+            @if (collectionsError()) {
+              <div class="callout" role="alert">
+                {{ collectionsError() }}
+                <button type="button" class="inline-link" (click)="loadCollections()">Retry</button>
+              </div>
+            } @else if (collectionsLoading()) {
+              <div class="skeleton" style="height: 120px" aria-busy="true"></div>
+            } @else if (featuredCollections().length > 0) {
             <div class="feat-row">
               @for (col of featuredCollections(); track col.id) {
                 <app-collection-card [collection]="col"></app-collection-card>
               }
             </div>
+            }
           </section>
         }
 

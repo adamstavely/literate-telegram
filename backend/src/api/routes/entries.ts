@@ -16,37 +16,10 @@ import {
 import { logger } from '../../logger/logger.js';
 import { getPolicy, assessRiskWithPolicy, applySubmissionPolicy, reviewDueAt } from '../../services/policy.js';
 import { sanitizeSubmission } from '../../services/entry-dto.js';
+import { slugTaken, claimSlug, releaseSlug } from '../../services/slug-locks.js';
+import { runCompensation } from '../../services/compensation.js';
 
 const router = Router();
-
-/**
- * True if a live registry entry or an in-flight pending submission already uses
- * this type+slug. GET /:type/:slug returns only the first hit, and auto-approve
- * can publish directly, so duplicates must be rejected before they are created.
- */
-async function slugTaken(type: string, slug: string): Promise<boolean> {
-  const [registry, pending] = await Promise.all([
-    esClient.count({
-      index: INDEX_NAMES.REGISTRY,
-      query: { bool: { filter: [{ term: { type } }, { term: { slug } }] } },
-    }),
-    esClient.count({
-      index: INDEX_NAMES.PENDING,
-      query: {
-        bool: {
-          filter: [
-            { term: { status: 'pending' } },
-            // entry.* is dynamically mapped (text + keyword); match the exact
-            // keyword sub-field so hyphenated slugs aren't tokenized.
-            { term: { 'entry.type.keyword': type } },
-            { term: { 'entry.slug.keyword': slug } },
-          ],
-        },
-      },
-    }),
-  ]);
-  return registry.count > 0 || pending.count > 0;
-}
 
 function buildSortClause(sort?: string): Array<Record<string, { order: SortOrder }>> {
   switch (sort) {
@@ -323,17 +296,34 @@ router.post(
       if (decision.autoApprove) {
         // Policy allows immediate publication — skip the review queue.
         const dueAt = reviewDueAt(policyDoc, now);
-        await esClient.index({
-          index: INDEX_NAMES.REGISTRY,
-          id: entryId,
-          document: {
-            ...partialEntry,
-            verified: true,
-            updatedAt: now,
-            ...(dueAt ? { reviewDueAt: dueAt } : {}),
-          },
-          refresh: 'wait_for',
-        });
+        const entryType = partialEntry.type!;
+        const entrySlug = partialEntry.slug!;
+
+        if (!(await claimSlug(entryType, entrySlug, entryId))) {
+          res.status(409).json({
+            error: 'Conflict',
+            message: `An entry with slug "${entrySlug}" already exists for type "${entryType}".`,
+            correlationId: req.id,
+          });
+          return;
+        }
+
+        try {
+          await esClient.index({
+            index: INDEX_NAMES.REGISTRY,
+            id: entryId,
+            document: {
+              ...partialEntry,
+              verified: true,
+              updatedAt: now,
+              ...(dueAt ? { reviewDueAt: dueAt } : {}),
+            },
+            refresh: 'wait_for',
+          });
+        } catch (indexErr) {
+          await releaseSlug(entryType, entrySlug);
+          throw indexErr;
+        }
 
         const autoApproved: PendingEntry = {
           id: uuidv4(),
@@ -355,11 +345,10 @@ router.post(
             refresh: 'wait_for',
           });
         } catch (indexErr) {
-          // Compensate: the entry is already live but we failed to record the
-          // approval. Roll the registry write back so the two stores don't drift.
-          await esClient
-            .delete({ index: INDEX_NAMES.REGISTRY, id: entryId, refresh: 'wait_for' })
-            .catch(() => undefined);
+          await runCompensation('auto-approve:rollback-registry', async () => {
+            await esClient.delete({ index: INDEX_NAMES.REGISTRY, id: entryId, refresh: 'wait_for' });
+          });
+          await releaseSlug(entryType, entrySlug);
           throw indexErr;
         }
 

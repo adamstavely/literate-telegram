@@ -7,6 +7,7 @@ const LOGS_INDEX = 'interop-logs';
 const NOTIFICATIONS_INDEX = 'interop-notifications';
 const NOTIFICATION_READS_INDEX = 'interop-notification-reads';
 const POLICY_INDEX = 'interop-policy';
+const SLUG_LOCKS_INDEX = 'interop-slug-locks';
 
 export const INDEX_NAMES = {
   REGISTRY: REGISTRY_INDEX,
@@ -16,6 +17,7 @@ export const INDEX_NAMES = {
   NOTIFICATIONS: NOTIFICATIONS_INDEX,
   NOTIFICATION_READS: NOTIFICATION_READS_INDEX,
   POLICY: POLICY_INDEX,
+  SLUG_LOCKS: SLUG_LOCKS_INDEX,
 } as const;
 
 async function createILMPolicy(policyName: string, maxAgeDays: number): Promise<boolean> {
@@ -306,6 +308,27 @@ async function createNotificationReadsIndex(): Promise<void> {
   });
 }
 
+async function createSlugLocksIndex(): Promise<void> {
+  if (await indexExists(SLUG_LOCKS_INDEX)) return;
+
+  await esClient.indices.create({
+    index: SLUG_LOCKS_INDEX,
+    mappings: {
+      dynamic: false,
+      properties: {
+        type: { type: 'keyword' },
+        slug: { type: 'keyword' },
+        entryId: { type: 'keyword' },
+        claimedAt: { type: 'date' },
+      },
+    },
+    settings: {
+      number_of_shards: 1,
+      number_of_replicas: 1,
+    },
+  });
+}
+
 async function createPolicyIndex(): Promise<void> {
   if (await indexExists(POLICY_INDEX)) return;
 
@@ -338,5 +361,6 @@ export async function setupIndices(): Promise<void> {
     createNotificationsIndex(),
     createNotificationReadsIndex(),
     createPolicyIndex(),
+    createSlugLocksIndex(),
   ]);
 }

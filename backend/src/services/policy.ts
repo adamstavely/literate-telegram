@@ -17,6 +17,12 @@ let cachedPolicy: PolicyDocument | null = null;
 let cacheTime = 0;
 const CACHE_TTL_MS = 30_000;
 
+/** Clear the in-memory policy cache (used by route tests). */
+export function resetPolicyCache(): void {
+  cachedPolicy = null;
+  cacheTime = 0;
+}
+
 function publisherDomain(publisher: string | undefined): string | null {
   if (!publisher) return null;
   const at = publisher.lastIndexOf('@');

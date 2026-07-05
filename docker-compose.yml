@@ -104,7 +104,7 @@ services:
       # Mount source for hot-reload in dev; remove in production
       - ./backend/src:/app/src:ro
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health/live || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5

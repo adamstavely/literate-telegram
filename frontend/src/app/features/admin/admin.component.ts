@@ -5,11 +5,16 @@ import {
   computed,
   inject,
   DestroyRef,
+  ElementRef,
+  ViewChild,
+  effect,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FocusTrapFactory } from '@angular/cdk/a11y';
 import { RegistryService } from '../../core/services/registry.service';
+import { activateFocusTrap } from '../../shared/utils/focus-trap.util';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { TypeBadgeComponent } from '../../shared/components/type-badge/type-badge.component';
 import { TYPE_META } from '../../shared/constants/type-meta.constants';
@@ -50,6 +55,10 @@ interface KpiCard {
 export class AdminComponent implements OnInit {
   private readonly registry = inject(RegistryService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly focusTrapFactory = inject(FocusTrapFactory);
+  private releaseFocusTrap: (() => void) | null = null;
+
+  @ViewChild('rejectModal') rejectModalRef?: ElementRef<HTMLDivElement>;
 
   readonly items = signal<PendingEntry[]>([]);
   readonly loading = signal(true);
@@ -59,6 +68,7 @@ export class AdminComponent implements OnInit {
   readonly toast = signal<Toast | null>(null);
   readonly registryStats = signal<AppStats | null>(null);
   readonly pendingStats = signal<PendingStats | null>(null);
+  readonly statsError = signal<string | null>(null);
 
   /** Accessible reject / request-changes dialog state (replaces window.prompt). */
   readonly rejectDialog = signal<{ entry: PendingEntry; mode: 'reject' | 'changes' } | null>(null);
@@ -79,13 +89,16 @@ export class AdminComponent implements OnInit {
     const list = this.items();
     const stats = this.registryStats();
     const pending = this.pendingStats();
-    const highRisk = pending?.highRiskPending ?? list.filter(i => i.risk === 'high' || i.risk === 'critical').length;
-    const published = stats?.totalEntries ?? 0;
+    const statsFailed = this.statsError() !== null;
+    const highRisk = statsFailed
+      ? '—'
+      : (pending?.highRiskPending ?? list.filter(i => i.risk === 'high' || i.risk === 'critical').length);
+    const published = statsFailed ? '—' : (stats?.totalEntries ?? 0);
     const approvedThisWeek = pending?.approvedThisWeek ?? 0;
-    const avgReview = pending?.avgReviewTimeMinutes;
+    const avgReview = statsFailed ? '—' : pending?.avgReviewTimeMinutes;
 
     return [
-      { value: pending?.pendingCount ?? list.length, label: 'Awaiting review' },
+      { value: statsFailed ? '—' : (pending?.pendingCount ?? list.length), label: 'Awaiting review' },
       {
         value: published,
         label: 'Published',
@@ -112,21 +125,47 @@ export class AdminComponent implements OnInit {
   readonly timeAgo = timeAgo;
   readonly typeMeta = TYPE_META;
 
+  constructor() {
+    effect(() => {
+      const open = this.rejectDialog();
+      if (open && this.rejectModalRef?.nativeElement) {
+        queueMicrotask(() => {
+          const el = this.rejectModalRef?.nativeElement;
+          if (el) {
+            this.releaseFocusTrap?.();
+            this.releaseFocusTrap = activateFocusTrap(this.focusTrapFactory, el);
+          }
+        });
+      } else if (!open) {
+        this.releaseFocusTrap?.();
+        this.releaseFocusTrap = null;
+      }
+    });
+  }
+
   ngOnInit(): void {
     this.loadStats();
     this.loadPending();
   }
 
   loadStats(): void {
+    this.statsError.set(null);
+
     this.registry
       .getStats()
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({ next: s => this.registryStats.set(s) });
+      .subscribe({
+        next: s => this.registryStats.set(s),
+        error: () => this.statsError.set('Could not load registry statistics.'),
+      });
 
     this.registry
       .getPendingStats()
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({ next: s => this.pendingStats.set(s) });
+      .subscribe({
+        next: s => this.pendingStats.set(s),
+        error: () => this.statsError.set('Could not load moderation statistics.'),
+      });
   }
 
   loadPending(): void {

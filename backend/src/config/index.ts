@@ -77,7 +77,8 @@ function loadConfig(): Config {
   const isProd = nodeEnv === 'production';
 
   const allowMockAuth =
-    nodeEnv === 'development' && optionalEnv('ALLOW_MOCK_AUTH', 'false') === 'true';
+    (nodeEnv === 'development' || nodeEnv === 'test') &&
+    optionalEnv('ALLOW_MOCK_AUTH', 'false') === 'true';
 
   // Express `trust proxy` setting. Only when this is configured does req.ip
   // honor X-Forwarded-For — so rate limiting and audit IPs stay consistent and
