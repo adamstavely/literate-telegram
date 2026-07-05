@@ -5,6 +5,7 @@ import { auditAction } from '../../middleware/audit.js';
 import { getPolicy, savePolicy, PolicyVersionConflictError } from '../../services/policy.js';
 import { validatePolicyDocument } from '../../services/policy-validation.js';
 import { PolicyDocument } from '../../types/index.js';
+import { config } from '../../config/index.js';
 
 const router = Router();
 
@@ -49,6 +50,15 @@ router.put(
           error: 'Validation Error',
           message: 'Policy document failed structural validation.',
           details: structuralErrors,
+          correlationId: req.id,
+        });
+        return;
+      }
+
+      if (config.nodeEnv === 'production' && (ifSeqNo === undefined || ifPrimaryTerm === undefined)) {
+        res.status(428).json({
+          error: 'Precondition Required',
+          message: 'Policy save requires ifSeqNo and ifPrimaryTerm from the latest GET /api/policy response.',
           correlationId: req.id,
         });
         return;

@@ -38,6 +38,16 @@ describe('validatePolicyDocument', () => {
     assert.ok(validatePolicyDocument(input).some((e) => e.includes('verified')));
   });
 
+  test('rejects an unsupported rule id', () => {
+    const input = validInput();
+    input.rules.push({
+      ...input.rules[0]!,
+      id: 'custom-rule',
+      name: 'Custom',
+    });
+    assert.ok(validatePolicyDocument(input).some((e) => e.includes('not supported')));
+  });
+
   test('rejects non-array rules/domains', () => {
     const errors = validatePolicyDocument({
       policy: validInput().policy,

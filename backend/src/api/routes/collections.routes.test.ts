@@ -23,11 +23,11 @@ describe('GET /api/collections', () => {
     const memberSlug = def.members[0]?.id;
     assert.ok(memberSlug);
 
-    stubEs('search', async (params: { index?: string; query?: { terms?: { slug?: string[] } } }) => {
+    stubEs('search', async (params: { index?: string; query?: { bool?: { filter?: unknown[] } } }) => {
       if (params.index === 'interop-collections') {
         return { hits: { hits: [] } };
       }
-      if (params.index === 'interop-registry' && params.query?.terms?.slug) {
+      if (params.index === 'interop-registry') {
         return {
           hits: {
             hits: [
@@ -40,6 +40,7 @@ describe('GET /api/collections', () => {
                   summary: 's',
                   description: 'd',
                   sensitivity: 'public',
+                  visibility: 'public',
                   installs: 3,
                 },
               },

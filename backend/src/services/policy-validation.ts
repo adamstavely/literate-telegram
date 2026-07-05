@@ -5,6 +5,7 @@ import {
   RuleSeverity,
   Visibility,
 } from '../types/index.js';
+import { SUPPORTED_POLICY_RULE_IDS } from '../data/policy-rule-ids.js';
 
 const RULE_ACTIONS: readonly RuleAction[] = ['flag', 'review', 'block', 'reject'];
 const RULE_SEVERITIES: readonly RuleSeverity[] = ['high', 'medium', 'low'];
@@ -73,6 +74,11 @@ export function validatePolicyDocument(
         return;
       }
       if (typeof rule['id'] !== 'string' || !rule['id']) errors.push(`rules[${i}].id must be a non-empty string`);
+      else if (!SUPPORTED_POLICY_RULE_IDS.includes(rule['id'])) {
+        errors.push(
+          `rules[${i}].id "${rule['id']}" is not supported — known ids: ${SUPPORTED_POLICY_RULE_IDS.join(', ')}`,
+        );
+      }
       if (typeof rule['name'] !== 'string') errors.push(`rules[${i}].name must be a string`);
       if (!RULE_SEVERITIES.includes(rule['severity'] as RuleSeverity)) {
         errors.push(`rules[${i}].severity must be one of ${RULE_SEVERITIES.join(', ')}`);

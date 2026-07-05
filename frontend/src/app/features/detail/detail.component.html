@@ -368,30 +368,34 @@
             <div style="display: flex; flex-direction: column; gap: 10px">
               @for (tool of srv.tools; track tool.id) {
                 <div class="tool-item">
-                  <button
-                    type="button"
+                  <div
                     class="tool-item-head"
-                    style="cursor: pointer; width: 100%; text-align: left; background: none; border: none; font: inherit; color: inherit; padding: 0; display: flex; align-items: center; gap: 8px"
-                    (click)="toggleToolExpand(tool.id)"
-                    [attr.aria-expanded]="openToolId() === tool.id"
-                    [attr.aria-controls]="'tool-params-' + tool.id"
+                    style="display: flex; align-items: center; gap: 8px"
                   >
-                    <app-icon name="tool" [size]="16" style="color: var(--ok)"></app-icon>
-                    <span class="tool-name mono">{{ tool.name }}</span>
-                    @if (!tool.readOnly) {
-                      <span class="readonly-badge" style="color: var(--warn)">write</span>
-                    }
-                    <div style="flex: 1"></div>
+                    <button
+                      type="button"
+                      style="flex: 1; display: flex; align-items: center; gap: 8px; cursor: pointer; text-align: left; background: none; border: none; font: inherit; color: inherit; padding: 0; min-width: 0"
+                      (click)="toggleToolExpand(tool.id)"
+                      [attr.aria-expanded]="openToolId() === tool.id"
+                      [attr.aria-controls]="'tool-params-' + tool.id"
+                    >
+                      <app-icon name="tool" [size]="16" style="color: var(--ok)"></app-icon>
+                      <span class="tool-name mono">{{ tool.name }}</span>
+                      @if (!tool.readOnly) {
+                        <span class="readonly-badge" style="color: var(--warn)">write</span>
+                      }
+                      <span style="flex: 1"></span>
+                      <app-icon
+                        name="chevron-down"
+                        [size]="15"
+                        style="color: var(--faint); transition: .15s"
+                        [style.transform]="openToolId() === tool.id ? 'rotate(180deg)' : ''"
+                      ></app-icon>
+                    </button>
                     <button class="iconbtn" type="button" title="Open tool page" (click)="openToolPage(tool.slug, $event)">
                       <app-icon name="arrowRight" [size]="15"></app-icon>
                     </button>
-                    <app-icon
-                      name="chevron-down"
-                      [size]="15"
-                      style="color: var(--faint); transition: .15s"
-                      [style.transform]="openToolId() === tool.id ? 'rotate(180deg)' : ''"
-                    ></app-icon>
-                  </button>
+                  </div>
                   <p class="tool-desc">{{ tool.summary }}</p>
                   @if (openToolId() === tool.id && tool.params.length > 0) {
                     <div class="params" [id]="'tool-params-' + tool.id">

@@ -1,8 +1,15 @@
-# Development overrides — hot-reload and direct backend access for debugging.
+# Development overrides — hot-reload, direct backend access, and local ES port.
 # Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 services:
   backend:
+    environment:
+      # Direct :3000 access must not trust X-Forwarded-For (XFF spoofing risk).
+      - TRUST_PROXY=0
     ports:
       - "3000:3000"
     volumes:
       - ./backend/src:/app/src:ro
+
+  elasticsearch:
+    ports:
+      - "9200:9200"

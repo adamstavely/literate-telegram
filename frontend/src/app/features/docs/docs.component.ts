@@ -9,6 +9,7 @@ import {
   HostListener,
 } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { SecurityContext } from '@angular/core';
 import { Router } from '@angular/router';
 import { DOC_SECTIONS, DOC_ARTICLES, DocArticle } from './docs-content';
 import { IconComponent } from '../../shared/components/icon/icon.component';
@@ -108,7 +109,8 @@ export class DocsComponent implements OnChanges {
   }
 
   renderContent(body: string): SafeHtml {
-    return this.sanitizer.bypassSecurityTrustHtml(body);
+    const cleaned = this.sanitizer.sanitize(SecurityContext.HTML, body) ?? '';
+    return this.sanitizer.bypassSecurityTrustHtml(cleaned);
   }
 
   formatDate(iso: string): string {

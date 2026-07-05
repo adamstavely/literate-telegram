@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { SortOrder } from '@elastic/elasticsearch/lib/api/types.js';
 import { esClient } from '../../elasticsearch/client.js';
 import { INDEX_NAMES } from '../../elasticsearch/indices.js';
-import { requireAuth } from '../../middleware/auth.js';
+import { requireAuth, optionalAuth } from '../../middleware/auth.js';
 import { auditAction } from '../../middleware/audit.js';
 import {
   RegistryEntry,
@@ -18,6 +18,7 @@ import { getPolicy, assessRiskWithPolicy, applySubmissionPolicy, reviewDueAt } f
 import { sanitizeSubmission } from '../../services/entry-dto.js';
 import { slugTaken, claimSlug, releaseSlug } from '../../services/slug-locks.js';
 import { runCompensation } from '../../services/compensation.js';
+import { registryVisibilityFilter, entryVisibleToCaller } from '../../services/visibility.js';
 
 const router = Router();
 
@@ -39,6 +40,7 @@ function buildSortClause(sort?: string): Array<Record<string, { order: SortOrder
 // GET /api/entries - search and list
 router.get(
   '/',
+  optionalAuth,
   [
     query('q').optional().isString().trim(),
     query('type').optional().isIn(['server', 'tool', 'skill', 'agent', 'api']),
@@ -96,6 +98,8 @@ router.get(
         filterClauses.push({ term: { clients: params.client } });
       }
 
+      filterClauses.push(registryVisibilityFilter(req));
+
       const boolQuery: Record<string, unknown> = {};
       if (mustClauses.length > 0) boolQuery['must'] = mustClauses;
       if (filterClauses.length > 0) boolQuery['filter'] = filterClauses;
@@ -130,11 +134,12 @@ router.get(
 );
 
 // GET /api/entries/stats - aggregate stats
-router.get('/stats', async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.get('/stats', optionalAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const response = await esClient.search({
       index: INDEX_NAMES.REGISTRY,
       size: 0,
+      query: { bool: { filter: [registryVisibilityFilter(req)] } },
       aggs: {
         by_type: {
           terms: { field: 'type', size: 10 },
@@ -182,6 +187,7 @@ router.get('/stats', async (_req: Request, res: Response, next: NextFunction): P
 // GET /api/entries/:type/:slug - get single entry
 router.get(
   '/:type/:slug',
+  optionalAuth,
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { type, slug } = req.params as { type: string; slug: string };
 
@@ -204,6 +210,7 @@ router.get(
             filter: [
               { term: { type } },
               { term: { slug } },
+              registryVisibilityFilter(req),
             ],
           },
         },
@@ -211,6 +218,15 @@ router.get(
 
       const hit = response.hits.hits[0];
       if (!hit?._source) {
+        res.status(404).json({
+          error: 'Not Found',
+          message: `Entry not found: ${type}/${slug}`,
+          correlationId: req.id,
+        });
+        return;
+      }
+
+      if (!entryVisibleToCaller(hit._source, req)) {
         res.status(404).json({
           error: 'Not Found',
           message: `Entry not found: ${type}/${slug}`,

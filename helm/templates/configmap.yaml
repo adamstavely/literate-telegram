@@ -11,6 +11,9 @@ data:
   LOG_LEVEL: {{ .Values.backend.env.LOG_LEVEL | default "info" | quote }}
   ES_NODE: {{ include "interop.elasticsearch.url" . | quote }}
   ES_USERNAME: {{ .Values.elasticsearch.username | default "elastic" | quote }}
+  {{- if .Values.elasticsearch.caFingerprint }}
+  ES_CA_FINGERPRINT: {{ .Values.elasticsearch.caFingerprint | quote }}
+  {{- end }}
   ALLOWED_ORIGINS: {{ .Values.backend.env.ALLOWED_ORIGINS | default "https://interop.io" | quote }}
   RATE_LIMIT_WINDOW_MS: {{ .Values.backend.env.RATE_LIMIT_WINDOW_MS | default "60000" | quote }}
   RATE_LIMIT_MAX: {{ .Values.backend.env.RATE_LIMIT_MAX | default "200" | quote }}

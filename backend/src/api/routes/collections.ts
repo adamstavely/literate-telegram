@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { esClient } from '../../elasticsearch/client.js';
 import { INDEX_NAMES } from '../../elasticsearch/indices.js';
 import { COLLECTION_DEFINITIONS } from '../../data/collections.js';
-import { requireAuth, requireAdmin } from '../../middleware/auth.js';
+import { requireAuth, requireAdmin, optionalAuth } from '../../middleware/auth.js';
 import { auditAction } from '../../middleware/audit.js';
 import {
   Collection,
@@ -15,6 +15,7 @@ import {
   SensitivityLevel,
 } from '../../types/index.js';
 import { logger } from '../../logger/logger.js';
+import { registryVisibilityFilter, entryVisibleToCaller } from '../../services/visibility.js';
 
 const router = Router();
 
@@ -48,28 +49,38 @@ const SENS_RANK: Record<SensitivityLevel, number> = {
   restricted: 3,
 };
 
-async function loadEntriesBySlugs(slugs: string[]): Promise<Map<string, RegistryEntry>> {
+async function loadEntriesBySlugs(
+  slugs: string[],
+  req: Request,
+): Promise<Map<string, RegistryEntry>> {
   const unique = [...new Set(slugs.filter(Boolean))];
   if (unique.length === 0) return new Map();
 
   const response = await esClient.search<RegistryEntry>({
     index: INDEX_NAMES.REGISTRY,
     size: unique.length,
-    query: { terms: { slug: unique } },
+    query: {
+      bool: {
+        filter: [{ terms: { slug: unique } }, registryVisibilityFilter(req)],
+      },
+    },
   });
 
   const bySlug = new Map<string, RegistryEntry>();
   for (const hit of response.hits.hits) {
-    if (hit._source) bySlug.set(hit._source.slug, hit._source);
+    if (hit._source && entryVisibleToCaller(hit._source, req)) {
+      bySlug.set(hit._source.slug, hit._source);
+    }
   }
   return bySlug;
 }
 
 async function loadEntriesForDefinitions(
   defs: CollectionDefinition[],
+  req: Request,
 ): Promise<Map<string, RegistryEntry>> {
   const slugs = defs.flatMap((d) => d.members.map((m) => m.id));
-  return loadEntriesBySlugs(slugs);
+  return loadEntriesBySlugs(slugs, req);
 }
 
 function resolveCollection(
@@ -95,10 +106,10 @@ function resolveCollection(
   };
 }
 
-router.get('/', async (_req: Request, res: Response, next: NextFunction) => {
+router.get('/', optionalAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const defs = await allDefinitions();
-    const bySlug = await loadEntriesForDefinitions(defs);
+    const bySlug = await loadEntriesForDefinitions(defs, req);
     const collections = defs.map((def) => resolveCollection(def, bySlug));
     res.json(collections);
   } catch (err) {
@@ -166,7 +177,10 @@ router.post(
       await auditAction(req, 'CREATE_COLLECTION', def.id, { title: def.title, members: members.length });
       logger.info('Collection created', { correlationId: req.id, userId: req.user?.sub, collectionId: def.id });
 
-      const bySlug = await loadEntriesBySlugs(members.map((m) => m.id));
+      const bySlug = await loadEntriesBySlugs(
+        members.map((m) => m.id),
+        req,
+      );
       res.status(201).json(resolveCollection(def, bySlug));
     } catch (err) {
       next(err);
@@ -174,7 +188,7 @@ router.post(
   },
 );
 
-router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/:id', optionalAuth, async (req: Request, res: Response, next: NextFunction) => {
   const { id } = req.params;
   try {
     const defs = await allDefinitions();
@@ -183,7 +197,7 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
       res.status(404).json({ error: 'Not Found', message: `Collection ${id} not found` });
       return;
     }
-    const bySlug = await loadEntriesBySlugs(def.members.map((m) => m.id));
+    const bySlug = await loadEntriesBySlugs(def.members.map((m) => m.id), req);
     res.json(resolveCollection(def, bySlug));
   } catch (err) {
     next(err);
