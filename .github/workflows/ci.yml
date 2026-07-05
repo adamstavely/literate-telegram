@@ -78,5 +78,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - run: cp .env.example .env
       - run: docker compose -f docker-compose.yml config --quiet
       - run: docker compose -f docker-compose.yml -f docker-compose.dev.yml config --quiet
