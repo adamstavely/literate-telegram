@@ -52,6 +52,7 @@ export const ICON_CONTENT: Record<string, string> = {
   arrowRight: '<path d="M5 12h14M13 6l6 6-6 6"/>',
   arrowLeft: '<path d="M19 12H5M11 18l-6-6 6-6"/>',
   inbox: '<path d="M4 6h16v12H4z"/><path d="M4 8l8 5 8-5"/>',
+  'log-out': '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>',
 };
 
 @Component({

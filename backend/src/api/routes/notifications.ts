@@ -59,8 +59,10 @@ async function upsertReceipt(
 router.get('/', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = req.user!.sub;
-    const page = parseInt(req.query['page'] as string ?? '0', 10) || 0;
-    const size = parseInt(req.query['size'] as string ?? '50', 10) || 50;
+    const page = Math.max(0, parseInt(req.query['page'] as string ?? '0', 10) || 0);
+    // Clamp page size so a caller can't request an unbounded window.
+    const rawSize = parseInt(req.query['size'] as string ?? '50', 10) || 50;
+    const size = Math.min(100, Math.max(1, rawSize));
     const from = page * size;
 
     const receipts = await loadReceipts(userId);
@@ -166,9 +168,13 @@ router.put('/read-all', async (req: Request, res: Response, next: NextFunction):
       },
     });
 
+    // Don't resurrect globals the user already dismissed — marking all read must
+    // not clear an existing dismissal receipt.
+    const receipts = await loadReceipts(userId);
     const globalIds = globals.hits.hits
       .map((h) => h._source?.id)
-      .filter((id): id is string => typeof id === 'string');
+      .filter((id): id is string => typeof id === 'string')
+      .filter((id) => !receipts.get(id)?.dismissed);
 
     if (globalIds.length > 0) {
       const now = new Date().toISOString();

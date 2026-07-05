@@ -12,8 +12,8 @@ import {
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { forkJoin, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { forkJoin, of, Subject } from 'rxjs';
+import { catchError, switchMap, takeUntil } from 'rxjs/operators';
 import { RegistryService } from '../../core/services/registry.service';
 import {
   RegistryEntry,
@@ -165,51 +165,66 @@ export class DetailComponent implements OnChanges {
     }
   }
 
+  /** Emits on every navigation so in-flight requests for the previous entry
+   *  are cancelled (switchMap) — last click wins, not last response. */
+  private readonly nav$ = new Subject<{ type: string; slug: string }>();
+
+  constructor() {
+    this.nav$
+      .pipe(
+        switchMap(({ type, slug }) => {
+          this.loading.set(true);
+          this.error.set(null);
+          this.resetEntryState();
+          return this.registry.getEntry(type as EntryType, slug).pipe(
+            catchError((err: unknown) => {
+              console.error(err);
+              this.error.set('Entry not found or failed to load.');
+              this.loading.set(false);
+              return of(null);
+            }),
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((entry) => {
+        if (!entry) return;
+        this.entry.set(entry);
+        document.title = `${entry.name} — Interop`;
+        this.loadRelated(entry);
+      });
+  }
+
   // withComponentInputBinding() re-binds type/slug when navigating between
   // entries on the reused component instance. React to that, not just to first
   // construction, or the page shows stale content after in-app navigation.
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['type'] || changes['slug']) {
-      this.loadEntry();
+      this.nav$.next({ type: this.type, slug: this.slug });
     }
   }
 
-  private loadEntry(): void {
-    this.loading.set(true);
-    this.error.set(null);
-    // Reset per-entry state so nothing bleeds across navigations.
+  private resetEntryState(): void {
     this.entry.set(null);
     this.parentServer.set(null);
     this.relatedSkills.set([]);
     this.relatedAgents.set([]);
     this.activeTab.set('overview');
     this.openToolId.set(null);
-    this.registry
-      .getEntry(this.type as EntryType, this.slug)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (entry) => {
-          this.entry.set(entry);
-          document.title = `${entry.name} — Interop`;
-          this.loadRelated(entry);
-        },
-        error: (err: unknown) => {
-          this.error.set('Entry not found or failed to load.');
-          this.loading.set(false);
-          console.error(err);
-        },
-      });
   }
 
   private loadRelated(entry: RegistryEntry): void {
     if (entry.type === 'skill') {
-      this.registry.searchEntries({ type: 'server', size: 100 }).subscribe({
-        next: (res) => {
-          this.allServers.set(res.hits.filter((e): e is Server => e.type === 'server'));
-          this.loading.set(false);
-        },
-        error: () => this.loading.set(false),
-      });
+      this.registry
+        .searchEntries({ type: 'server', size: 100 })
+        .pipe(takeUntil(this.nav$), takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (res) => {
+            this.allServers.set(res.hits.filter((e): e is Server => e.type === 'server'));
+            this.loading.set(false);
+          },
+          error: () => this.loading.set(false),
+        });
       return;
     }
 
@@ -224,7 +239,9 @@ export class DetailComponent implements OnChanges {
         .getEntry('server', tool.parentServer)
         .pipe(catchError(() => of(null))),
       catalog: this.registry.searchEntries({ size: 200 }),
-    }).subscribe({
+    })
+      .pipe(takeUntil(this.nav$), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
       next: ({ parent, catalog }) => {
         const server = parent?.type === 'server' ? parent : null;
         if (server) this.parentServer.set(server);

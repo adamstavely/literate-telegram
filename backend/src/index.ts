@@ -15,6 +15,11 @@ import apiRouter from './api/router.js';
 
 const app = express();
 
+// Trust proxy governs how req.ip is derived from X-Forwarded-For. Keep it
+// explicit so rate limiting and audit attribution use the same, non-spoofable
+// client IP. Defaults to false (ignore XFF) unless deployed behind a proxy.
+app.set('trust proxy', config.trustProxy);
+
 // Security headers
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },

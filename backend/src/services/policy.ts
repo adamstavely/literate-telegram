@@ -308,6 +308,8 @@ export interface SubmissionDecision {
   autoApprove: boolean;
   /** Extra flags raised at submission time (e.g. token cap). */
   flags: string[];
+  /** Names of fired 'reject'-action rules — the submission must be refused. */
+  rejectRules: string[];
 }
 
 /**
@@ -354,7 +356,12 @@ export function applySubmissionPolicy(
   }
 
   const { risk, firedRules } = assessRiskWithPolicy(adjusted, doc);
-  const hasHardRule = firedRules.some((r) => r.action === 'block' || r.action === 'reject');
+  const rejectRules = firedRules.filter((r) => r.action === 'reject').map((r) => r.name);
+  // block/reject are hard; review-action rules must also gate the fast-path so
+  // anything a moderator is meant to look at never auto-publishes.
+  const gatingRule = firedRules.some(
+    (r) => r.action === 'block' || r.action === 'reject' || r.action === 'review',
+  );
 
   // An explicit category opt-in: trusted publisher, or the skills fast-path.
   const categoryAutoApprove =
@@ -363,9 +370,10 @@ export function applySubmissionPolicy(
 
   const autoApprove =
     risk === 'low' &&
-    !hasHardRule &&
+    !gatingRule &&
     !tokenCapExceeded &&
+    rejectRules.length === 0 &&
     (!doc.policy.requireReview || categoryAutoApprove);
 
-  return { entry: adjusted, autoApprove, flags };
+  return { entry: adjusted, autoApprove, flags, rejectRules };
 }

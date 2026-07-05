@@ -28,6 +28,7 @@ export interface Config {
   nodeEnv: 'development' | 'production' | 'test';
   port: number;
   allowMockAuth: boolean;
+  trustProxy: boolean | number | string;
   elasticsearch: {
     node: string;
     username: string;
@@ -76,10 +77,21 @@ function loadConfig(): Config {
   const allowMockAuth =
     nodeEnv === 'development' && optionalEnv('ALLOW_MOCK_AUTH', 'false') === 'true';
 
+  // Express `trust proxy` setting. Only when this is configured does req.ip
+  // honor X-Forwarded-For — so rate limiting and audit IPs stay consistent and
+  // aren't spoofable when the app is not actually behind a trusted proxy.
+  const trustProxyRaw = optionalEnv('TRUST_PROXY', 'false');
+  let trustProxy: boolean | number | string;
+  if (trustProxyRaw === 'true') trustProxy = true;
+  else if (trustProxyRaw === 'false') trustProxy = false;
+  else if (/^\d+$/.test(trustProxyRaw)) trustProxy = parseInt(trustProxyRaw, 10);
+  else trustProxy = trustProxyRaw;
+
   return {
     nodeEnv,
     port: optionalEnvNumber('PORT', 3000),
     allowMockAuth,
+    trustProxy,
     elasticsearch: {
       node: optionalEnv('ES_NODE', 'http://localhost:9200'),
       username: optionalEnv('ES_USERNAME', 'elastic'),

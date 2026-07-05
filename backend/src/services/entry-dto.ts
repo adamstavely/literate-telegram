@@ -30,6 +30,28 @@ function stringArray(value: unknown): string[] | undefined {
   return value.filter((v): v is string => typeof v === 'string');
 }
 
+/** Keep only values that are members of the allowed set. */
+function enumValue<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
+  return typeof value === 'string' && (allowed as readonly string[]).includes(value)
+    ? (value as T)
+    : fallback;
+}
+
+function enumArray<T extends string>(value: unknown, allowed: readonly T[]): T[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((v): v is T => typeof v === 'string' && (allowed as readonly string[]).includes(v));
+}
+
+const TRANSPORTS: readonly TransportType[] = ['stdio', 'http', 'sse'];
+const AUTONOMY: readonly AutonomyLevel[] = ['low', 'medium', 'high', 'full'];
+const API_STYLES: readonly ApiStyle[] = ['REST', 'GraphQL'];
+const SENSITIVITIES: readonly SensitivityLevel[] = [
+  'public',
+  'internal',
+  'confidential',
+  'restricted',
+];
+
 function boolean(value: unknown): boolean | undefined {
   return typeof value === 'boolean' ? value : undefined;
 }
@@ -78,7 +100,7 @@ function pickBaseFields(body: RawBody): Record<string, unknown> {
     publisher: str(body['publisher']),
     summary: str(body['summary']),
     description: str(body['description']),
-    sensitivity: str(body['sensitivity']) as SensitivityLevel,
+    sensitivity: enumValue(body['sensitivity'], SENSITIVITIES, 'public'),
     categories: stringArray(body['categories']) ?? [],
   };
   const version = str(body['version']);
@@ -99,7 +121,7 @@ export function sanitizeSubmission(body: RawBody): Partial<RegistryEntry> {
     case 'server':
       return {
         ...base,
-        transports: (stringArray(body['transports']) ?? []) as TransportType[],
+        transports: enumArray(body['transports'], TRANSPORTS),
         auth: str(body['auth']) ?? 'None',
         clients: stringArray(body['clients']) ?? [],
         license: str(body['license']) ?? '',
@@ -130,7 +152,7 @@ export function sanitizeSubmission(body: RawBody): Partial<RegistryEntry> {
       return {
         ...base,
         model: str(body['model']) ?? '',
-        autonomy: (str(body['autonomy']) ?? 'low') as AutonomyLevel,
+        autonomy: enumValue(body['autonomy'], AUTONOMY, 'low'),
         servers: stringArray(body['servers']) ?? [],
         skills: stringArray(body['skills']) ?? [],
       } as Partial<RegistryEntry>;
@@ -138,7 +160,7 @@ export function sanitizeSubmission(body: RawBody): Partial<RegistryEntry> {
     case 'api': {
       const entry: Record<string, unknown> = {
         ...base,
-        style: (str(body['style']) ?? 'REST') as ApiStyle,
+        style: enumValue(body['style'], API_STYLES, 'REST'),
       };
       const endpoint = str(body['endpoint']);
       if (endpoint !== undefined) entry['endpoint'] = endpoint;

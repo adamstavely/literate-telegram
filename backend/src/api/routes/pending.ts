@@ -350,13 +350,32 @@ router.put(
         updatedAt: now,
       };
 
-      // Publish to the registry.
-      await esClient.index({
-        index: INDEX_NAMES.REGISTRY,
-        id: entry.id,
-        document: publishedEntry,
-        refresh: 'wait_for',
-      });
+      // Publish to the registry. If this fails after we've already flipped the
+      // pending doc to 'approved', compensate by rolling it back to 'pending' so
+      // the two stores don't drift and the entry can be re-approved later.
+      try {
+        await esClient.index({
+          index: INDEX_NAMES.REGISTRY,
+          id: entry.id,
+          document: publishedEntry,
+          refresh: 'wait_for',
+        });
+      } catch (publishErr) {
+        await esClient
+          .update({
+            index: INDEX_NAMES.PENDING,
+            id: pendingHit._id,
+            doc: {
+              status: 'pending',
+              approvedBy: null,
+              approvedAt: null,
+              policyOverride: null,
+            },
+            refresh: 'wait_for',
+          })
+          .catch(() => undefined);
+        throw publishErr;
+      }
 
       await auditAction(req, 'APPROVE_ENTRY', id, {
         entryId: entry.id,
