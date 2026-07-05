@@ -84,64 +84,6 @@
       Publish
     </a>
 
-    <div class="apps-wrap">
-      <button
-        #appsBtn
-        class="iconbtn apps-btn"
-        type="button"
-        [class.on]="appsOpen()"
-        (click)="toggleApps()"
-        [attr.aria-expanded]="appsOpen()"
-        aria-haspopup="true"
-        title="Switch app"
-        aria-label="Switch app"
-      >
-        <app-icon name="grid" [size]="18" aria-hidden="true" />
-      </button>
-      @if (appsOpen()) {
-        <div #appsPop class="apps-pop" role="menu" aria-label="Interop platform apps">
-          <div class="apps-pop-head">
-            <span class="apps-pop-title">Interop platform</span>
-            <span class="apps-pop-sub">Acme Co workspace</span>
-          </div>
-          <div class="apps-grid">
-            @for (a of platformApps; track a.id) {
-              <button
-                type="button"
-                class="app-tile"
-                role="menuitem"
-                [class.current]="isCurrentApp(a)"
-                [class.soon]="a.soon"
-                [disabled]="a.soon"
-                (click)="navigateApp(a)"
-              >
-                <span
-                  class="app-tile-ic"
-                  [style.color]="a.accent"
-                  [style.background]="'color-mix(in oklch, ' + a.accent + ' 12%, var(--cm))'"
-                  [style.border-color]="'color-mix(in oklch, ' + a.accent + ' 26%, var(--cm))'"
-                >
-                  <app-icon [name]="a.icon" [size]="18" aria-hidden="true" />
-                </span>
-                <span class="app-tile-body">
-                  <span class="app-tile-name">
-                    {{ a.name }}
-                    @if (isCurrentApp(a)) { <span class="app-tile-dot" title="Current app"></span> }
-                    @if (a.soon) { <span class="app-tile-soon">Soon</span> }
-                  </span>
-                  <span class="app-tile-desc">{{ a.desc }}</span>
-                </span>
-              </button>
-            }
-          </div>
-          <div class="apps-pop-foot">
-            <span class="apps-status"><span class="apps-status-dot"></span>All systems operational</span>
-            <span class="apps-pop-ver">v2.4</span>
-          </div>
-        </div>
-      }
-    </div>
-
     <button
       class="iconbtn"
       type="button"
@@ -253,21 +195,64 @@
       }
     </div>
 
-    @if (isAuthenticated()) {
-      <app-avatar [name]="displayName()" [size]="30" [round]="true" />
+    <div class="apps-wrap">
       <button
-        class="iconbtn"
+        #appsBtn
+        class="iconbtn apps-btn"
         type="button"
-        (click)="logout()"
-        title="Sign out"
-        aria-label="Sign out"
+        [class.on]="appsOpen()"
+        (click)="toggleApps()"
+        [attr.aria-expanded]="appsOpen()"
+        aria-haspopup="true"
+        title="Switch app"
+        aria-label="Switch app"
       >
-        <app-icon name="log-out" [size]="18" aria-hidden="true" />
+        <app-icon name="grid" [size]="18" aria-hidden="true" />
       </button>
-    } @else {
-      <button class="btn btn-secondary btn-sm" type="button" (click)="login()">
-        Sign in
-      </button>
-    }
+      @if (appsOpen()) {
+        <div #appsPop class="apps-pop" role="menu" aria-label="Interop platform apps">
+          <div class="apps-pop-head">
+            <span class="apps-pop-title">Interop platform</span>
+            <span class="apps-pop-sub">Acme Co workspace</span>
+          </div>
+          <div class="apps-grid">
+            @for (a of platformApps; track a.id) {
+              <button
+                type="button"
+                class="app-tile"
+                role="menuitem"
+                [class.current]="isCurrentApp(a)"
+                [class.soon]="a.soon"
+                [disabled]="a.soon"
+                (click)="navigateApp(a)"
+              >
+                <span
+                  class="app-tile-ic"
+                  [style.color]="a.accent"
+                  [style.background]="'color-mix(in oklch, ' + a.accent + ' 12%, var(--cm))'"
+                  [style.border-color]="'color-mix(in oklch, ' + a.accent + ' 26%, var(--cm))'"
+                >
+                  <app-icon [name]="a.icon" [size]="18" aria-hidden="true" />
+                </span>
+                <span class="app-tile-body">
+                  <span class="app-tile-name">
+                    {{ a.name }}
+                    @if (isCurrentApp(a)) { <span class="app-tile-dot" title="Current app"></span> }
+                    @if (a.soon) { <span class="app-tile-soon">Soon</span> }
+                  </span>
+                  <span class="app-tile-desc">{{ a.desc }}</span>
+                </span>
+              </button>
+            }
+          </div>
+          <div class="apps-pop-foot">
+            <span class="apps-status"><span class="apps-status-dot"></span>All systems operational</span>
+            <span class="apps-pop-ver">v2.4</span>
+          </div>
+        </div>
+      }
+    </div>
+
+    <app-avatar [name]="displayName()" [size]="30" [round]="true" />
   </div>
 </header>

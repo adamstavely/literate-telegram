@@ -120,6 +120,11 @@ export class RegisterComponent implements OnInit {
     this.form.patchValue({ type });
   }
 
+  /** Collections are authored in their own flow rather than the entry wizard. */
+  createCollection(): void {
+    void this.router.navigate(['/collections/new']);
+  }
+
   /** Form controls that gate advancing past each step. */
   private fieldsForStep(step: number): string[] {
     switch (step) {
