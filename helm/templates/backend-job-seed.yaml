@@ -7,8 +7,8 @@ metadata:
     {{- include "interop.labels" . | nindent 4 }}
     app.kubernetes.io/component: seed-job
   annotations:
-    # Run on install and upgrade so re-seeding after chart updates is possible.
-    "helm.sh/hook": post-install,post-upgrade
+    # Run on install only — upgrades must not overwrite live registry data.
+    "helm.sh/hook": post-install
     "helm.sh/hook-weight": "10"
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
 spec:
@@ -78,7 +78,7 @@ spec:
               echo "Backend is ready."
       containers:
         - name: seed
-          image: "{{ if .Values.global.imageRegistry }}{{ .Values.global.imageRegistry }}/{{ end }}{{ .Values.image.backend.repository }}:{{ .Values.image.backend.tag }}"
+          image: "{{ if .Values.global.imageRegistry }}{{ .Values.global.imageRegistry }}/{{ end }}{{ .Values.image.backend.repository }}:{{ .Values.image.backend.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.backend.pullPolicy }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}

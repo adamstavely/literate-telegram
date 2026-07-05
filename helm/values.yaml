@@ -102,8 +102,12 @@ frontend:
 # ---------------------------------------------------------------------------
 elasticsearch:
   enabled: true
+  # Full URL override (e.g. https://es.example.com:9200) — takes precedence over host/port.
+  url: ""
   host: ""        # External host — used only when enabled=false
   port: 9200
+  # SHA-256 cert fingerprint for HTTPS ES (maps to ES_CA_FINGERPRINT in the backend).
+  caFingerprint: ""
   username: elastic
   password: ""   # Required when elasticsearch.enabled=true — never commit real values
   storageSize: 10Gi

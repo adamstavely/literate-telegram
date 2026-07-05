@@ -99,9 +99,9 @@ function loadConfig(): Config {
     allowMockAuth,
     trustProxy,
     elasticsearch: {
-      node: optionalEnv('ES_NODE', 'http://localhost:9200'),
-      username: optionalEnv('ES_USERNAME', 'elastic'),
-      password: optionalEnv('ES_PASSWORD', 'changeme'),
+      node: isProd ? requireEnv('ES_NODE') : optionalEnv('ES_NODE', 'http://localhost:9200'),
+      username: isProd ? requireEnv('ES_USERNAME') : optionalEnv('ES_USERNAME', 'elastic'),
+      password: isProd ? requireEnv('ES_PASSWORD') : optionalEnv('ES_PASSWORD', 'changeme'),
       caFingerprint: caFingerprint && caFingerprint.length > 0 ? caFingerprint : undefined,
     },
     oidc: {
@@ -141,6 +141,17 @@ if (config.nodeEnv === 'production') {
   if (placeholders.some((v) => v.includes('your-tenant'))) {
     throw new Error(
       'OIDC configuration still contains placeholder values (your-tenant.*). Set OIDC_ISSUER / OIDC_JWKS_URI to real values in production.',
+    );
+  }
+  const weakEsPasswords = ['changeme', 'elastic', 'password', ''];
+  if (weakEsPasswords.includes(config.elasticsearch.password)) {
+    throw new Error(
+      'ES_PASSWORD must be set to a strong, non-default value in production.',
+    );
+  }
+  if (config.elasticsearch.node.startsWith('https://') && !config.elasticsearch.caFingerprint) {
+    throw new Error(
+      'ES_CA_FINGERPRINT is required when ES_NODE uses https in production.',
     );
   }
 }

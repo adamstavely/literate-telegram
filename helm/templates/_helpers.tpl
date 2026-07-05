@@ -116,7 +116,11 @@ Elasticsearch service name.
 Elasticsearch URL (http://host:port).
 */}}
 {{- define "interop.elasticsearch.url" -}}
+{{- if .Values.elasticsearch.url -}}
+{{- .Values.elasticsearch.url -}}
+{{- else -}}
 {{- printf "http://%s:%d" (include "interop.elasticsearch.serviceName" .) (int .Values.elasticsearch.port) }}
+{{- end -}}
 {{- end }}
 
 {{/*

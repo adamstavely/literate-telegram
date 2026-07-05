@@ -26,6 +26,13 @@
     </div>
   }
 
+  @if (loading()) {
+    <div role="status" aria-busy="true" aria-label="Loading policy settings" style="margin-top: 24px">
+      <div class="skeleton"></div>
+      <div class="skeleton"></div>
+      <div class="skeleton"></div>
+    </div>
+  } @else {
   <div class="policy-layout">
     <nav class="policy-nav" aria-label="Policy sections">
       @for (sec of sections(); track sec.id) {
@@ -476,8 +483,9 @@
       </div>
     </div>
   </div>
+  }
 
-  @if (dirty()) {
+  @if (dirty() && !loading() && !loadError()) {
     <div class="savebar fade-up" role="alert" aria-live="polite">
       <span class="savebar-dot"></span>
       <span class="savebar-txt">Unsaved policy changes</span>
