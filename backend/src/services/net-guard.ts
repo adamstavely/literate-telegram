@@ -1,5 +1,6 @@
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
+import { Agent } from 'undici';
 import { config } from '../config/index.js';
 import { HttpError } from '../middleware/error-handler.js';
 
@@ -9,9 +10,10 @@ import { HttpError } from '../middleware/error-handler.js';
  * to private/loopback/link-local/metadata addresses, and performs a size- and
  * time-bounded fetch that re-validates every redirect hop.
  *
- * Note: validation resolves DNS and checks the returned addresses; a fully
- * rebind-proof implementation would additionally pin the connection to the
- * validated IP (requires a custom dispatcher). That hardening is a follow-up.
+ * DNS-rebind safe: the hostname is resolved and validated once, and the socket
+ * is then PINNED to that exact IP (via an undici dispatcher) so fetch cannot
+ * re-resolve to a different (internal) address at connect time. The original
+ * hostname is still used for TLS SNI / Host / certificate validation.
  */
 
 function ipv4ToInt(ip: string): number | null {
@@ -99,16 +101,24 @@ function expandV6(ip: string): number[] | null {
 function isBlockedV6(ip: string): boolean {
   const b = expandV6(ip);
   if (!b) return true;
+  const embeddedV4 = (offset: number): string => `${b[offset]}.${b[offset + 1]}.${b[offset + 2]}.${b[offset + 3]}`;
   // IPv4-mapped ::ffff:0:0/96 → classify the embedded IPv4.
   if (b.slice(0, 10).every((x) => x === 0) && b[10] === 0xff && b[11] === 0xff) {
-    return isBlockedV4(`${b[12]}.${b[13]}.${b[14]}.${b[15]}`);
+    return isBlockedV4(embeddedV4(12));
   }
   // NAT64 64:ff9b::/96 → classify the embedded IPv4.
   if (b[0] === 0x00 && b[1] === 0x64 && b[2] === 0xff && b[3] === 0x9b && b.slice(4, 12).every((x) => x === 0)) {
-    return isBlockedV4(`${b[12]}.${b[13]}.${b[14]}.${b[15]}`);
+    return isBlockedV4(embeddedV4(12));
   }
-  if (b.every((x) => x === 0)) return true; // :: unspecified
-  if (b.slice(0, 15).every((x) => x === 0) && b[15] === 1) return true; // ::1 loopback
+  // ::/96 (incl. ::, ::1, and deprecated IPv4-compatible ::a.b.c.d) → the low 32
+  // bits are an IPv4 address; 0.0.0.0/8 and 127.0.0.0/8 cover :: and ::1.
+  if (b.slice(0, 12).every((x) => x === 0)) {
+    return isBlockedV4(embeddedV4(12));
+  }
+  // 6to4 2002:V4::/16 → embedded IPv4 in bytes 2..5.
+  if (b[0] === 0x20 && b[1] === 0x02) {
+    return isBlockedV4(embeddedV4(2));
+  }
   if (b[0] === 0xfe && (b[1] & 0xc0) === 0x80) return true; // fe80::/10 link-local
   if ((b[0] & 0xfe) === 0xfc) return true; // fc00::/7 unique-local
   if (b[0] === 0xff) return true; // ff00::/8 multicast
@@ -138,19 +148,31 @@ export function assertAllowedTarget(rawUrl: string): URL {
   return url;
 }
 
-/** Resolve a hostname and reject if any address is private/blocked. */
-export async function assertPublicHost(hostname: string): Promise<void> {
-  if (!config.outbound.blockPrivateAddresses) return;
+interface Pin {
+  address: string;
+  family: number;
+}
 
-  // Host may itself be an IP literal (URL hostname strips brackets from IPv6).
-  if (isIP(hostname)) {
-    if (isBlockedAddress(hostname)) {
-      throw new HttpError(400, 'Target address is not allowed');
-    }
-    return;
+/** WHATWG URL keeps brackets on IPv6 literals (e.g. "[::1]"); strip them. */
+function stripBrackets(host: string): string {
+  return host.startsWith('[') && host.endsWith(']') ? host.slice(1, -1) : host;
+}
+
+/**
+ * Validate a target host and return the exact IP to pin the connection to.
+ * Returns null when the host is already an IP literal (undici connects to it
+ * directly) or when private-address blocking is disabled.
+ */
+async function resolveAndPin(hostname: string): Promise<Pin | null> {
+  if (!config.outbound.blockPrivateAddresses) return null;
+
+  const bare = stripBrackets(hostname);
+  if (isIP(bare)) {
+    if (isBlockedAddress(bare)) throw new HttpError(400, 'Target address is not allowed');
+    return null; // literal — no DNS to rebind; undici dials it directly.
   }
 
-  let addresses: Array<{ address: string }>;
+  let addresses: Array<{ address: string; family: number }>;
   try {
     addresses = await lookup(hostname, { all: true });
   } catch {
@@ -159,6 +181,38 @@ export async function assertPublicHost(hostname: string): Promise<void> {
   if (addresses.length === 0 || addresses.some((a) => isBlockedAddress(a.address))) {
     throw new HttpError(400, 'Target host resolves to a disallowed address');
   }
+  return { address: addresses[0].address, family: addresses[0].family };
+}
+
+/** Resolve a hostname and reject if any address is private/blocked. */
+export async function assertPublicHost(hostname: string): Promise<void> {
+  await resolveAndPin(hostname);
+}
+
+/**
+ * Dispatcher that forces the socket to connect to the pre-validated IP, closing
+ * the DNS-rebind window. The original hostname is still used for TLS SNI / Host
+ * / certificate validation, so only the address lookup is overridden.
+ */
+function pinnedDispatcher(pin: Pin): Agent {
+  // undici calls this dns.lookup-style; it uses { all: true } and expects an
+  // array of { address, family }. Support both forms defensively.
+  const lookup = (
+    _hostname: string,
+    options: { all?: boolean } | undefined,
+    callback: (
+      err: NodeJS.ErrnoException | null,
+      address: string | Array<{ address: string; family: number }>,
+      family?: number,
+    ) => void,
+  ): void => {
+    if (options?.all) {
+      callback(null, [{ address: pin.address, family: pin.family }]);
+    } else {
+      callback(null, pin.address, pin.family);
+    }
+  };
+  return new Agent({ connect: { lookup: lookup as never } });
 }
 
 export interface SafeFetchOptions {
@@ -219,7 +273,8 @@ export async function safeFetch(rawUrl: string, opts: SafeFetchOptions = {}): Pr
     if (opts.pinnedHost && url.host.toLowerCase() !== opts.pinnedHost.toLowerCase()) {
       throw new HttpError(400, 'Target host is not permitted for this entry');
     }
-    await assertPublicHost(url.hostname);
+    // Resolve + validate once, then pin the connection to that IP (rebind-safe).
+    const pin = await resolveAndPin(url.hostname);
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -231,7 +286,8 @@ export async function safeFetch(rawUrl: string, opts: SafeFetchOptions = {}): Pr
         body: opts.body,
         redirect: 'manual',
         signal: controller.signal,
-      });
+        ...(pin ? { dispatcher: pinnedDispatcher(pin) } : {}),
+      } as RequestInit & { dispatcher?: Agent });
     } catch (err) {
       clearTimeout(timer);
       if (err instanceof Error && err.name === 'AbortError') {
@@ -260,6 +316,13 @@ export async function safeFetch(rawUrl: string, opts: SafeFetchOptions = {}): Pr
         truncated,
         finalUrl: url.toString(),
       };
+    } catch (err) {
+      // A timeout while streaming the body aborts the reader; map it to 504 like
+      // a header-phase timeout instead of leaking a generic 500.
+      if (err instanceof Error && err.name === 'AbortError') {
+        throw new HttpError(504, 'Upstream request timed out');
+      }
+      throw err;
     } finally {
       clearTimeout(timer);
     }
