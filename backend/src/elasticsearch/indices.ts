@@ -11,6 +11,7 @@ const POLICY_INDEX = 'interop-policy';
 const SLUG_LOCKS_INDEX = 'interop-slug-locks';
 const REGISTRY_SLUGS_INDEX = 'interop-registry-slugs';
 const COLLECTIONS_INDEX = 'interop-collections';
+const DOCS_FEEDBACK_INDEX = 'interop-docs-feedback';
 
 export const INDEX_NAMES = {
   REGISTRY: REGISTRY_INDEX,
@@ -23,6 +24,7 @@ export const INDEX_NAMES = {
   SLUG_LOCKS: SLUG_LOCKS_INDEX,
   REGISTRY_SLUGS: REGISTRY_SLUGS_INDEX,
   COLLECTIONS: COLLECTIONS_INDEX,
+  DOCS_FEEDBACK: DOCS_FEEDBACK_INDEX,
 } as const;
 
 async function createILMPolicy(policyName: string, maxAgeDays: number): Promise<boolean> {
@@ -521,6 +523,29 @@ async function createCollectionsIndex(): Promise<void> {
   });
 }
 
+async function createDocsFeedbackIndex(): Promise<void> {
+  if (await indexExists(DOCS_FEEDBACK_INDEX)) return;
+
+  await esClient.indices.create({
+    index: DOCS_FEEDBACK_INDEX,
+    mappings: {
+      dynamic: false,
+      properties: {
+        page_path: { type: 'keyword' },
+        page_title: { type: 'keyword' },
+        helpful: { type: 'keyword' },
+        message: { type: 'text', index: false },
+        visitor_id: { type: 'keyword' },
+        '@timestamp': { type: 'date' },
+      },
+    },
+    settings: {
+      number_of_shards: 1,
+      number_of_replicas: 1,
+    },
+  });
+}
+
 export async function setupIndices(): Promise<void> {
   await Promise.all([
     createRegistryIndex(),
@@ -533,5 +558,6 @@ export async function setupIndices(): Promise<void> {
     createSlugLocksIndex(),
     createRegistrySlugsIndex(),
     createCollectionsIndex(),
+    createDocsFeedbackIndex(),
   ]);
 }

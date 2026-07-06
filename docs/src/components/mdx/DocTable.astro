@@ -1,0 +1,31 @@
+---
+interface Props {
+  head: string[];
+  rows: string[][];
+}
+
+const { head, rows } = Astro.props;
+---
+
+<div class="doc-table-wrap">
+  <table class="doc-table">
+    <thead>
+      <tr>
+        {head.map((cell, i) => (
+          <th class:list={[{ lead: i === 0 }]}>{cell}</th>
+        ))}
+      </tr>
+    </thead>
+    <tbody>
+      {
+        rows.map((row) => (
+          <tr>
+            {row.map((cell, j) =>
+              j === 0 ? <th scope="row">{cell}</th> : <td>{cell}</td>,
+            )}
+          </tr>
+        ))
+      }
+    </tbody>
+  </table>
+</div>

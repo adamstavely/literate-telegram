@@ -1,0 +1,498 @@
+/* Docs-site overrides on top of the vendored Registry stylesheet. */
+
+[data-accent="iris"] { --accent: #6d28d9; --accent-ink: #5b21b6; }
+[data-accent="emerald"] { --accent: #1f9d62; --accent-ink: #16804f; }
+[data-accent="ember"] { --accent: #d4602a; --accent-ink: #b54c1d; }
+[data-accent="mono"] { --accent: #16181d; --accent-ink: #000000; }
+
+[data-theme="dark"][data-accent] {
+  --accent-ink: color-mix(in oklch, var(--accent) 62%, white);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.hamburger { display: none; }
+
+@media (max-width: 940px) {
+  .hdr-row { position: relative; }
+  .hamburger { display: inline-flex; }
+  .nav.open {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    gap: 2px;
+    padding: 8px 16px 12px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+    box-shadow: var(--shadow-md);
+    z-index: 50;
+  }
+  .nav.open .nav-item {
+    padding: 10px 8px;
+    border-radius: var(--radius-sm);
+  }
+}
+
+/* MDX renders semantic elements, not .doc-* classes — map prose to Registry doc styling. */
+.doc-prose { color: var(--ink-2); line-height: 1.68; }
+.doc-prose > :first-child { margin-top: 18px; }
+.doc-prose h2 {
+  font-size: 22px;
+  font-weight: 640;
+  letter-spacing: -.02em;
+  color: var(--ink);
+  margin: 38px 0 12px;
+  scroll-margin-top: 88px;
+}
+.doc-prose h3 {
+  font-size: 17px;
+  font-weight: 620;
+  color: var(--ink);
+  margin: 26px 0 8px;
+  scroll-margin-top: 88px;
+}
+.doc-prose p { font-size: 15px; line-height: 1.68; color: var(--ink-2); margin: 12px 0; }
+.doc-prose strong { font-weight: 600; color: var(--ink); }
+.doc-prose ul, .doc-prose ol { margin: 14px 0; }
+.doc-prose li { margin: 6px 0; line-height: 1.6; }
+.doc-prose a {
+  color: var(--accent-ink);
+  font-weight: 540;
+  border-bottom: 1px solid var(--accent-line);
+}
+.doc-prose a:hover { border-bottom-color: var(--accent); }
+.doc-prose a .external-link-icon {
+  display: inline;
+  vertical-align: -2px;
+  margin-left: 3px;
+}
+.doc-prose blockquote {
+  margin: 18px 0;
+  padding: 14px 16px;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-wash);
+  border-radius: 0 8px 8px 0;
+}
+.doc-prose blockquote p { margin: 0; }
+.doc-prose code {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  background: var(--bg-3);
+  color: var(--ink);
+  padding: 1.5px 6px;
+  border-radius: 5px;
+  border: 1px solid var(--line-2);
+}
+.doc-prose pre {
+  background: var(--code-bg);
+  border-radius: 11px;
+  padding: 16px 18px;
+  overflow: auto;
+  margin: 18px 0;
+}
+.doc-prose pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: #d6d9e0;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+/* Docs shell sits below the sticky site header (60px + 1px border ≈ 65px). */
+.docs-nav { top: 65px; height: calc(100vh - 65px); }
+.docs-toc { top: 65px; }
+
+.docs-nav-item {
+  text-decoration: none;
+}
+
+.doc-prose .docs-pager-placeholder {
+  margin-top: 46px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--faint);
+}
+
+.doc-card {
+  text-decoration: none;
+  color: inherit;
+}
+
+.docs-body:not(.doc-prose) .doc-h2,
+.docs-body:not(.doc-prose) h2 {
+  font-size: 22px;
+  font-weight: 640;
+  letter-spacing: -.02em;
+  color: var(--ink);
+  margin: 38px 0 12px;
+  scroll-margin-top: 88px;
+}
+
+.docs-body:not(.doc-prose) .doc-p,
+.docs-body:not(.doc-prose) p {
+  font-size: 15px;
+  line-height: 1.68;
+  color: var(--ink-2);
+  margin: 12px 0;
+}
+
+.docs-body:not(.doc-prose) .doc-list,
+.docs-body:not(.doc-prose) ul {
+  margin: 14px 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.docs-body:not(.doc-prose) .doc-list li,
+.docs-body:not(.doc-prose) ul li {
+  position: relative;
+  padding-left: 22px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+
+.docs-body:not(.doc-prose) .doc-list li::before,
+.docs-body:not(.doc-prose) ul:not(.doc-steps) li::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 10px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.doc-kv-v a,
+.doc-step-t a,
+.doc-step-b a,
+.docs-body a.doc-link {
+  color: var(--accent-ink);
+  font-weight: 540;
+  border-bottom: 1px solid var(--accent-line);
+  text-decoration: none;
+}
+
+/* ── Tags (Phase 4) ─────────────────────────────────────────────────────── */
+
+.docs-nav-footer {
+  margin-top: 22px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.docs-nav-tags {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.docs-nav-tags.on {
+  color: var(--accent-ink);
+}
+
+.docs-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+
+.docs-meta .stat {
+  color: var(--muted);
+}
+
+.docs-meta .stat svg {
+  color: var(--muted);
+}
+
+.docs-meta-tags {
+  margin: 0;
+}
+
+.docs-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+}
+
+.docs-tag.model-chip {
+  text-decoration: none;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+a.docs-tag.model-chip:hover {
+  border-color: var(--accent);
+  background: color-mix(in oklch, var(--accent) 14%, var(--cm));
+}
+
+.docs-tags-back {
+  margin: 0 0 20px;
+  font-size: 14px;
+}
+
+.docs-doc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.docs-doc-list.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (min-width: 560px) {
+  .docs-doc-list.grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 680px) {
+  .docs-doc-list.grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.docs-doc-list.grid .docs-doc-list-item {
+  padding: 10px 12px;
+  height: 100%;
+}
+
+.docs-doc-list.grid .docs-doc-list-title {
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.docs-doc-list.grid .docs-doc-list-desc {
+  font-size: 11.5px;
+  margin-top: 3px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.docs-doc-list-item {
+  display: block;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--paper);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.14s, background 0.14s, transform 0.14s;
+  box-shadow: var(--shadow-sm);
+}
+
+.docs-doc-list-item:hover {
+  border-color: var(--accent-line);
+  background: var(--accent-wash);
+  transform: translateY(-1px);
+}
+
+.docs-doc-list-title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.docs-doc-list-desc {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+.docs-doc-list-empty {
+  font-size: 14px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.docs-related {
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.docs-related-heading {
+  font-size: 15px;
+  font-weight: 640;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin: 0 0 12px;
+}
+
+/* Article footer — updated (left) + feedback (right) */
+.docs-article-footer {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 16px 24px;
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.docs-footer-updated {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: start;
+  align-self: start;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.docs-article-footer .docs-feedback.bare {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  align-self: start;
+  min-width: 0;
+  max-width: min(100%, 400px);
+}
+
+/* ── Page feedback (Phase 5) ─────────────────────────────────────────────── */
+
+.docs-feedback {
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+
+.docs-feedback.bare {
+  margin: 0;
+  padding: 0;
+  border: none;
+  flex: 1 1 auto;
+  min-width: min(100%, 280px);
+}
+
+.docs-feedback.bare .docs-feedback-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px 14px;
+}
+
+.docs-feedback.bare .docs-feedback-q {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.docs-feedback.bare .docs-feedback-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.docs-feedback.bare .docs-feedback-message {
+  flex: 0 1 auto;
+  width: min(320px, 100%);
+  max-width: 100%;
+}
+
+.docs-feedback.bare .docs-feedback-textarea {
+  max-width: none;
+}
+
+.docs-feedback.bare .docs-feedback-thanks,
+.docs-feedback.bare .docs-feedback-error {
+  flex: 1 1 100%;
+  text-align: right;
+}
+
+.docs-feedback-q {
+  font-size: 14px;
+  font-weight: 560;
+  color: var(--ink);
+  margin: 0 0 12px;
+}
+
+.docs-feedback-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.docs-feedback-label {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.docs-feedback-textarea {
+  display: block;
+  width: 100%;
+  max-width: 480px;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  resize: vertical;
+  min-height: 72px;
+}
+
+.docs-feedback-textarea:focus {
+  outline: none;
+  border-color: var(--accent-line);
+  box-shadow: 0 0 0 3px var(--accent-wash);
+}
+
+.docs-feedback-thanks {
+  font-size: 14px;
+  color: var(--ok);
+  margin: 0;
+}
+
+.docs-feedback-error {
+  font-size: 13px;
+  color: var(--danger);
+  margin: 10px 0 0;
+}
+
+.docs-feedback .hidden {
+  display: none !important;
+}

@@ -1,0 +1,10 @@
+---
+/** Renders pre-built HTML bodies (e.g. synced skills articles) without MDX parsing the markup. */
+interface Props {
+  html: string;
+}
+
+const { html } = Astro.props;
+---
+
+<div class="docs-body" set:html={html} />

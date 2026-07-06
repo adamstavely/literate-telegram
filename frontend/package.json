@@ -8,8 +8,7 @@
     "test": "ng test",
     "test:ci": "ng test --watch=false --browsers=ChromeHeadlessNoSandbox --code-coverage",
     "check:styles": "node ../scripts/check-styles-sync.mjs",
-    "lint": "ng lint",
-    "sync:skills-docs": "node scripts/sync-skills-docs.mjs"
+    "lint": "ng lint"
   },
   "dependencies": {
     "@angular/animations": "^17.3.0",

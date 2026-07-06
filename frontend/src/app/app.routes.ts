@@ -63,17 +63,6 @@ export const routes: Routes = [
       import('./features/collections/collection-detail.component').then(m => m.CollectionDetailComponent),
   },
   {
-    path: 'docs',
-    loadComponent: () =>
-      import('./features/docs/docs.component').then(m => m.DocsComponent),
-    title: 'Docs — Interop',
-  },
-  {
-    path: 'docs/:articleId',
-    loadComponent: () =>
-      import('./features/docs/docs.component').then(m => m.DocsComponent),
-  },
-  {
     path: '**',
     loadComponent: () =>
       import('./features/not-found/not-found.component').then(m => m.NotFoundComponent),

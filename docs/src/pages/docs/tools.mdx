@@ -1,0 +1,52 @@
+---
+layout: ../../layouts/DocLayout.astro
+title: "Tools"
+description: "One callable function: name, schema, return value."
+tags: ["Object Types","Tools"]
+---
+
+import Callout from '../../components/mdx/Callout.astro';
+import DocCards from '../../components/mdx/DocCards.astro';
+import DocTable from '../../components/mdx/DocTable.astro';
+import KeyVal from '../../components/mdx/KeyVal.astro';
+import Lead from '../../components/mdx/Lead.astro';
+import Steps from '../../components/mdx/Steps.astro';
+
+<Lead>A tool is the smallest unit of capability in the registry — a single function the model can call. It's a primitive in the MCP spec, always exposed by a server.</Lead>
+
+## Anatomy of a tool
+
+
+```json
+{
+  "name": "create_issue",
+  "description": "Open a new issue on a repository.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "repo":  { "type": "string" },
+      "title": { "type": "string" },
+      "body":  { "type": "string" }
+    },
+    "required": ["repo", "title"]
+  }
+}
+```
+
+
+The model fills in the input schema, code on the server runs, and a typed result comes back — here, an `Issue { number, url, state }`.
+
+
+## Read vs. write
+
+
+The single most important property of a tool is whether it **mutates state**. `search_code` is read-only and low-risk. `delete_table` is irreversible. The registry marks write tools, and the default posture holds them behind an allowlist until an admin opts in.
+
+
+<Callout tone="warn" icon="warning">Destructive verbs — <code class="doc-icode">delete_</code>, <code class="doc-icode">drop_</code>, <code class="doc-icode">purge_</code> — with no confirmation step are flagged automatically at review. See <a href="/docs/least-privilege" class="doc-link">Least privilege</a>.</Callout>
+
+
+## Trying a tool
+
+
+Every tool has a **Use** action. It runs against a mock that mirrors the real input schema and return shape, so you can feel how a tool behaves before connecting its server for real.

@@ -1,0 +1,40 @@
+---
+export interface DocPage {
+  title: string;
+  description?: string;
+  url: string;
+}
+
+interface Props {
+  pages: DocPage[];
+  emptyText?: string;
+  layout?: 'list' | 'grid';
+}
+
+const {
+  pages,
+  emptyText = 'No pages carry this tag yet.',
+  layout = 'list',
+} = Astro.props;
+---
+
+{
+  pages.length === 0 ? (
+    <p class="docs-doc-list-empty">{emptyText}</p>
+  ) : (
+    <ul class:list={['docs-doc-list', { grid: layout === 'grid' }]}>
+      {
+        pages.map((page) => (
+          <li>
+            <a href={page.url} class="docs-doc-list-item">
+              <div class="docs-doc-list-title">{page.title}</div>
+              {page.description && (
+                <div class="docs-doc-list-desc">{page.description}</div>
+              )}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  )
+}

@@ -1,0 +1,26 @@
+---
+export interface StepItem {
+  title: string;
+  body: string;
+}
+
+interface Props {
+  items: StepItem[];
+}
+
+const { items } = Astro.props;
+---
+
+<ol class="doc-steps">
+  {
+    items.map((step, i) => (
+      <li>
+        <span class="doc-step-n">{i + 1}</span>
+        <div>
+          <div class="doc-step-t" set:html={step.title} />
+          <div class="doc-step-b" set:html={step.body} />
+        </div>
+      </li>
+    ))
+  }
+</ol>

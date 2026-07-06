@@ -1,0 +1,59 @@
+---
+layout: ../../layouts/DocLayout.astro
+title: "Skills"
+description: "Procedural knowledge, loaded on demand."
+tags: ["Object Types","Skills"]
+---
+
+import Callout from '../../components/mdx/Callout.astro';
+import DocCards from '../../components/mdx/DocCards.astro';
+import DocTable from '../../components/mdx/DocTable.astro';
+import KeyVal from '../../components/mdx/KeyVal.astro';
+import Lead from '../../components/mdx/Lead.astro';
+import Steps from '../../components/mdx/Steps.astro';
+
+<Lead>A skill is the one object type that isn't part of the MCP protocol. It carries no credentials and exposes no endpoint. It's knowledge — a file the agent reads to learn <em>how</em> to do a task well.</Lead>
+
+## A skill is read, not called
+
+
+Where a tool is a function the model invokes, a skill is a document the agent loads into context. It tells the agent the steps, the conventions, which tools to reach for, and what good output looks like. The worst case of a bad skill is bad *advice*, not a bad *action*.
+
+
+## Progressive disclosure
+
+
+Agents can't hold every skill in context at once, so skills load in two stages. The agent always holds a lightweight **index** — just each skill's name and description. When a task matches, it pulls the **full SKILL.md** for that one skill.
+
+
+<Callout tone="accent" icon="skill">You're talking to an instance of exactly this pattern right now: an agent holds a list of skill descriptions and pulls the full instructions in only when a task calls for one.</Callout>
+
+
+## Anatomy of a SKILL.md
+
+
+```markdown
+---
+name: PR Review
+description: Review a pull request the way a senior engineer would.
+triggers: ["review this PR", "code review", "look at this diff"]
+---
+
+# PR Review
+
+Separate blocking issues from nits. End with an explicit verdict.
+
+1. Read the diff in full before commenting.
+2. Check tests cover the change.
+3. Flag correctness and security first; style last.
+4. Close with: ship / hold / needs-changes.
+```
+
+
+The frontmatter is what lives in the index. The body is what loads on a match. A tight, specific `description` is what makes a skill trigger reliably — see the [SKILL.md spec](/docs/skill-spec).
+
+
+## Why skills aren't governed like servers
+
+
+A gateway governs servers because servers hold credentials and perform actions. A skill does neither, so the registry reviews its **content** — for prompt-injection patterns, for clear triggers, for a sane token budget — rather than its access.

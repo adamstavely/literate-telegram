@@ -1,0 +1,49 @@
+---
+import { slugifyTag, tagHref } from '../lib/tag-utils';
+
+interface Props {
+  /** Display labels (a single doc's tags) or {display,count} objects (the index). */
+  tags: (string | { display: string; count?: number })[];
+  /** Show "(n)" counts after each chip (used on the tags index). */
+  showCounts?: boolean;
+  /** Render chips as links to their tag page. Set false inside a related-doc card. */
+  linked?: boolean;
+  class?: string;
+}
+
+const { tags, showCounts = false, linked = true, class: className = '' } = Astro.props;
+
+const chips = tags.map((t) =>
+  typeof t === 'string'
+    ? { display: t, count: undefined }
+    : { display: t.display, count: t.count },
+);
+---
+
+{
+  chips.length > 0 && (
+    <div class:list={['docs-tags', className]} role="list" aria-label="Tags">
+      {
+        chips.map((c) => {
+          const slug = slugifyTag(c.display);
+          const countSuffix =
+            showCounts && c.count != null ? ` (${c.count})` : '';
+          const label = `${c.display}${countSuffix}`;
+          return (
+            <span class="docs-tag-wrap" role="listitem">
+              {
+                linked && slug ? (
+                  <a href={tagHref(slug)} class="docs-tag model-chip">
+                    {label}
+                  </a>
+                ) : (
+                  <span class="docs-tag model-chip">{label}</span>
+                )
+              }
+            </span>
+          );
+        })
+      }
+    </div>
+  )
+}

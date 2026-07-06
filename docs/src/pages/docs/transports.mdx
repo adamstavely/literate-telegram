@@ -1,0 +1,42 @@
+---
+layout: ../../layouts/DocLayout.astro
+title: "Transports & auth"
+description: "How servers are reached and how they prove identity."
+tags: ["Reference","MCP"]
+---
+
+import Callout from '../../components/mdx/Callout.astro';
+import DocCards from '../../components/mdx/DocCards.astro';
+import DocTable from '../../components/mdx/DocTable.astro';
+import KeyVal from '../../components/mdx/KeyVal.astro';
+import Lead from '../../components/mdx/Lead.astro';
+import Steps from '../../components/mdx/Steps.astro';
+
+<Lead>Two properties define how a server connects: its transport (the wire) and its authentication (the credential). The registry can permit or forbid each at the policy level.</Lead>
+
+## Transports
+
+
+<KeyVal rows={[
+  ["HTTP", "Streamable HTTP. A remote endpoint — the common case for hosted servers."],
+  ["SSE", "Server-sent events. A long-lived remote stream."],
+  ["stdio", "Runs a local subprocess on the host. The highest blast radius — often disallowed by policy."]
+]} />
+
+
+<Callout tone="warn" icon="warning"><code class="doc-icode">stdio</code> executes a process on the host machine. Many organizations forbid it at the registry level — admins control this under <strong>Policy settings → Capabilities</strong>.</Callout>
+
+
+## Authentication
+
+
+<KeyVal rows={[
+  ["OAuth 2.1", "Delegated, scoped, revocable. The preferred scheme for user-facing servers."],
+  ["API key", "A static secret. Simple, but rotate it and scope it tightly."],
+  ["Bot token", "Workspace-scoped identity, common for messaging servers."],
+  ["Connection string", "Direct resource access, e.g. a database. Treat as highly sensitive."],
+  ["None", "Anonymous. Disallowing this blocks credential-free servers entirely."]
+]} />
+
+
+Credentials live with the **server**, never with individual tool calls. A virtual server inherits its parent's auth — exposing one tool doesn't mint a new credential.

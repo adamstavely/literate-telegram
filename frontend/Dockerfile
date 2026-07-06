@@ -1,37 +1,49 @@
 # ============================================================
-# Stage 1 — builder
+# Stage 1 — Angular builder
 # ============================================================
-FROM node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 AS builder
+FROM node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 AS angular-builder
 
-WORKDIR /build
+WORKDIR /build/frontend
 
-# Install dependencies first (layer-cache friendly)
-COPY package.json package-lock.json* ./
+COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci --ignore-scripts
 
-# Copy all source files and compile
-COPY angular.json tsconfig.json tsconfig.app.json tsconfig.spec.json ./
-COPY src/ ./src/
+COPY frontend/angular.json frontend/tsconfig.json frontend/tsconfig.app.json frontend/tsconfig.spec.json ./
+COPY frontend/src ./src/
 RUN npm run build
 
 # ============================================================
-# Stage 2 — runner (nginx)
+# Stage 2 — Astro docs builder (Astro 7 requires Node >= 22.12)
+# ============================================================
+FROM node:22-alpine AS docs-builder
+
+WORKDIR /build
+
+COPY docs/package.json docs/package-lock.json ./docs/
+RUN cd docs && npm ci
+
+COPY docs ./docs
+COPY project/docs-content.js ./project/docs-content.js
+COPY project/styles.css ./project/styles.css
+WORKDIR /build/docs
+RUN npm run content:sync && npm run build
+
+# ============================================================
+# Stage 3 — runner (nginx)
 # ============================================================
 FROM nginx:1.25-alpine@sha256:516475cc129da42866742567714ddc681e5eed7b9ee0b9e9c015e464b4221a00 AS runner
 
-# Remove default nginx config and content. Install curl so the HEALTHCHECK
-# doesn't depend on wget being present in the base image.
 RUN rm -rf /usr/share/nginx/html/* /etc/nginx/conf.d/* \
   && apk add --no-cache curl
 
-# Copy compiled Angular app
-COPY --from=builder /build/dist/interop-frontend/browser /usr/share/nginx/html
+COPY --from=angular-builder /build/frontend/dist/interop-frontend/browser /usr/share/nginx/html
+COPY --from=docs-builder /build/docs/dist/docs /usr/share/nginx/html/docs
+COPY --from=docs-builder /build/docs/dist/_astro /usr/share/nginx/html/_astro
+COPY --from=docs-builder /build/docs/public/fonts /usr/share/nginx/html/fonts
 
-# Copy nginx configuration — uses envsubst for BACKEND_URL at startup
-COPY nginx.conf /etc/nginx/nginx.conf
-COPY nginx-security-headers.conf /etc/nginx/nginx-security-headers.conf
+COPY frontend/nginx.conf /etc/nginx/nginx.conf
+COPY frontend/nginx-security-headers.conf /etc/nginx/nginx-security-headers.conf
 
-# Create temp dirs nginx needs when running as non-root
 RUN mkdir -p /var/cache/nginx/client_temp \
              /var/cache/nginx/proxy_temp \
              /var/cache/nginx/fastcgi_temp \
@@ -40,7 +52,7 @@ RUN mkdir -p /var/cache/nginx/client_temp \
   && chown -R nginx:nginx /var/cache/nginx /var/log/nginx /etc/nginx/conf.d /usr/share/nginx/html \
   && chmod -R 755 /var/cache/nginx
 
-COPY docker-entrypoint.sh /docker-entrypoint.sh
+COPY frontend/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
 USER nginx

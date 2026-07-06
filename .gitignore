@@ -1,5 +1,8 @@
 node_modules/
 dist/
+docs/node_modules/
+docs/dist/
+docs/.astro/
 .env
 *.local
 .DS_Store
@@ -9,3 +12,4 @@ coverage/
 npm-debug.log*
 .nyc_output/
 tmp/
+wcag-audit-report.json

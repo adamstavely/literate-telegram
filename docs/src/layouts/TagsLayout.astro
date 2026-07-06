@@ -1,0 +1,61 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import { DOC_NAV, activeNavId } from '../lib/nav';
+import { tagsIndexHref } from '../lib/tag-utils';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = '' } = Astro.props;
+const pathname = Astro.url.pathname;
+const currentId = activeNavId(pathname);
+const onTagsSection = pathname.startsWith('/docs/tags');
+---
+
+<BaseLayout title={title}>
+  <div class="docs-shell">
+    <aside class="docs-nav" aria-label="Documentation navigation">
+      <div class="docs-nav-inner">
+        {
+          DOC_NAV.map((section) => (
+            <div class="docs-nav-group">
+              <div class="docs-nav-glabel">{section.group}</div>
+              {section.items.map((item) => (
+                <a
+                  href={item.href}
+                  class:list={['docs-nav-item', { on: currentId === item.id }]}
+                  aria-current={currentId === item.id ? 'page' : undefined}
+                >
+                  {item.label}
+                </a>
+              ))}
+            </div>
+          ))
+        }
+        <div class="docs-nav-footer">
+          <a
+            href={tagsIndexHref()}
+            class:list={['docs-nav-item', 'docs-nav-tags', { on: onTagsSection }]}
+            aria-current={onTagsSection ? 'page' : undefined}
+          >
+            Browse tags
+          </a>
+        </div>
+      </div>
+    </aside>
+
+    <div class="docs-main" id="docs-content" tabindex="-1" role="region" aria-label={title}>
+      <article class="docs-article fade-up">
+        <div class="docs-eyebrow">Documentation</div>
+        <h1 class="docs-title">{title}</h1>
+        {description && <p class="docs-desc">{description}</p>}
+        <div class="docs-divider-full" aria-hidden="true"></div>
+        <div class="docs-body">
+          <slot />
+        </div>
+      </article>
+    </div>
+  </div>
+</BaseLayout>

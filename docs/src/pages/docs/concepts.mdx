@@ -1,0 +1,59 @@
+---
+layout: ../../layouts/DocLayout.astro
+title: "Core concepts"
+description: "Servers, tools, and skills — the precise distinction."
+tags: ["Getting Started","Platform"]
+---
+
+import Callout from '../../components/mdx/Callout.astro';
+import DocCards from '../../components/mdx/DocCards.astro';
+import DocTable from '../../components/mdx/DocTable.astro';
+import KeyVal from '../../components/mdx/KeyVal.astro';
+import Lead from '../../components/mdx/Lead.astro';
+import Steps from '../../components/mdx/Steps.astro';
+
+<Lead>These three words get used loosely. The registry treats them as distinct object types because they behave differently and are governed differently. Here's the exact line between them.</Lead>
+
+## Tool
+
+
+A tool is **one callable function**: a name, a description, an input schema, and a return value. `send_email`, `query_graph`. The model calls it, code runs, a result comes back. It is a primitive in the MCP spec.
+
+
+## MCP server
+
+
+A server is the **package and process** that exposes a set of tools — plus resources and prompts — over the MCP protocol. Tools-to-server is many-to-one: the server is a governed toolbox behind one endpoint, carrying the credentials, the transport (`stdio` / `HTTP` / `SSE`), and the lifecycle.
+
+
+When a gateway enforces least privilege through *virtual servers*, it is choosing which tools from which servers a given caller can see. That is access control over the capability axis.
+
+
+## Skill
+
+
+A skill is **portable procedural knowledge**, not a callable endpoint. It's a SKILL.md file with YAML frontmatter — name, description, trigger phrases — that tells the agent *how* to do a task: the steps, the conventions, which tools to reach for, what good output looks like.
+
+
+The agent does not call a skill, it **reads** one. The distinguishing mechanism is *progressive disclosure*: the agent holds a lightweight index of skill names and descriptions, and loads the full SKILL.md only when a task matches.
+
+
+<Callout tone="accent" icon="skill">A clean way to hold it: bundles give an agent the ability to <strong>do</strong> things; skills give it the ability to <strong>think</strong>.</Callout>
+
+
+## Side by side
+
+
+<DocTable head={["", "Server", "Tool", "Skill"]} rows={[
+  ["Layer", "MCP protocol", "MCP protocol", "Host / agent"],
+  ["Agent action", "Connects", "Calls", "Reads"],
+  ["Carries credentials", "Yes", "Inherits server's", "No"],
+  ["Unit", "Process + endpoint", "Function", "SKILL.md file"],
+  ["Governed by", "The gateway", "Allowlist per virtual server", "Content review"]
+]} />
+
+
+## The architectural line
+
+
+Tools and servers **are** the MCP protocol. Skills are a separate standard that lives at the host layer above it. That's why the registry distributes both but treats them as different object types — and why a gateway governs servers but has nothing to say about skills.

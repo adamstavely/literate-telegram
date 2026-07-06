@@ -1,16 +1,14 @@
 import { Component, OnInit, signal, inject, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RegistryService } from '../../core/services/registry.service';
-import { AuthService } from '../../core/services/auth.service';
 import { Collection } from '../../shared/types';
 import { CollectionCardComponent } from '../../shared/components/collection-card/collection-card.component';
 
 @Component({
   selector: 'app-collections',
   standalone: true,
-  imports: [CommonModule, RouterLink, CollectionCardComponent],
+  imports: [CommonModule, CollectionCardComponent],
   template: `
     <div class="container page">
       <div class="page-head">
@@ -20,11 +18,6 @@ import { CollectionCardComponent } from '../../shared/components/collection-card
           Hand-picked sets of agents, servers, and skills that work together — installed and governed as one.
           Start from a stack instead of wiring the pieces yourself.
         </p>
-        @if (isAdmin()) {
-          <a class="btn btn-primary btn-sm" routerLink="/collections/new" style="margin-top: 14px">
-            + New collection
-          </a>
-        }
       </div>
       @if (loading()) {
         <div class="skeleton" style="height: 200px"></div>
@@ -45,11 +38,7 @@ import { CollectionCardComponent } from '../../shared/components/collection-card
 })
 export class CollectionsComponent implements OnInit {
   private readonly registry = inject(RegistryService);
-  private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
-
-  /** Only admins can create collections (POST /api/collections requires admin). */
-  readonly isAdmin = toSignal(this.auth.isAdmin$, { initialValue: this.auth.isAdmin() });
 
   readonly collections = signal<Collection[]>([]);
   readonly loading = signal(true);

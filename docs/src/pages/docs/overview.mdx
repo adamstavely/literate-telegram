@@ -1,0 +1,48 @@
+---
+layout: ../../layouts/DocLayout.astro
+title: "Overview"
+description: "Interop is the interoperability layer for everything an agent uses."
+tags: ["Getting Started","Platform"]
+---
+
+import Callout from '../../components/mdx/Callout.astro';
+import DocCards from '../../components/mdx/DocCards.astro';
+import DocTable from '../../components/mdx/DocTable.astro';
+import KeyVal from '../../components/mdx/KeyVal.astro';
+import Lead from '../../components/mdx/Lead.astro';
+import Steps from '../../components/mdx/Steps.astro';
+
+<Lead>An agent is only as capable as the things it can reach for. Interop is where your organization registers, governs, and discovers those capabilities — the <strong>servers</strong> and <strong>tools</strong> that let an agent <em>act</em>, and the <strong>skills</strong> that teach it how to act <em>well</em>.</Lead>
+
+## Three object types
+
+
+Everything in the registry is one of three kinds. They sit at two different layers of the stack, and that distinction drives how each is governed.
+
+
+<DocCards items={[
+  { icon: "server", title: "MCP server", body: "A package that exposes a set of tools, resources, and prompts over the MCP protocol. Carries the credentials, transport, and lifecycle.", href: "/docs/servers" },
+  { icon: "tool", title: "Tool", body: "A single callable function — name, input schema, return value. The model calls it, code runs, a result comes back.", href: "/docs/tools" },
+  { icon: "skill", title: "Skill", body: "Portable procedural knowledge. A SKILL.md the agent reads when a task matches — not an endpoint it calls.", href: "/docs/skills" }
+]} />
+
+
+<Callout tone="accent" icon="shield">The one architectural line that matters: <strong>tools and servers are the MCP protocol; skills are not.</strong> MCP defines tools, resources, prompts, and the server transport. Skills are a separate, complementary standard that lives at the host/agent layer <em>above</em> the protocol.</Callout>
+
+
+## What the registry gives you
+
+
+- **One catalog** for servers, tools, and skills — searchable, filterable, and versioned.
+- **Governed distribution.** Every entry passes through review; least privilege is the default posture.
+- **Compatibility at a glance.** See which clients and models each entry supports before you connect it.
+- **A path to publish.** Anyone on the team can submit; admins decide what reaches an agent.
+
+
+## Where to go next
+
+
+<DocCards items={[
+  { icon: "bolt", title: "Quickstart", body: "Find a server, connect a client, and invoke your first tool in a sandbox.", href: "/docs/quickstart" },
+  { icon: "book", title: "Core concepts", body: "The precise difference between a server, a tool, and a skill — and why it matters.", href: "/docs/concepts" }
+]} />

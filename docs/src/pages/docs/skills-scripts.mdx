@@ -1,0 +1,78 @@
+---
+layout: ../../layouts/DocLayout.astro
+title: "Using scripts in skills"
+description: "How to run commands and bundle executable scripts in your skills."
+navLabel: "Using scripts"
+tags: ["Agent Skills","Reference"]
+---
+
+import Lead from '../../components/mdx/Lead.astro';
+import RawHtml from '../../components/mdx/RawHtml.astro';
+
+<Lead>How to run commands and bundle executable scripts in your skills.</Lead>
+
+<RawHtml html={`<h2 id="one-off-commands" class="doc-h2">One-off commands</h2>
+<p class="doc-p">When an existing package already does what you need, you can reference it directly in your <code>SKILL.md</code> instructions without a <code>scripts/</code> directory. Many ecosystems provide tools that auto-resolve dependencies at runtime.</p>
+<h3 class="doc-h3">uvx</h3>
+<p class="doc-p"><a href="https://docs.astral.sh/uv/guides/tools/" class="doc-link">uvx</a> runs Python packages in isolated environments with aggressive caching. It ships with <a href="https://docs.astral.sh/uv/" class="doc-link">uv</a>.</p>
+<div class="codeblock"><pre><code>\\\`\\\`\\\`bash
+ruby scripts/extract.rb
+\\\`\\\`\\\`
+
+* Pin versions explicitly (\\\`gem &#39;nokogiri&#39;, &#39;~&gt; 1.16&#39;\\\`) — there is no lockfile.
+* An existing \\\`Gemfile\\\` or \\\`BUNDLE_GEMFILE\\\` env var in the working directory can interfere.
+</code></pre></div>
+<h2 id="designing-scripts-for-agentic-use" class="doc-h2">Designing scripts for agentic use</h2>
+<p class="doc-p">When an agent runs your script, it reads stdout and stderr to decide what to do next. A few design choices make scripts dramatically easier for agents to use.</p>
+<h3 class="doc-h3">Avoid interactive prompts</h3>
+<p class="doc-p">This is a hard requirement of the agent execution environment. Agents operate in non-interactive shells — they cannot respond to TTY prompts, password dialogs, or confirmation menus. A script that blocks on interactive input will hang indefinitely.</p>
+<p class="doc-p">Accept all input via command-line flags, environment variables, or stdin:</p>
+<div class="codeblock"><pre><code># Bad: hangs waiting for input
+$ python scripts/deploy.py
+Target environment: _
+
+# Good: clear error with guidance
+$ python scripts/deploy.py
+Error: --env is required. Options: development, staging, production.
+Usage: python scripts/deploy.py --env staging --tag v1.2.3
+</code></pre></div>
+<h3 class="doc-h3">Document usage with <code>--help</code></h3>
+<p class="doc-p"><code>--help</code> output is the primary way an agent learns your script&#39;s interface. Include a brief description, available flags, and usage examples:</p>
+<div class="codeblock"><pre><code>Usage: scripts/process.py [OPTIONS] INPUT_FILE
+
+Process input data and produce a summary report.
+
+Options:
+  --format FORMAT    Output format: json, csv, table (default: json)
+  --output FILE      Write output to FILE instead of stdout
+  --verbose          Print progress to stderr
+
+Examples:
+  scripts/process.py data.csv
+  scripts/process.py --format csv --output report.csv data.csv
+</code></pre></div>
+<p class="doc-p">Keep it concise — the output enters the agent&#39;s context window alongside everything else it&#39;s working with.</p>
+<h3 class="doc-h3">Write helpful error messages</h3>
+<p class="doc-p">When an agent gets an error, the message directly shapes its next attempt. An opaque &quot;Error: invalid input&quot; wastes a turn. Instead, say what went wrong, what was expected, and what to try:</p>
+<div class="codeblock"><pre><code>Error: --format must be one of: json, csv, table.
+       Received: &quot;xml&quot;
+</code></pre></div>
+<h3 class="doc-h3">Use structured output</h3>
+<p class="doc-p">Prefer structured formats — JSON, CSV, TSV — over free-form text. Structured formats can be consumed by both the agent and standard tools (<code>jq</code>, <code>cut</code>, <code>awk</code>), making your script composable in pipelines.</p>
+<div class="codeblock"><pre><code># Whitespace-aligned — hard to parse programmatically
+NAME          STATUS    CREATED
+my-service    running   2025-01-15
+
+# Delimited — unambiguous field boundaries
+{&quot;name&quot;: &quot;my-service&quot;, &quot;status&quot;: &quot;running&quot;, &quot;created&quot;: &quot;2025-01-15&quot;}
+</code></pre></div>
+<p class="doc-p"><strong>Separate data from diagnostics:</strong> send structured data to stdout and progress messages, warnings, and other diagnostics to stderr. This lets the agent capture clean, parseable output while still having access to diagnostic information when needed.</p>
+<h3 class="doc-h3">Further considerations</h3>
+<ul class="doc-list">
+<li><strong>Idempotency.</strong> Agents may retry commands. &quot;Create if not exists&quot; is safer than &quot;create and fail on duplicate.&quot;</li>
+<li><strong>Input constraints.</strong> Reject ambiguous input with a clear error rather than guessing. Use enums and closed sets where possible.</li>
+<li><strong>Dry-run support.</strong> For destructive or stateful operations, a <code>--dry-run</code> flag lets the agent preview what will happen.</li>
+<li><strong>Meaningful exit codes.</strong> Use distinct exit codes for different failure types (not found, invalid arguments, auth failure) and document them in your <code>--help</code> output so the agent knows what each code means.</li>
+<li><strong>Safe defaults.</strong> Consider whether destructive operations should require explicit confirmation flags (<code>--confirm</code>, <code>--force</code>) or other safeguards appropriate to the risk level.</li>
+<li><strong>Predictable output size.</strong> Many agent harnesses automatically truncate tool output beyond a threshold (e.g., 10-30K characters), potentially losing critical information. If your script might produce large output, default to a summary or a reasonable limit, and support flags like <code>--offset</code> so the agent can request more information when needed. Alternatively, if output is large and not amenable to pagination, require agents to pass an <code>--output</code> flag that specifies either an output file or <code>-</code> to explicitly opt in to stdout.</li>
+</ul>`} />

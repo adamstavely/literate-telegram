@@ -56,6 +56,23 @@ jobs:
         env:
           CHROME_BIN: chrome
 
+  docs:
+    name: Docs (Astro build + check)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm run check
+
   docker:
     name: Docker images build
     runs-on: ubuntu-latest
@@ -65,7 +82,7 @@ jobs:
       - name: Build backend image
         run: docker build -f backend/Dockerfile ./backend
       - name: Build frontend image
-        run: docker build -f frontend/Dockerfile ./frontend
+        run: docker build -f frontend/Dockerfile .
 
   helm:
     name: Helm lint
@@ -90,5 +107,6 @@ jobs:
         run: |
           docker compose up -d --wait --timeout 180
           curl -fsS http://localhost:4200/ > /dev/null
+          curl -fsS http://localhost:4200/docs/overview > /dev/null
           curl -fsS http://localhost:4200/api/health/ready > /dev/null
           docker compose down

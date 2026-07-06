@@ -1,0 +1,52 @@
+---
+import Icon from './Icon.astro';
+import type { DocNavItem } from '../lib/nav';
+import { pagerTitle } from '../lib/nav';
+
+interface Props {
+  prev: DocNavItem | null;
+  next: DocNavItem | null;
+}
+
+const { prev, next } = Astro.props;
+---
+
+{
+  (prev || next) && (
+    <nav class="docs-pager" aria-label="Article navigation">
+      {
+        prev ? (
+          <a class="docs-pager-btn" href={prev.href} aria-label={`Previous: ${pagerTitle(prev)}`}>
+            <Icon name="arrowLeft" size={15} />
+            <div>
+              <div class="dp-dir" aria-hidden="true">Previous</div>
+              <div class="dp-label">{pagerTitle(prev)}</div>
+            </div>
+          </a>
+        ) : (
+          <span />
+        )
+      }
+      {
+        next ? (
+          <a class="docs-pager-btn next" href={next.href} aria-label={`Next: ${pagerTitle(next)}`}>
+            <div>
+              <div class="dp-dir" aria-hidden="true">Next</div>
+              <div class="dp-label">{pagerTitle(next)}</div>
+            </div>
+            <Icon name="arrowRight" size={15} />
+          </a>
+        ) : (
+          <span />
+        )
+      }
+    </nav>
+  )
+}
+
+<style>
+  .docs-pager-btn {
+    text-decoration: none;
+    color: inherit;
+  }
+</style>

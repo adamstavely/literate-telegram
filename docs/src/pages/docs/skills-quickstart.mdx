@@ -1,0 +1,79 @@
+---
+layout: ../../layouts/DocLayout.astro
+title: "Quickstart"
+description: "Create your first Agent Skill and see it work in VS Code."
+tags: ["Agent Skills","Tutorial"]
+---
+
+import Lead from '../../components/mdx/Lead.astro';
+import RawHtml from '../../components/mdx/RawHtml.astro';
+
+<Lead>Create your first Agent Skill and see it work in VS Code.</Lead>
+
+<RawHtml html={`<h2 id="prerequisites" class="doc-h2">Prerequisites</h2>
+<ul class="doc-list">
+<li><a href="https://code.visualstudio.com/" class="doc-link">VS Code</a> with <a href="https://marketplace.visualstudio.com/items?itemName=GitHub.copilot" class="doc-link">GitHub Copilot</a></li>
+</ul>
+<div class="callout doc-callout">This tutorial uses VS Code, but Agent Skills are an open format. The same skill works in any compatible agent, including Claude Code and OpenAI Codex.</div>
+
+
+
+<h2 id="create-the-skill" class="doc-h2">Create the skill</h2>
+<p class="doc-p">A skill is a folder containing a <code>SKILL.md</code> file. VS Code looks for skills in <code>.agents/skills/</code> by default. Create <code>.agents/skills/roll-dice/SKILL.md</code> in your project:</p>
+<div class="codeblock"><pre><code class="language-markdown">---
+name: roll-dice
+description: Roll dice using a random number generator. Use when asked to roll a die (d6, d20, etc.), roll dice, or generate a random dice roll.
+---
+
+To roll a die, use the following command that generates a random number from 1
+to the given number of sides:
+
+\\\`\\\`\\\`bash
+echo $((RANDOM % &lt;sides&gt; + 1))
+\\\`\\\`\\\`
+
+\\\`\\\`\\\`powershell
+Get-Random -Minimum 1 -Maximum (&lt;sides&gt; + 1)
+\\\`\\\`\\\`
+
+Replace \\\`&lt;sides&gt;\\\` with the number of sides on the die (e.g., 6 for a standard
+die, 20 for a d20).
+</code></pre></div>
+<p class="doc-p">That&#39;s it — one file, under 20 lines. Here&#39;s what each part does:</p>
+<ul class="doc-list">
+<li><strong><code>name</code></strong> — A short identifier for the skill. Must match the folder name.</li>
+<li><strong><code>description</code></strong> — Tells the agent when to use this skill. This is how the agent decides whether to activate it.</li>
+<li><strong>The body</strong> — Instructions the agent follows when the skill activates. Here, the agent is instructed to generate a random number using a terminal command, substituting the number of sides from the user&#39;s request.</li>
+</ul>
+<h2 id="try-it-out" class="doc-h2">Try it out</h2>
+<ol class="doc-steps">
+<li>Open your project in VS Code.</li>
+<li>Open the Copilot Chat panel.</li>
+<li>Select <strong>Agent</strong> mode from the mode dropdown at the bottom of the chat panel.</li>
+<li>Type <code>/skills</code> to confirm that <code>roll-dice</code> appears in the list. If it doesn&#39;t, check that the file is at <code>.agents/skills/roll-dice/SKILL.md</code> relative to your project root.</li>
+<li>Ask: <strong>&quot;Roll a d20&quot;</strong></li>
+</ol>
+<p class="doc-p">The agent should activate the <code>roll-dice</code> skill. It may ask for permission to run a terminal command — allow it. It will run the command and return a random number between 1 and 20.</p>
+<div class="callout doc-callout">Tool-use reliability varies across models — some follow skill instructions and run commands consistently, while others may attempt to answer on their own. If the agent responds without running a terminal command, try selecting a different model from the model dropdown.</div>
+
+
+
+<h2 id="how-it-works" class="doc-h2">How it works</h2>
+<p class="doc-p">Here&#39;s what happened behind the scenes:</p>
+<ol class="doc-steps">
+<li><p class="doc-p"><strong>Discovery</strong> — When the chat session started, the agent scanned default skill directories and found your skill. It read only the <code>name</code> and <code>description</code>, just enough to know when the skill might be relevant.</p>
+</li>
+<li><p class="doc-p"><strong>Activation</strong> — When you asked about rolling dice, the agent matched your question to the skill&#39;s description and loaded the full <code>SKILL.md</code> body into context.</p>
+</li>
+<li><p class="doc-p"><strong>Execution</strong> — The agent followed the instructions in the body, adapting the terminal command to the number of sides in your request.</p>
+</li>
+</ol>
+<p class="doc-p">This process uses <strong>progressive disclosure</strong> to let the agent access many skills without loading all their instructions up front.</p>
+<h2 id="next-steps" class="doc-h2">Next steps</h2>
+<p class="doc-p">You&#39;ve created a working Agent Skill. From here:</p>
+<ul class="doc-list">
+<li><strong><a href="/docs/skills-best-practices" class="doc-link">Best practices</a></strong> — How to write skills that are well-scoped and effective.</li>
+<li><strong><a href="/docs/skills-descriptions" class="doc-link">Optimizing skill descriptions</a></strong> — Test and improve your skill&#39;s description so it activates on the right prompts.</li>
+<li><strong><a href="/docs/skills-specification" class="doc-link">Specification</a></strong> — The complete format reference for <code>SKILL.md</code> files.</li>
+<li><strong><a href="https://github.com/anthropics/skills" class="doc-link">Example skills</a></strong> — Browse real-world skills on GitHub.</li>
+</ul>`} />

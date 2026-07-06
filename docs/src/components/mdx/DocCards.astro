@@ -1,0 +1,39 @@
+---
+import Icon from '../Icon.astro';
+import type { IconName } from '../../lib/icons';
+
+export interface DocCardItem {
+  icon?: IconName;
+  title: string;
+  body: string;
+  href?: string;
+}
+
+interface Props {
+  items: DocCardItem[];
+}
+
+const { items } = Astro.props;
+---
+
+<div class="doc-cards">
+  {
+    items.map((card) => {
+      const Tag = card.href ? 'a' : 'div';
+      return (
+        <Tag href={card.href} class="doc-card">
+          {card.icon && (
+            <div class="doc-card-ic">
+              <Icon name={card.icon} size={17} />
+            </div>
+          )}
+          <div class="doc-card-t">
+            {card.title}
+            {card.href && <Icon name="arrowRight" size={14} />}
+          </div>
+          <div class="doc-card-b">{card.body}</div>
+        </Tag>
+      );
+    })
+  }
+</div>

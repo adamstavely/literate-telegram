@@ -21,4 +21,9 @@ describe('nginx security header coverage', () => {
     assert.match(nginxConf, /location \/api\//);
     assert.match(nginxConf, /include \/etc\/nginx\/nginx-security-headers\.conf;/);
   });
+
+  test('/docs location serves Astro static HTML with security headers', () => {
+    assert.match(nginxConf, /location \^~ \/docs/);
+    assert.match(nginxConf, /try_files \$uri \$uri\/ \$uri\/index\.html =404;/);
+  });
 });

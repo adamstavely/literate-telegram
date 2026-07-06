@@ -1,0 +1,63 @@
+---
+layout: ../../layouts/DocLayout.astro
+title: "SKILL.md specification"
+description: "The format an agent reads."
+navLabel: "SKILL.md spec"
+tags: ["Reference","Skills"]
+---
+
+import Callout from '../../components/mdx/Callout.astro';
+import DocCards from '../../components/mdx/DocCards.astro';
+import DocTable from '../../components/mdx/DocTable.astro';
+import KeyVal from '../../components/mdx/KeyVal.astro';
+import Lead from '../../components/mdx/Lead.astro';
+import Steps from '../../components/mdx/Steps.astro';
+
+<Lead>A skill is a single Markdown file with YAML frontmatter. The frontmatter is the index entry; the body is what loads on a match.</Lead>
+
+## Frontmatter fields
+
+
+<KeyVal rows={[
+  ["name", "Human-readable skill name. Shown in the index."],
+  ["description", "One or two sentences on what the skill does and when to use it. This is what the agent matches against — make it specific."],
+  ["triggers", "Phrases or intents that should load the skill. Optional but strongly recommended."],
+  ["version", "Semver. The registry tracks updates and can re-queue stale skills for review."]
+]} />
+
+
+## A minimal skill
+
+
+```markdown
+---
+name: Changelog Writer
+description: Turn a range of merged PRs into a clean, grouped changelog entry.
+triggers: ["write a changelog", "release notes", "summarize these PRs"]
+version: 1.0.0
+---
+
+# Changelog Writer
+
+Group changes by type. Keep voice consistent; link each item to its PR.
+
+1. Collect merged PRs in the range.
+2. Bucket into Features / Fixes / Internal.
+3. Write one line per change, present tense.
+4. Return the list plus a one-line summary.
+```
+
+
+## Writing a description that triggers
+
+
+Progressive disclosure means the agent only ever sees your `description` until a task matches it. A vague description never loads; an overstuffed one loads on the wrong tasks. State the task and the signal that should invoke it.
+
+
+<Callout tone="warn" icon="warning">Avoid instructions in a skill that try to override the agent or coerce tool calls. The registry scans SKILL.md bodies for prompt-injection patterns at review.</Callout>
+
+
+## Token budget
+
+
+A skill that loads should earn its context. The registry can enforce a per-skill token cap — if a SKILL.md exceeds the agent's allowance, it's rejected. Keep the body to the steps that matter.

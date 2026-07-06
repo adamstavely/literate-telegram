@@ -141,8 +141,8 @@ services:
   # ---------------------------------------------------------------------------
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
       target: runner
     container_name: interop-frontend
     environment:

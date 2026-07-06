@@ -1,0 +1,18 @@
+---
+interface Props {
+  rows: [string, string][];
+}
+
+const { rows } = Astro.props;
+---
+
+<div class="doc-keyval">
+  {
+    rows.map(([key, value]) => (
+      <div class="doc-kv-row">
+        <div class="doc-kv-k mono">{key}</div>
+        <div class="doc-kv-v" set:html={value} />
+      </div>
+    ))
+  }
+</div>

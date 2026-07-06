@@ -24,6 +24,7 @@ import { AvatarComponent } from '../avatar/avatar.component';
 import { FocusTrapFactory } from '@angular/cdk/a11y';
 import { activateFocusTrap } from '../../utils/focus-trap.util';
 import { AuthenticatedUser, Notification } from '../../types';
+import { docsUrl } from '../../../core/utils/docs-url';
 
 @Component({
   selector: 'app-header',
@@ -65,6 +66,9 @@ export class HeaderComponent implements OnInit, OnDestroy {
     this.currentUser()?.roles?.some((r) => r.toLowerCase() === 'admin') ?? false,
   );
 
+  /** Docs overview — Astro site in dev, same host in production. */
+  readonly docsOverviewUrl = docsUrl('/docs/overview');
+
   /** Platform "app switcher" (waffle) menu. */
   readonly appsOpen = signal(false);
   readonly platformApps: Array<{
@@ -81,7 +85,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
     { id: 'governance', name: 'Governance', icon: 'shield', accent: '#1f9d62', desc: 'Policies, approvals & data tiers', route: '/admin/policy' },
     { id: 'insights', name: 'Insights', icon: 'bolt', accent: '#c2820b', desc: 'Usage, traffic & health', soon: true },
     { id: 'admin', name: 'Admin', icon: 'user', accent: '#8b46d6', desc: 'Org, teams & access', route: '/admin' },
-    { id: 'docs', name: 'Docs', icon: 'book', accent: '#5a63d8', desc: 'Guides & API reference', route: '/docs' },
+    { id: 'docs', name: 'Docs', icon: 'book', accent: '#5a63d8', desc: 'Guides & API reference', route: '/docs/overview' },
   ];
 
   /** Current theme mode for the toggle button label. */
@@ -252,12 +256,17 @@ export class HeaderComponent implements OnInit, OnDestroy {
     }
     if (a.id === 'governance') return url.startsWith('/admin/policy');
     if (a.id === 'admin') return url.startsWith('/admin') && !url.startsWith('/admin/policy');
+    if (a.id === 'docs') return url.startsWith('/docs');
     return a.route ? url.startsWith(a.route) && a.route !== '/' : false;
   }
 
   navigateApp(a: { route?: string; soon?: boolean; id: string }): void {
     if (a.soon || !a.route || this.isCurrentApp(a)) return;
     this.closeApps();
+    if (a.route.startsWith('/docs')) {
+      window.location.assign(docsUrl(a.route));
+      return;
+    }
     void this.router.navigate([a.route]);
   }
 
@@ -292,10 +301,6 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   login(): void {
     this.auth.login();
-  }
-
-  logout(): void {
-    this.auth.logout();
   }
 
   focusSearch(): void {

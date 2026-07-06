@@ -1,0 +1,35 @@
+---
+layout: ../../layouts/DocLayout.astro
+title: "Client compatibility"
+description: "Which agents can use what."
+tags: ["Reference","MCP"]
+---
+
+import Callout from '../../components/mdx/Callout.astro';
+import DocCards from '../../components/mdx/DocCards.astro';
+import DocTable from '../../components/mdx/DocTable.astro';
+import KeyVal from '../../components/mdx/KeyVal.astro';
+import Lead from '../../components/mdx/Lead.astro';
+import Steps from '../../components/mdx/Steps.astro';
+
+<Lead>Not every client speaks every protocol. The registry records compatibility so you know an entry will work before you connect it.</Lead>
+
+## The compatibility axis
+
+
+Each server lists the clients it's been verified against. Skills are more portable — any agent that implements the skills format can read any SKILL.md — but the index still records where each has been exercised.
+
+
+<DocCards items={[
+  { icon: "box", title: "MCP clients", body: "Claude Desktop, Claude Code, Cursor, VS Code, Windsurf, Zed — anything that speaks the MCP transport can connect a server." },
+  { icon: "skill", title: "Skill hosts", body: "Any agent runtime that implements progressive disclosure and reads SKILL.md frontmatter." }
+]} />
+
+
+## Filtering by client
+
+
+Use the **Compatible with** filter in [Browse](/) to narrow the catalog to entries your client supports. The compatibility badges on each detail page tell you what's been verified.
+
+
+<Callout icon="check">Publishing a server? Declare the clients you've tested against so the registry can route it to the right users.</Callout>
