@@ -61,4 +61,40 @@ describe('endpoint-spec', () => {
     expect(body).toContain('"amount": 9900');
     expect(body).toContain('"currency": "eur"');
   });
+
+  describe('imported endpoint (real OpenAPI metadata)', () => {
+    const importedEp: ApiEndpoint = {
+      method: 'POST',
+      path: '/pets/{id}',
+      summary: 'Update a pet',
+      params: [
+        { name: 'id', in: 'path', type: 'string', required: true, description: 'Pet id', example: 'p1' },
+        { name: 'expand', in: 'query', type: 'string', required: false },
+      ],
+      requestBody: { fields: [{ name: 'name', in: 'body', type: 'string', required: true }] },
+      responses: [{ code: '201', description: 'Created', example: '{"id":"p1"}' }],
+    };
+
+    it('uses the real params/body/responses instead of the dictionary', () => {
+      const spec = buildEndpointSpec(api({}), importedEp);
+      expect(spec.pathParams.map((p) => p.name)).toEqual(['id']);
+      expect(spec.query.map((p) => p.name)).toContain('expand');
+      expect(spec.body.map((p) => p.name)).toContain('name');
+      expect(spec.responses[0].code).toBe('201');
+      expect(spec.sample).toContain('"id"');
+    });
+
+    it('substitutes {brace}-style path params in the live request', () => {
+      const spec = buildEndpointSpec(api({}), importedEp);
+      const req = buildLiveRequest(api({}), importedEp, spec, { id: '42', name: 'rex' });
+      expect(req).toContain('/pets/42');
+      expect(req).toContain('-X POST');
+    });
+
+    it('seeds the try-it form from the imported example', () => {
+      const spec = buildEndpointSpec(api({}), importedEp);
+      const idParam = spec.pathParams.find((p) => p.name === 'id')!;
+      expect(exampleVal(idParam)).toBe('p1');
+    });
+  });
 });

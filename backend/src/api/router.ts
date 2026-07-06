@@ -7,6 +7,7 @@ import auditRouter from './routes/audit.js';
 import collectionsRouter from './routes/collections.js';
 import logsRouter from './routes/logs.js';
 import policyRouter from './routes/policy.js';
+import apisRouter from './routes/apis.js';
 
 const router = Router();
 
@@ -67,5 +68,6 @@ router.use('/notifications', notificationsRouter);
 router.use('/audit', auditRouter);
 router.use('/logs', logsRouter);
 router.use('/policy', policyRouter);
+router.use('/apis', apisRouter);
 
 export default router;

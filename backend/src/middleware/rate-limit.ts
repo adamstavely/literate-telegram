@@ -49,6 +49,20 @@ export const submitRateLimiter = rateLimit({
 });
 
 /**
+ * Per-user cap on OpenAPI import + API try-it proxy calls. Each does an
+ * outbound fetch (parse/forward), so it gets a tighter budget than the global
+ * limit to bound server-initiated egress.
+ */
+export const outboundRateLimiter = rateLimit({
+  windowMs: config.rateLimit.submitWindowMs,
+  max: perReplicaLimit(Math.min(config.rateLimit.submitMax, 20)),
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: rateLimitIdentityKey,
+  handler: rateLimitHandler('Outbound request rate limit exceeded. Please try again later.'),
+});
+
+/**
  * Tight per-IP limiter for the unauthenticated client telemetry endpoints
  * (POST /api/logs, POST /api/audit/client). Each request can bulk-index up to
  * 50 documents, so the generous global limit is not enough to stop a single

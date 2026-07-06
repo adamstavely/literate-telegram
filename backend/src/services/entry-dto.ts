@@ -7,6 +7,11 @@ import {
   ApiStyle,
   ToolParam,
   Tool,
+  ApiEndpoint,
+  EndpointParam,
+  EndpointParamLocation,
+  EndpointRequestBody,
+  EndpointResponse,
 } from '../types/index.js';
 
 /**
@@ -51,6 +56,16 @@ const REST_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const;
 const GQL_METHODS = ['QUERY', 'MUTATION', 'SUBSCRIPTION'] as const;
 const MAX_API_ENDPOINTS = 100;
 const MAX_API_FIELD_LEN = 2048;
+const MAX_ENDPOINT_PARAMS = 40;
+const MAX_ENDPOINT_RESPONSES = 20;
+const MAX_ENDPOINT_EXAMPLE_LEN = 4096;
+const PARAM_LOCATIONS: readonly EndpointParamLocation[] = [
+  'path',
+  'query',
+  'header',
+  'body',
+  'variable',
+];
 const MAX_TOOLS = 50;
 const MAX_PARAMS = 50;
 const MAX_TRIGGERS = 50;
@@ -80,10 +95,65 @@ function isValidHttpUrl(value: string): boolean {
   }
 }
 
-function sanitizeApiEndpoint(
-  raw: unknown,
-  style: ApiStyle,
-): { method: string; path: string; summary: string } | null {
+function sanitizeEndpointParam(raw: unknown): EndpointParam | null {
+  const p = (raw ?? {}) as RawBody;
+  const name = (str(p['name']) ?? '').slice(0, MAX_NESTED_STRING_LEN);
+  if (!name) return null;
+  const param: EndpointParam = {
+    name,
+    in: enumValue(p['in'], PARAM_LOCATIONS, 'query'),
+    type: (str(p['type']) ?? 'string').slice(0, MAX_NESTED_STRING_LEN),
+    required: boolean(p['required']) ?? false,
+  };
+  const description = str(p['description']);
+  if (description !== undefined) param.description = description.slice(0, MAX_NESTED_STRING_LEN);
+  const example = str(p['example']);
+  if (example !== undefined) param.example = example.slice(0, MAX_NESTED_STRING_LEN);
+  return param;
+}
+
+function sanitizeEndpointParams(value: unknown): EndpointParam[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const params = value
+    .slice(0, MAX_ENDPOINT_PARAMS)
+    .map(sanitizeEndpointParam)
+    .filter((p): p is EndpointParam => p !== null);
+  return params.length > 0 ? params : undefined;
+}
+
+function sanitizeRequestBody(value: unknown): EndpointRequestBody | undefined {
+  if (value === null || typeof value !== 'object') return undefined;
+  const b = value as RawBody;
+  const out: EndpointRequestBody = {};
+  const contentType = str(b['contentType']);
+  if (contentType !== undefined) out.contentType = contentType.slice(0, MAX_NESTED_STRING_LEN);
+  const fields = sanitizeEndpointParams(b['fields']);
+  if (fields) out.fields = fields;
+  const example = str(b['example']);
+  if (example !== undefined) out.example = example.slice(0, MAX_ENDPOINT_EXAMPLE_LEN);
+  return out.contentType || out.fields || out.example ? out : undefined;
+}
+
+function sanitizeEndpointResponses(value: unknown): EndpointResponse[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const responses = value
+    .slice(0, MAX_ENDPOINT_RESPONSES)
+    .map((raw): EndpointResponse | null => {
+      const r = (raw ?? {}) as RawBody;
+      const code = (str(r['code']) ?? '').slice(0, 16);
+      if (!code) return null;
+      const resp: EndpointResponse = { code };
+      const description = str(r['description']);
+      if (description !== undefined) resp.description = description.slice(0, MAX_NESTED_STRING_LEN);
+      const example = str(r['example']);
+      if (example !== undefined) resp.example = example.slice(0, MAX_ENDPOINT_EXAMPLE_LEN);
+      return resp;
+    })
+    .filter((r): r is EndpointResponse => r !== null);
+  return responses.length > 0 ? responses : undefined;
+}
+
+function sanitizeApiEndpoint(raw: unknown, style: ApiStyle): ApiEndpoint | null {
   const e = (raw ?? {}) as RawBody;
   const method = (str(e['method']) ?? (style === 'GraphQL' ? 'QUERY' : 'GET')).toUpperCase();
   const allowed = style === 'GraphQL' ? GQL_METHODS : REST_METHODS;
@@ -96,11 +166,25 @@ function sanitizeApiEndpoint(
     return null;
   }
 
-  return {
+  const endpoint: ApiEndpoint = {
     method,
     path,
     summary: (str(e['summary']) ?? '').slice(0, 500),
   };
+
+  // Rich metadata (populated from an imported OpenAPI spec) — all optional.
+  const operationId = str(e['operationId']);
+  if (operationId !== undefined) endpoint.operationId = operationId.slice(0, MAX_NESTED_STRING_LEN);
+  const description = str(e['description']);
+  if (description !== undefined) endpoint.description = description.slice(0, MAX_NESTED_STRING_LEN);
+  const params = sanitizeEndpointParams(e['params']);
+  if (params) endpoint.params = params;
+  const requestBody = sanitizeRequestBody(e['requestBody']);
+  if (requestBody) endpoint.requestBody = requestBody;
+  const responses = sanitizeEndpointResponses(e['responses']);
+  if (responses) endpoint.responses = responses;
+
+  return endpoint;
 }
 
 function sanitizeParams(value: unknown): ToolParam[] {

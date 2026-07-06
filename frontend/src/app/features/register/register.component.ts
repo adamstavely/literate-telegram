@@ -9,11 +9,12 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { RegistryService } from '../../core/services/registry.service';
 import { AuthService } from '../../core/services/auth.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
-import { EntryType } from '../../shared/types';
+import { EntryType, ApiEndpoint, ApiDraft } from '../../shared/types';
 
 interface WizardStep {
   id: number;
@@ -43,6 +44,15 @@ export class RegisterComponent implements OnInit {
   readonly submitted = signal(false);
   readonly error = signal<string | null>(null);
   readonly submittedId = signal<string | null>(null);
+
+  // OpenAPI/Swagger import (API entries).
+  readonly importMode = signal<'url' | 'paste'>('url');
+  readonly specUrl = signal('');
+  readonly specText = signal('');
+  readonly importing = signal(false);
+  readonly importError = signal<string | null>(null);
+  readonly importedEndpoints = signal<ApiEndpoint[]>([]);
+  private apiDraft: ApiDraft | null = null;
 
   readonly steps: WizardStep[] = [
     { id: 1, label: 'Type', description: 'Choose entry type' },
@@ -140,6 +150,60 @@ export class RegisterComponent implements OnInit {
   /** Collections are authored in their own flow rather than the entry wizard. */
   createCollection(): void {
     void this.router.navigate(['/collections/new']);
+  }
+
+  /** Import an OpenAPI/Swagger spec (by URL or pasted) to pre-fill the API form. */
+  importSpec(): void {
+    const mode = this.importMode();
+    const value = (mode === 'url' ? this.specUrl() : this.specText()).trim();
+    if (!value) {
+      this.importError.set(mode === 'url' ? 'Enter a spec URL.' : 'Paste a spec.');
+      return;
+    }
+    this.importing.set(true);
+    this.importError.set(null);
+    this.registry
+      .importOpenApi(mode === 'url' ? { url: value } : { spec: value })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (draft) => {
+          this.apiDraft = draft;
+          this.importedEndpoints.set(draft.endpoints ?? []);
+          this.applyDraft(draft);
+          this.importing.set(false);
+        },
+        error: (err: unknown) => {
+          this.importError.set(this.importErrorMessage(err));
+          this.importing.set(false);
+        },
+      });
+  }
+
+  private applyDraft(draft: ApiDraft): void {
+    const patch: Record<string, unknown> = { style: draft.style };
+    const endpointUrl = draft.baseUrl ?? draft.endpoint;
+    if (endpointUrl) patch['endpoint'] = endpointUrl;
+    // Only fill identity fields the user hasn't already typed.
+    const setIfEmpty = (ctrl: string, v: string | undefined, max?: number) => {
+      if (v && !((this.form.get(ctrl)?.value as string) || '').trim()) {
+        patch[ctrl] = max ? v.slice(0, max) : v;
+      }
+    };
+    setIfEmpty('name', draft.name, 100);
+    setIfEmpty('summary', draft.summary, 280);
+    setIfEmpty('description', draft.description);
+    setIfEmpty('version', draft.version);
+    this.form.patchValue(patch);
+  }
+
+  private importErrorMessage(err: unknown): string {
+    if (err instanceof HttpErrorResponse) {
+      if (err.status === 429) return 'Too many import attempts. Please wait and try again.';
+      const body = err.error as { message?: unknown } | null;
+      const message = body && typeof body.message === 'string' ? body.message : '';
+      return message || `Could not import the spec (error ${err.status}).`;
+    }
+    return 'Could not import the spec.';
   }
 
   /** Form controls that gate advancing past each step. */
@@ -266,6 +330,11 @@ export class RegisterComponent implements OnInit {
       entry['style'] = raw['style'];
       entry['endpoint'] = raw['endpoint'];
       entry['wrappedBy'] = raw['wrappedBy'];
+      if (this.apiDraft) {
+        if (this.apiDraft.baseUrl) entry['baseUrl'] = this.apiDraft.baseUrl;
+        if (this.apiDraft.auth) entry['auth'] = this.apiDraft.auth;
+        if (this.importedEndpoints().length) entry['endpoints'] = this.importedEndpoints();
+      }
     }
 
     this.registry.submitEntry(entry as Parameters<typeof this.registry.submitEntry>[0])

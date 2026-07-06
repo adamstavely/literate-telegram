@@ -68,10 +68,42 @@ export interface Agent extends BaseEntry {
   skills: string[];
 }
 
+export type EndpointParamLocation = 'path' | 'query' | 'header' | 'body' | 'variable';
+
+export interface EndpointParam {
+  name: string;
+  in: EndpointParamLocation;
+  type: string; // string | integer | number | boolean | array | object
+  required: boolean;
+  description?: string;
+  example?: string;
+}
+
+export interface EndpointRequestBody {
+  contentType?: string;
+  /** Flattened top-level request-body fields (for the try-it form + docs). */
+  fields?: EndpointParam[];
+  /** Example body as a JSON string. */
+  example?: string;
+}
+
+export interface EndpointResponse {
+  code: string; // '200' | '400' | 'default' ...
+  description?: string;
+  /** Example response body as a JSON string. */
+  example?: string;
+}
+
 export interface ApiEndpoint {
   method: string; // GET | POST | PUT | PATCH | DELETE | QUERY | MUTATION
   path: string;
   summary?: string;
+  operationId?: string;
+  description?: string;
+  /** Path/query/header params (populated from an imported OpenAPI spec). */
+  params?: EndpointParam[];
+  requestBody?: EndpointRequestBody;
+  responses?: EndpointResponse[];
 }
 
 export interface Api extends BaseEntry {
