@@ -393,7 +393,7 @@ Reference implementation for block types: `docs/scripts/generate-docs-mdx.mjs` â
 
 ## Common handoff checklist
 
-- [ ] Node 22+ for docs; Node 20 for frontend/backend
+- [ ] Node 22+ for docs and the Angular 22 frontend; Node 20 for the backend
 - [ ] After editing `project/docs-content.js`: `cd docs && npm run generate-docs`
 - [ ] After editing skills sources: `npm run sync-skills`
 - [ ] After editing `project/styles.css`: sync to `docs/src/styles/interop.css` and `frontend/src/vendor/interop.css`

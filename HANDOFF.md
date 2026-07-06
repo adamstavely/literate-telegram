@@ -52,8 +52,9 @@ On top of the catalogue there are three governance/product surfaces:
 - **Collections** — curated, installable "stacks" of entries; their sensitivity
   tier is derived from the highest-tier member.
 
-There is also a **docs** section and an in-app **API endpoint explorer** ("try it"
-console) on API detail pages.
+There is also a **docs** site (a standalone Astro app served at `/docs/*` — see
+[`DOCS.md`](./DOCS.md)) and a live **API endpoint explorer** ("try it" console) on
+API detail pages, backed by a SSRF-guarded proxy.
 
 ---
 
@@ -107,12 +108,15 @@ backend/
         audit.ts           Client audit ingest + admin audit query
         logs.ts            Client log ingest
         policy.ts          Get/update the governance policy document (admin)
+        apis.ts            POST /api/apis/import — OpenAPI/Swagger spec → draft Api
+        proxy.ts           POST /api/proxy — live, SSRF-guarded "Try it out" execution
+        docs-feedback.ts   Docs page-feedback (session cookie + vote) for the Astro site
         *.routes.test.ts   supertest route tests
     middleware/
       auth.ts              requireAuth / optionalAuth / requireAdmin (jose JWT)
       audit.ts             auditMiddleware + auditAction() helper
       logging.ts           requestLoggingMiddleware (assigns req.id correlation id)
-      rate-limit.ts        ingestRateLimiter (tight per-IP limiter for ingest routes)
+      rate-limit.ts        ingest / submit / outbound per-IP limiters
       error-handler.ts     errorHandler + notFoundHandler
     services/
       policy.ts            Risk scoring, policy enforcement, submission policy, cache
@@ -121,6 +125,8 @@ backend/
       slug-locks.ts        claimSlug / claimOrOwnSlug / releaseSlug / slugTaken
       compensation.ts      runCompensation(): retrying rollback + reconciliation record
       sanitize-meta.ts     boundedMeta(): bound/flatten untrusted client metadata
+      net-guard.ts         SSRF boundary for outbound: scheme/IP checks + host-pinned safeFetch
+      openapi-import.ts    Map an OpenAPI 3.x / Swagger 2.0 spec → draft Api
       *.test.ts            node:test unit tests
     elasticsearch/
       client.ts            Singleton ES client (+ pingElasticsearch)
@@ -148,19 +154,20 @@ frontend/
         services/          registry, auth, theme, logging, audit
         guards/            adminGuard, authGuard
         interceptors/      authInterceptor (Bearer + 401), auditInterceptor
-      features/            browse, detail, register, admin, policy, collections, docs, not-found
+      features/            browse, detail, register, admin, policy, collections, not-found
       shared/
         components/        header, entry-card, sensitivity-*, endpoint-card, icon, tooltip, ...
         constants/         sensitivity + type metadata
-        utils/             endpoint-spec, skill-sensitivity, focus-trap
+        utils/             endpoint-spec (real proxy request builder), skill-sensitivity, focus-trap
         types/index.ts     Domain types (must stay in sync with backend)
-  nginx.conf               SPA serving + /api proxy + caching + security headers
+  nginx.conf               SPA + /docs (Astro) + /api proxy + caching + security headers
   docker-entrypoint.sh     envsubst of BACKEND_URL into nginx.conf at container start
   karma.conf.js            Headless test config (ChromeHeadlessNoSandbox launcher)
-  Dockerfile               Multi-stage build → nginx:1.25-alpine (installs curl)
+  Dockerfile               Multi-stage: Angular build + Astro docs build → nginx:alpine
 
+docs/                      Astro static docs site, served at /docs/* (see DOCS.md)
 helm/                      Kubernetes chart (see §9)
-project/                   Canonical design source: styles.css + HTML/JSX prototypes
+project/                   Canonical source: styles.css + docs-content.js + HTML/JSX prototypes
 scripts/check-styles-sync.mjs   CI guard: vendor CSS == project/styles.css
 docker-compose.yml         Local full stack
 ```
@@ -248,6 +255,10 @@ All routes are mounted under `/api`. Health lives directly on the api router.
 | `GET /api/audit` | **admin** | Query the audit log |
 | `GET /api/policy` | **admin** | Get the active policy document |
 | `PUT /api/policy` | **admin** | Replace the policy document (structurally validated) |
+| `POST /api/apis/import` | auth (rate-limited) | Parse an OpenAPI/Swagger spec (`{ url }` fetched via net-guard, or pasted `{ spec }`) into a draft `Api` — **not persisted** (see §4.9) |
+| `POST /api/proxy` | auth (rate-limited) | Execute a live "Try it out" request against a registered API's own host, SSRF-guarded (see §4.9) |
+| `GET /api/docs/feedback/session` | – | Issue the anonymous `interop_docs_visitor` cookie for docs page-feedback |
+| `POST /api/docs/feedback` | – (cookie + rate-limited) | Record a "was this page helpful?" vote from the Astro docs site |
 
 Every error response includes a `correlationId` (the request's `req.id`).
 
@@ -257,8 +268,12 @@ Every error response includes a `correlationId` (the request's `req.id`).
   all extending `BaseEntry` (id, name, slug, publisher, verified, summary,
   description, installs, sensitivity, categories, timestamps, and the
   server-controlled `visibility` + `reviewDueAt`).
-  - `Api` additionally has `baseUrl`, `auth`, and `endpoints: ApiEndpoint[]`
-    (`{ method, path, summary }`) that drive the endpoint explorer.
+  - `Api` additionally has `baseUrl`, `auth`, and `endpoints: ApiEndpoint[]` that
+    drive the endpoint explorer. `ApiEndpoint` is `{ method, path, summary }` plus
+    optional rich metadata populated by OpenAPI import — `operationId`,
+    `description`, `params: EndpointParam[]`, `requestBody`, `responses:
+    EndpointResponse[]`. Absent rich fields → the frontend falls back to
+    dictionary-synthesized examples (§7.7).
 - `PendingEntry` — a queued submission (`entry`, `status`, `risk`, `flags`,
   approver bookkeeping, `approvals[]` for two-approver, `overrideReason`).
 - `PolicyDocument` — `{ policy: PolicyState, rules: PolicyRule[], domains: TrustDomain[] }`
@@ -297,6 +312,20 @@ The frontend has a **parallel copy** in `frontend/src/app/shared/types/index.ts`
   object, preventing mapping explosion.
 - **`policy-validation.ts`** — `validatePolicyDocument()` structurally validates
   a `PUT /api/policy` body (every toggle, rule action/severity, domain shape).
+- **`net-guard.ts`** — the SSRF boundary for all server-initiated outbound
+  requests. `assertAllowedTarget()` enforces the scheme (https-only unless
+  `OUTBOUND_ALLOW_HTTP`); `isBlockedAddress()`/`assertPublicHost()` classify and
+  reject private/loopback/link-local/ULA/metadata IPs (IPv4 **and** IPv6,
+  including `::ffff:`-mapped, NAT64, `::/96`, and 6to4 embeddings). `safeFetch()`
+  resolves the host, **pins the connection to the validated IP** via an undici
+  dispatcher (DNS-rebind defense), and enforces the outbound timeout + response-
+  byte cap. Used by both the import and proxy routes.
+- **`openapi-import.ts`** — maps a parsed OpenAPI 3.x / Swagger 2.0 spec into a
+  draft `Api` (title/description → name/summary; `servers[0].url` or
+  `host`+`basePath`+`schemes` → `baseUrl`; security schemes → `auth`;
+  paths×operations → rich `endpoints[]`). Parses JSON/YAML via `js-yaml` +
+  `@apidevtools/swagger-parser` (external `$ref` resolution disabled); caps spec
+  size, endpoint/param counts, and deref depth.
 
 ### 4.7 Logging, audit, errors
 
@@ -322,6 +351,31 @@ The frontend has a **parallel copy** in `frontend/src/app/shared/types/index.ts`
 
 When you change an approve/submit flow, update the corresponding route test's ES
 stubs (they assert call ordering and status codes).
+
+### 4.9 Outbound: OpenAPI import + live proxy (SSRF-guarded)
+
+Two authenticated, rate-limited routes make server-initiated outbound requests;
+both route through `net-guard.ts` (§4.6) and are audited without credentials.
+
+- **`POST /api/apis/import`** (`apis.ts`, `outboundRateLimiter`) — accepts a spec
+  `{ url }` (fetched via `safeFetch`) **or** a pasted `{ spec }` string, maps it
+  with `openapi-import.ts`, and returns a draft `Api` that is **not persisted**.
+  The register wizard uses it to pre-fill `baseUrl`/`auth`/`endpoints[]`, which
+  the user reviews before submitting. Route-level `express.json({ limit: '2mb' })`
+  (the global cap is 1 MB) accommodates larger specs.
+- **`POST /api/proxy`** (`proxy.ts`, `outboundRateLimiter`) — backs the endpoint
+  explorer's live "Try it out" (§7.7). The client sends `{ entryId, method,
+  relative path, query, headers, body }`; the server loads the entry, checks
+  caller visibility, **reconstructs the target from the stored `baseUrl`** (a
+  client-supplied absolute/protocol-relative path is rejected), pins the host,
+  forwards only allowlisted headers (`authorization`/`content-type`/`accept`),
+  does not follow off-host redirects, and returns the upstream status/body. The
+  audit record is `{ host, method, path, status, ms }` only — **never the
+  credential**.
+
+Config knobs live under `config.outbound` (§11): `OUTBOUND_TIMEOUT_MS`,
+`OUTBOUND_MAX_RESPONSE_BYTES`, `OPENAPI_MAX_SPEC_BYTES`, `OUTBOUND_ALLOW_HTTP`
+(default off), `OUTBOUND_BLOCK_PRIVATE` (default on).
 
 ---
 
@@ -454,8 +508,8 @@ manual repair.
 
 ### 7.1 Stack & bootstrap
 
-- **Angular 17**, **standalone components**, **signals** for state, lazy-loaded
-  routes. No NgModules.
+- **Angular 22**, **standalone components**, **signals** for state, lazy-loaded
+  routes. No NgModules. Requires **Node ≥ 22.22.3** and **TypeScript 6** to build.
 - `app.config.ts` providers: `provideRouter(routes, withComponentInputBinding(),
   withViewTransitions())`, `provideHttpClient(withInterceptors([authInterceptor,
   auditInterceptor]))`, `provideAnimations()`, `APP_BASE_HREF = '/'`.
@@ -475,12 +529,15 @@ manual repair.
 | `collections` | Collections index | – |
 | `collections/new` | Create collection | `authGuard` |
 | `collections/:id` | Collection detail | – |
-| `docs` / `docs/:articleId` | Docs | – |
 | `**` | NotFound | – |
 
 - **`adminGuard`** — allows admins, else redirects to `/`.
 - **`authGuard`** — allows authenticated users, else kicks off login and redirects
   to `/` (no dead end).
+- **Docs are no longer an Angular route.** `/docs/*` is served by the standalone
+  **Astro** site (see [`DOCS.md`](./DOCS.md)); nginx routes `/docs/*` to the baked
+  static build before the SPA fallback. The header **Docs** link is a normal
+  full-page navigation to `/docs/overview`.
 
 ### 7.3 Core services
 
@@ -517,15 +574,19 @@ manual repair.
   navigation (`switchMap` + `takeUntil`); related-data failures surface a
   non-blocking notice.
 - **Register** — a multi-step publish wizard (per-step validation) with a
-  "Collection" tile that routes to `collections/new`.
+  "Collection" tile that routes to `collections/new`. The API branch has an
+  **"Import from OpenAPI"** affordance (spec URL or paste) that calls
+  `POST /api/apis/import` and pre-fills `style`/`baseUrl`/`auth` plus a reviewable
+  `endpoints[]` list; manual entry remains the fallback.
 - **Admin** — the moderation queue with KPIs, filters (roving-tabindex tablist),
   and an accessible reject/request-changes **dialog** (not `window.prompt`).
 - **Policy** — toggles/rules/domains editor bound to `PUT /api/policy`.
 - **Collections / collection-detail / collection-create** — index, detail
   (members grouped, derived sensitivity), and an authoring form with icon/accent
   pickers.
-- **Docs** — static content (`docs-content.ts`), reacts to `articleId` input.
-- **NotFound** — real 404 page (the `**` route).
+- **NotFound** — the `**` route: a redesigned 404 page with an animated broken
+  Interop mark and "Back to home" / "Contact support" actions. (Registry docs now
+  live in the Astro site, which ships a matching `/docs/404` page.)
 
 ### 7.6 Shared
 
@@ -540,24 +601,36 @@ manual repair.
   skill's effective tier from the servers it reaches).
 - `icon.component` — inline SVG icon set (add new glyphs to `ICON_CONTENT`).
 
-### 7.7 API endpoint explorer (mock)
+### 7.7 API endpoint explorer (live)
 
-`utils/endpoint-spec.ts` synthesizes swagger-style params/responses/examples from
-an API entry's `endpoints[]` (via per-resource lookup tables), and
-`endpoint-card.component` renders an expandable card with a **"Try it out"**
-console. **Execution is a client-side mock** — a spinner + a canned/derived
-response. No request leaves the browser. If you later want live execution, this is
-where a real proxy call would go.
+`utils/endpoint-spec.ts` builds each endpoint's params/requestBody/responses from
+the entry's rich `endpoints[]` metadata when present (imported from an OpenAPI
+spec — see §4.9), falling back to per-resource lookup tables for legacy seed APIs
+that only have `{ method, path, summary }`. `endpoint-card.component` renders an
+expandable card with a **"Try it out"** console.
+
+**Execution is real, not mocked.** `buildStructuredRequest()` assembles
+`{ method, path, query, body }` from the user's inputs (REST substitutes
+path/query/body; GraphQL posts `{ query, variables }`), and `execute()` calls
+`registry.proxyTry()` → `POST /api/proxy`. The backend reconstructs the target
+from the *stored* `baseUrl`, pins the host, blocks private addresses, and forwards
+the response. The Execute action is **gated on the entry having a `baseUrl`**;
+without one the card stays example-only. An **Authorize** field lets the caller
+supply an upstream credential that is forwarded per-request and never stored.
+See §4.4 (`POST /api/proxy`) and §4.9 for the server side.
 
 ### 7.8 Styling / vendored CSS
 
 `project/styles.css` is the canonical stylesheet (design tokens + component CSS).
-It is **vendored** to `frontend/src/vendor/interop.css` and imported by
-`src/styles.scss` (plus a few Angular-specific additions there, e.g. the darker
-`--faint`, mobile-nav, tooltip focus, and modal styles). The frontend Docker build
-context is `frontend/` only, so it can't reach `project/`. CI fails if the two
-diverge — after editing `project/styles.css`, run
-`cp project/styles.css frontend/src/vendor/interop.css`.
+It is **vendored** to `frontend/src/vendor/interop.css` (imported by
+`src/styles.scss`, plus a few Angular-specific additions there — e.g. the darker
+`--faint`, mobile-nav, tooltip focus, modal styles) **and** to
+`docs/src/styles/interop.css` for the Astro site. The frontend Docker build now
+uses the **repo root** as its context (so it can build the Astro docs and copy
+`project/`). CI (`styles-sync`) fails if either vendored copy diverges — after
+editing `project/styles.css`, run
+`cp project/styles.css frontend/src/vendor/interop.css` **and**
+`node docs/scripts/sync-interop-styles.mjs`.
 
 ### 7.9 Frontend tests
 
@@ -639,20 +712,33 @@ Chart in `helm/` (`interop`, appVersion 1.0.0). `helm install interop ./helm -n 
 
 ## 10. CI
 
-`.github/workflows/ci.yml` runs on push to `main` and on PRs, six jobs:
+`.github/workflows/ci.yml` runs on push to `main` and on PRs, seven jobs:
 
-1. **styles-sync** — `node scripts/check-styles-sync.mjs` (vendor CSS == canonical).
-2. **backend** — `npm ci && npm run build && npm test`.
-3. **frontend** — `npm ci && npm run build && npm run test:ci` (with
+1. **styles-sync** (Node 20) — `check-styles-sync.mjs` (vendor CSS == canonical)
+   **and** `check-nginx-security-headers.mjs`.
+2. **backend** (Node 20) — `npm ci`, then **`npm audit --audit-level=high`**
+   (fails on any high/critical advisory), `npm run lint`, `npm run build`,
+   `npm test`.
+3. **frontend** (Node 22) — `npm ci && npm run build && npm run test:ci` (with
    `browser-actions/setup-chrome`).
-4. **docker** — builds backend and frontend Docker images.
-5. **helm** — `helm lint`, `helm template`, and NetworkPolicy structure checks
+4. **docs** (Node 22) — `npm ci && npm run build && npm run check` in `docs/`.
+5. **docker** — builds backend and frontend Docker images.
+6. **helm** — `helm lint`, `helm template`, and NetworkPolicy structure checks
    (`scripts/check-helm-networkpolicy.mjs`).
-6. **compose** — validates compose configs and runs a smoke test against
-   `/api/health/ready` (Elasticsearch readiness, not just process liveness).
+7. **compose** — validates compose configs and runs a smoke test against
+   `/`, `/docs/overview`, and `/api/health/ready` (Elasticsearch readiness, not
+   just process liveness).
 
-All six must be green. Node 20 in CI; note the backend test script uses `find`
-to enumerate test files so it works on Node 20 (its `--test` glob is Node 21+).
+All seven must be green. Backend and styles-sync run on **Node 20**; frontend and
+docs run on **Node 22** (Angular 22 / Astro need ≥ 22.22.3). The backend test
+script uses `find` to enumerate test files so it works on Node 20 (its `--test`
+glob is Node 21+).
+
+**Dependency advisories:** because the backend job gates on `npm audit`, keep
+transitive-dependency vulnerabilities patched. Where a fix would otherwise force a
+major downgrade (e.g. the Angular/webpack toolchain), pin the patched leaf version
+via npm **`overrides`** in the affected `package.json` rather than
+`npm audit fix --force`.
 
 **Multi-replica rate limits:** the backend uses an in-memory rate-limit store by
 default (per pod). For a cluster-wide budget across replicas, configure a shared
@@ -683,6 +769,11 @@ Backend (`backend/.env.example` is the canonical template):
 | `RATE_LIMIT_MAX` | `200` | Global limiter max |
 | `INGEST_RATE_LIMIT_WINDOW_MS` | `60000` | Ingest (`/logs`, `/audit/client`) window |
 | `INGEST_RATE_LIMIT_MAX` | `30` | Ingest per-IP max |
+| `OUTBOUND_TIMEOUT_MS` | `10000` | Timeout for server-initiated outbound requests (import + proxy) |
+| `OUTBOUND_MAX_RESPONSE_BYTES` | `2000000` | Response-size cap for the proxy |
+| `OPENAPI_MAX_SPEC_BYTES` | `2000000` | Max size of an imported OpenAPI spec |
+| `OUTBOUND_ALLOW_HTTP` | `false` | Allow plain-http outbound targets (https-only by default) |
+| `OUTBOUND_BLOCK_PRIVATE` | `true` | Block outbound targets resolving to private/loopback/metadata IPs (SSRF) |
 | `LOG_LEVEL` | `info` | Winston level |
 | `LOG_INDEX` | `interop-logs` | |
 | `AUDIT_INDEX` | `interop-audit` | |
@@ -712,6 +803,10 @@ placeholders). The prod nginx image substitutes `BACKEND_URL` at container start
   registry/pending state.
 - **ILM:** audit/logs roll over via write aliases; other indices are unbounded —
   add ILM/curation if their volume grows.
+- **Outbound egress:** `POST /api/apis/import` and `POST /api/proxy` make the only
+  server-initiated outbound calls. They are SSRF-guarded in-app (`net-guard.ts`,
+  §4.9), but for defense-in-depth constrain the backend pod's egress at the
+  network layer and tune `OUTBOUND_*` for your environment.
 
 ---
 
@@ -731,8 +826,10 @@ placeholders** — wire them before a real launch:
 - [ ] **Elasticsearch security.** The built-in dev ES runs with `xpack.security`
       disabled. Use a secured/managed cluster in prod (`elasticsearch.enabled=false`
       + credentials, or enable security).
-- [ ] **API explorer "Try it"** is a client-side mock — decide whether to keep it
-      as documentation or implement live execution.
+- [x] **API explorer "Try it"** now issues real requests via the SSRF-guarded
+      `POST /api/proxy` (§4.9). Before launch, confirm the outbound policy fits
+      your network (`OUTBOUND_*` knobs) and that egress from the backend pod is
+      acceptable/locked down for your environment.
 - [ ] **Index lifecycle** for the unbounded indices if volume grows.
 - [ ] **Observability.** Pod annotations advertise `/api/metrics` for Prometheus,
       but there is no metrics endpoint yet — add one or remove the annotation.

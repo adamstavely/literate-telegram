@@ -7,12 +7,16 @@ model, a **policy engine**, and an **admin moderation queue**.
 
 | Layer | Tech |
 |-------|------|
-| Frontend | Angular 17 (standalone components + signals), served by nginx |
+| Frontend | Angular 22 (standalone components + signals), served by nginx |
+| Docs | Astro static site (`docs/`), served at `/docs/*` on the same origin |
 | Backend | Node.js + Express + TypeScript |
 | Datastore | Elasticsearch 8.13 |
 | Auth | OIDC / JWT (Bearer), verified server-side with `jose` |
 | Local dev | Docker Compose |
 | Deployment | Helm chart (Kubernetes) |
+
+> **Node versions:** backend targets **Node 20**; the frontend (Angular 22) and the
+> Astro docs site require **Node ≥ 22.22.3**.
 
 > **New to this codebase? Read [`HANDOFF.md`](./HANDOFF.md).** It is the detailed
 > engineering guide: architecture, request flows, the governance model, every
@@ -22,14 +26,17 @@ model, a **policy engine**, and an **admin moderation queue**.
 
 ```
 backend/     Express + TypeScript API (src/), Dockerfile, .env.example
-frontend/    Angular 17 app (src/), nginx config, Dockerfile
+frontend/    Angular 22 app (src/), nginx config (serves the SPA + /docs + /api proxy), Dockerfile
+docs/        Astro static docs site (built and baked into the frontend image at /docs)
 helm/        Helm chart (Kubernetes deployment)
-project/     Canonical design source (styles.css + HTML/JSX prototypes)
+project/     Canonical design source (styles.css + docs-content.js + HTML/JSX prototypes)
 scripts/     Repo-level scripts (e.g. CSS-sync check)
 docker-compose.yml   Local full stack (Elasticsearch + backend + frontend)
 docker-compose.dev.yml   Dev overrides (hot-reload, :3000/:9200 publish)
-.github/workflows/   CI (styles-sync, backend, frontend, docker, helm, compose)
+.github/workflows/   CI (styles-sync, backend, frontend, docs, docker, helm, compose)
 ```
+
+The Astro docs site has its own developer guide — see [`DOCS.md`](./DOCS.md).
 
 ## Quick start (Docker Compose)
 
