@@ -118,4 +118,19 @@ describe('POST /api/proxy', () => {
     const serialized = JSON.stringify(auditDocs);
     assert.ok(!serialized.includes('sk_secret'), 'audit must not contain the credential');
   });
+
+  test('GraphQL (empty path) targets the base URL exactly, with no trailing slash', async () => {
+    stubEs('get', async () => ({ _source: apiEntry({ style: 'GraphQL', baseUrl: 'https://8.8.8.8/graphql' }) }));
+    stubEs('index', async () => ({}));
+    stubFetch(200, '{"data":{}}');
+
+    const res = await request(app)
+      .post('/api/proxy')
+      .set(AUTH)
+      .send({ entryId: 'entry-1', method: 'POST', path: '', body: '{"query":"{ me { id } }"}' });
+
+    assert.equal(res.status, 200);
+    assert.ok(lastFetch);
+    assert.equal(lastFetch!.url, 'https://8.8.8.8/graphql');
+  });
 });

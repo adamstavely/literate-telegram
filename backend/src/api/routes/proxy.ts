@@ -87,12 +87,16 @@ router.post(
 
       // Reconstruct the target from the STORED baseUrl + a relative path. Reject
       // absolute/protocol-relative paths so the client cannot retarget the host.
+      // (A `..` in the path can reach other paths on the SAME host — intentional:
+      // the console proxies arbitrary paths on the registered API's own host, the
+      // same as calling that API directly; the host itself is pinned below.)
       if (/^[a-z][a-z0-9+.-]*:/i.test(path) || path.startsWith('//')) {
         throw new HttpError(400, 'Path must be relative to the API base URL');
       }
       const base = new URL(entry.baseUrl);
       const basePath = base.pathname.replace(/\/$/, '');
-      const relPath = path.startsWith('/') ? path : `/${path}`;
+      // Empty path (e.g. GraphQL) targets the base URL itself — no trailing slash.
+      const relPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
       const target = new URL(`${base.origin}${basePath}${relPath}`);
       if (query) {
         for (const [k, v] of Object.entries(query)) {
