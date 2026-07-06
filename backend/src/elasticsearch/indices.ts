@@ -9,6 +9,7 @@ const NOTIFICATIONS_INDEX = 'interop-notifications';
 const NOTIFICATION_READS_INDEX = 'interop-notification-reads';
 const POLICY_INDEX = 'interop-policy';
 const SLUG_LOCKS_INDEX = 'interop-slug-locks';
+const REGISTRY_SLUGS_INDEX = 'interop-registry-slugs';
 const COLLECTIONS_INDEX = 'interop-collections';
 
 export const INDEX_NAMES = {
@@ -20,6 +21,7 @@ export const INDEX_NAMES = {
   NOTIFICATION_READS: NOTIFICATION_READS_INDEX,
   POLICY: POLICY_INDEX,
   SLUG_LOCKS: SLUG_LOCKS_INDEX,
+  REGISTRY_SLUGS: REGISTRY_SLUGS_INDEX,
   COLLECTIONS: COLLECTIONS_INDEX,
 } as const;
 
@@ -400,6 +402,29 @@ async function createSlugLocksIndex(): Promise<void> {
   });
 }
 
+async function createRegistrySlugsIndex(): Promise<void> {
+  if (await indexExists(REGISTRY_SLUGS_INDEX)) return;
+
+  // Document id is `${type}:${slug}` — ES create gives an atomic uniqueness
+  // constraint for published registry entries (complements submit-time locks).
+  await esClient.indices.create({
+    index: REGISTRY_SLUGS_INDEX,
+    mappings: {
+      dynamic: false,
+      properties: {
+        type: { type: 'keyword' },
+        slug: { type: 'keyword' },
+        entryId: { type: 'keyword' },
+        reservedAt: { type: 'date' },
+      },
+    },
+    settings: {
+      number_of_shards: 1,
+      number_of_replicas: 1,
+    },
+  });
+}
+
 async function createPolicyIndex(): Promise<void> {
   if (await indexExists(POLICY_INDEX)) return;
 
@@ -506,6 +531,7 @@ export async function setupIndices(): Promise<void> {
     createNotificationReadsIndex(),
     createPolicyIndex(),
     createSlugLocksIndex(),
+    createRegistrySlugsIndex(),
     createCollectionsIndex(),
   ]);
 }

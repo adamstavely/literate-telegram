@@ -53,6 +53,8 @@ export interface Config {
     submitMax: number;
     ingestWindowMs: number;
     ingestMax: number;
+    /** Expected replica count — divides per-replica in-memory budgets for a cluster-wide cap. */
+    replicas: number;
   };
   logging: {
     level: string;
@@ -127,6 +129,7 @@ function loadConfig(): Config {
       // tighter per-IP budget than the global limit to prevent ES flooding.
       ingestWindowMs: optionalEnvNumber('INGEST_RATE_LIMIT_WINDOW_MS', 60000),
       ingestMax: optionalEnvNumber('INGEST_RATE_LIMIT_MAX', 30),
+      replicas: Math.max(1, optionalEnvNumber('RATE_LIMIT_REPLICAS', 1)),
     },
     logging: {
       level: optionalEnv('LOG_LEVEL', 'info'),

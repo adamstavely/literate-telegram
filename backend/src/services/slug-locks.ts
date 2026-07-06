@@ -1,9 +1,14 @@
 import { esClient } from '../elasticsearch/client.js';
 import { INDEX_NAMES } from '../elasticsearch/indices.js';
 import { logger } from '../logger/logger.js';
+import { registrySlugReserved } from './registry-slugs.js';
 
 /** Do not reclaim a slug lock until this long after claim (avoids TOCTOU races). */
 export const LOCK_GRACE_MS = 15 * 60 * 1000;
+
+/** Locks without a matching registry/pending doc are swept proactively. */
+const SWEEP_INTERVAL_MS = 15 * 60 * 1000;
+let sweepTimer: ReturnType<typeof setInterval> | undefined;
 
 export function typeSlugKey(type: string, slug: string): string {
   return `${type}:${slug}`;
@@ -33,11 +38,12 @@ function isLockGraceActive(claimedAt?: string): boolean {
  * are released and treated as available once outside the claim grace window.
  */
 export async function slugTaken(type: string, slug: string): Promise<boolean> {
-  const [registry, pending, lockExists] = await Promise.all([
+  const [registry, reserved, pending, lockExists] = await Promise.all([
     esClient.count({
       index: INDEX_NAMES.REGISTRY,
       query: { bool: { filter: [{ term: { type } }, { term: { slug } }] } },
     }),
+    registrySlugReserved(type, slug),
     esClient.count({
       index: INDEX_NAMES.PENDING,
       query: {
@@ -56,7 +62,7 @@ export async function slugTaken(type: string, slug: string): Promise<boolean> {
     }),
   ]);
 
-  if (registry.count > 0 || pending.count > 0) return true;
+  if (registry.count > 0 || reserved || pending.count > 0) return true;
   if (!lockExists) return false;
 
   try {
@@ -173,5 +179,67 @@ export async function releaseSlug(type: string, slug: string, entryId?: string):
       error: err instanceof Error ? err.message : String(err),
     });
     return false;
+  }
+}
+
+/**
+ * Proactively reconcile stale slug locks so orphans are released without waiting
+ * for the next collision on the same type+slug.
+ */
+export async function sweepStaleSlugLocks(): Promise<number> {
+  const cutoff = new Date(Date.now() - LOCK_GRACE_MS).toISOString();
+  let released = 0;
+
+  try {
+    const response = await esClient.search<{ type?: string; slug?: string }>({
+      index: INDEX_NAMES.SLUG_LOCKS,
+      size: 100,
+      query: { range: { claimedAt: { lte: cutoff } } },
+      _source: ['type', 'slug'],
+    });
+
+    for (const hit of response.hits.hits) {
+      const type = hit._source?.type;
+      const slug = hit._source?.slug;
+      if (!type || !slug) continue;
+
+      const before = await esClient.exists({
+        index: INDEX_NAMES.SLUG_LOCKS,
+        id: typeSlugKey(type, slug),
+      });
+      if (!before) continue;
+
+      const stillTaken = await slugTaken(type, slug);
+      if (!stillTaken) released += 1;
+    }
+  } catch (err) {
+    logger.warn('Slug lock sweep failed', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  return released;
+}
+
+/** Start periodic orphan slug-lock sweeps (no-op if already running). */
+export function startSlugLockSweep(): void {
+  if (sweepTimer) return;
+
+  void sweepStaleSlugLocks();
+  sweepTimer = setInterval(() => {
+    void sweepStaleSlugLocks().then((count) => {
+      if (count > 0) {
+        logger.info('Released orphan slug locks during sweep', { count });
+      }
+    });
+  }, SWEEP_INTERVAL_MS);
+  sweepTimer.unref();
+}
+
+/** Stop the background sweep (used in tests). */
+export function stopSlugLockSweep(): void {
+  if (sweepTimer) {
+    clearInterval(sweepTimer);
+    sweepTimer = undefined;
   }
 }

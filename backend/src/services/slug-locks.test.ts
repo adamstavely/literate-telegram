@@ -108,7 +108,7 @@ describe('slugTaken', () => {
   test('releases orphan lock with no entryId', async () => {
     let deleted = false;
     stubEs('count', async () => ({ count: 0 }));
-    stubEs('exists', async () => true);
+    stubEs('exists', async (params: { index?: string }) => params.index === 'interop-slug-locks');
     stubEs('get', async () => ({ _source: { claimedAt: new Date(Date.now() - LOCK_GRACE_MS - 1000).toISOString() } }));
     stubEs('delete', async () => {
       deleted = true;

@@ -17,6 +17,7 @@ import { logger } from '../../logger/logger.js';
 import { getPolicy, assessRiskWithPolicy, applySubmissionPolicy, reviewDueAt } from '../../services/policy.js';
 import { sanitizeSubmission } from '../../services/entry-dto.js';
 import { slugTaken, claimSlug, releaseSlug } from '../../services/slug-locks.js';
+import { claimOrOwnRegistrySlug, releaseRegistrySlug } from '../../services/registry-slugs.js';
 import { runCompensation } from '../../services/compensation.js';
 import { submitRateLimiter } from '../../middleware/rate-limit.js';
 import { registryVisibilityFilter, entryVisibleToCaller } from '../../services/visibility.js';
@@ -330,6 +331,16 @@ router.post(
           return;
         }
 
+        if (!(await claimOrOwnRegistrySlug(entryType, entrySlug, entryId))) {
+          await releaseSlug(entryType, entrySlug, entryId);
+          res.status(409).json({
+            error: 'Conflict',
+            message: `An entry with slug "${entrySlug}" already exists for type "${entryType}".`,
+            correlationId: req.id,
+          });
+          return;
+        }
+
         try {
           await esClient.index({
             index: INDEX_NAMES.REGISTRY,
@@ -343,6 +354,7 @@ router.post(
             refresh: 'wait_for',
           });
         } catch (indexErr) {
+          await releaseRegistrySlug(entryType, entrySlug, entryId);
           await releaseSlug(entryType, entrySlug, entryId);
           throw indexErr;
         }
@@ -371,6 +383,7 @@ router.post(
             'auto-approve:rollback-registry',
             async () => {
               await esClient.delete({ index: INDEX_NAMES.REGISTRY, id: entryId, refresh: 'wait_for' });
+              await releaseRegistrySlug(entryType, entrySlug, entryId);
             },
             { entryId, type: entryType, slug: entrySlug },
           );

@@ -5,7 +5,7 @@ import { AuditService } from '../services/audit.service';
 import { safePageLocation } from '../utils/page-location';
 
 const AUDITED_METHODS = new Set(['POST', 'PUT', 'DELETE', 'PATCH']);
-const AUDITED_PATH_PATTERNS = [/\/api\/entries/, /\/api\/pending/, /\/api\/policy/];
+const AUDITED_PATH_PATTERNS = [/\/api\/entries/, /\/api\/pending/, /\/api\/policy/, /\/api\/collections/];
 
 export const auditInterceptor: HttpInterceptorFn = (req, next) => {
   const audit = inject(AuditService);
@@ -30,7 +30,7 @@ export const auditInterceptor: HttpInterceptorFn = (req, next) => {
   // Derive action and resource from method + URL.
   const action = cloned.method.toLowerCase();
   const urlParts = cloned.url.split('/').filter(Boolean);
-  const resource = urlParts.find(p => p === 'entries' || p === 'pending' || p === 'policy') ?? 'unknown';
+  const resource = urlParts.find(p => p === 'entries' || p === 'pending' || p === 'policy' || p === 'collections') ?? 'unknown';
   // The segment after the resource name is typically the ID.
   const resourceIdx = urlParts.indexOf(resource);
   const resourceId =

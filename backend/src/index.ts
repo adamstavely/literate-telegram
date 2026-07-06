@@ -1,6 +1,7 @@
 import { config } from './config/index.js';
 import { logger } from './logger/logger.js';
 import { setupIndices } from './elasticsearch/indices.js';
+import { startSlugLockSweep } from './services/slug-locks.js';
 import app from './app.js';
 
 async function start(): Promise<void> {
@@ -19,10 +20,12 @@ async function start(): Promise<void> {
   }
 
   const server = app.listen(port, () => {
+    startSlugLockSweep();
     logger.info('Interop backend started', {
       port,
       nodeEnv: config.nodeEnv,
       logLevel: config.logging.level,
+      rateLimitReplicas: config.rateLimit.replicas,
     });
   });
 
