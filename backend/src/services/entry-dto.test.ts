@@ -137,6 +137,48 @@ describe('sanitizeSubmission', () => {
     assert.equal(api.endpoints?.[0]?.path, 'GetUser');
   });
 
+  test('accepts and caps rich endpoint metadata (from an imported spec)', () => {
+    const manyParams = Array.from({ length: 60 }, (_, i) => ({
+      name: `p${i}`,
+      in: 'query',
+      type: 'string',
+      required: false,
+    }));
+    const api = sanitizeSubmission({
+      type: 'api',
+      name: 'A',
+      slug: 'a',
+      publisher: 'acme.com',
+      summary: 'a summary here',
+      description: 'a description that is long enough',
+      sensitivity: 'public',
+      categories: ['x'],
+      style: 'REST',
+      endpoints: [
+        {
+          method: 'POST',
+          path: '/pets',
+          summary: 'create',
+          operationId: 'createPet',
+          description: 'Creates a pet',
+          params: manyParams,
+          requestBody: {
+            contentType: 'application/json',
+            fields: [{ name: 'name', in: 'body', type: 'string', required: true }],
+            example: '{"name":"rex"}',
+          },
+          responses: [{ code: '201', description: 'created', example: '{"id":"p1"}' }],
+        },
+      ],
+    }) as Api;
+
+    const ep = api.endpoints![0];
+    assert.equal(ep.operationId, 'createPet');
+    assert.equal(ep.params!.length, 40); // capped from 60
+    assert.equal(ep.requestBody!.fields![0]!.name, 'name');
+    assert.equal(ep.responses![0]!.code, '201');
+  });
+
   test('coerces skill tokens and arrays', () => {
     const skill = sanitizeSubmission({
       type: 'skill',

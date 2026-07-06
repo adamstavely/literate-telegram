@@ -8,6 +8,7 @@ import {
   ElementRef,
   ViewChild,
   effect,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -47,10 +48,10 @@ interface KpiCard {
 }
 
 @Component({
-  selector: 'app-admin',
-  standalone: true,
-  imports: [RouterLink, FormsModule, IconComponent, TypeBadgeComponent],
-  templateUrl: './admin.component.html',
+    selector: 'app-admin',
+    imports: [RouterLink, FormsModule, IconComponent, TypeBadgeComponent],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    templateUrl: './admin.component.html'
 })
 export class AdminComponent implements OnInit {
   private readonly registry = inject(RegistryService);

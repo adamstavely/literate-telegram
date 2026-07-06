@@ -10,6 +10,7 @@ import {
   ElementRef,
   ViewChild,
   CUSTOM_ELEMENTS_SCHEMA,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -27,11 +28,11 @@ import { AuthenticatedUser, Notification } from '../../types';
 import { docsUrl } from '../../../core/utils/docs-url';
 
 @Component({
-  selector: 'app-header',
-  standalone: true,
-  schemas: [CUSTOM_ELEMENTS_SCHEMA],
-  imports: [RouterLink, RouterLinkActive, FormsModule, IconComponent, AvatarComponent, DatePipe],
-  templateUrl: './header.component.html',
+    selector: 'app-header',
+    schemas: [CUSTOM_ELEMENTS_SCHEMA],
+    imports: [RouterLink, RouterLinkActive, FormsModule, IconComponent, AvatarComponent, DatePipe],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    templateUrl: './header.component.html'
 })
 export class HeaderComponent implements OnInit, OnDestroy {
   readonly auth = inject(AuthService);

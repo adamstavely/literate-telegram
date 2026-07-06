@@ -1,4 +1,11 @@
-import { buildEndpointSpec, buildLiveRequest, epToken, exampleVal, liveResponseBody } from './endpoint-spec';
+import {
+  buildEndpointSpec,
+  buildLiveRequest,
+  buildStructuredRequest,
+  epToken,
+  exampleVal,
+  liveResponseBody,
+} from './endpoint-spec';
 import { Api, ApiEndpoint } from '../types';
 
 function api(partial: Partial<Api>): Api {
@@ -60,5 +67,60 @@ describe('endpoint-spec', () => {
     const body = liveResponseBody(spec, { amount: '9900', currency: 'eur' });
     expect(body).toContain('"amount": 9900');
     expect(body).toContain('"currency": "eur"');
+  });
+
+  describe('imported endpoint (real OpenAPI metadata)', () => {
+    const importedEp: ApiEndpoint = {
+      method: 'POST',
+      path: '/pets/{id}',
+      summary: 'Update a pet',
+      params: [
+        { name: 'id', in: 'path', type: 'string', required: true, description: 'Pet id', example: 'p1' },
+        { name: 'expand', in: 'query', type: 'string', required: false },
+      ],
+      requestBody: { fields: [{ name: 'name', in: 'body', type: 'string', required: true }] },
+      responses: [{ code: '201', description: 'Created', example: '{"id":"p1"}' }],
+    };
+
+    it('uses the real params/body/responses instead of the dictionary', () => {
+      const spec = buildEndpointSpec(api({}), importedEp);
+      expect(spec.pathParams.map((p) => p.name)).toEqual(['id']);
+      expect(spec.query.map((p) => p.name)).toContain('expand');
+      expect(spec.body.map((p) => p.name)).toContain('name');
+      expect(spec.responses[0].code).toBe('201');
+      expect(spec.sample).toContain('"id"');
+    });
+
+    it('substitutes {brace}-style path params in the live request', () => {
+      const spec = buildEndpointSpec(api({}), importedEp);
+      const req = buildLiveRequest(api({}), importedEp, spec, { id: '42', name: 'rex' });
+      expect(req).toContain('/pets/42');
+      expect(req).toContain('-X POST');
+    });
+
+    it('seeds the try-it form from the imported example', () => {
+      const spec = buildEndpointSpec(api({}), importedEp);
+      const idParam = spec.pathParams.find((p) => p.name === 'id')!;
+      expect(exampleVal(idParam)).toBe('p1');
+    });
+
+    it('buildStructuredRequest produces a REST request with substituted path, query, and body', () => {
+      const spec = buildEndpointSpec(api({}), importedEp);
+      const req = buildStructuredRequest(api({}), importedEp, spec, { id: '42', expand: 'owner', name: 'rex' });
+      expect(req.method).toBe('POST');
+      expect(req.path).toBe('/pets/42');
+      expect(req.query).toEqual({ expand: 'owner' });
+      expect(req.body).toBe(JSON.stringify({ name: 'rex' }));
+    });
+  });
+
+  it('buildStructuredRequest builds a GraphQL POST with query + variables', () => {
+    const ep: ApiEndpoint = { method: 'MUTATION', path: 'issueCreate', summary: '' };
+    const gqlApi = api({ style: 'GraphQL', baseUrl: 'https://gql.test/graphql' });
+    const spec = buildEndpointSpec(gqlApi, ep);
+    const req = buildStructuredRequest(gqlApi, ep, spec, {});
+    expect(req.method).toBe('POST');
+    expect(req.path).toBe('');
+    expect(req.body).toContain('mutation');
   });
 });

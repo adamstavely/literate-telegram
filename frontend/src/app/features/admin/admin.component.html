@@ -11,13 +11,14 @@
     </a>
   </div>
 
+  @if (statsError()) {
+    <div class="callout" role="alert" style="margin-bottom: 8px">
+      {{ statsError() }}
+      <button type="button" class="inline-link" (click)="loadStats()">Retry</button>
+    </div>
+  }
+
   <div class="admin-stats" role="list" aria-label="Queue statistics">
-    @if (statsError()) {
-      <div class="callout" role="alert" style="grid-column: 1 / -1; margin-bottom: 8px">
-        {{ statsError() }}
-        <button type="button" class="inline-link" (click)="loadStats()">Retry</button>
-      </div>
-    }
     @for (kpi of kpis(); track kpi.label) {
       <div class="kpi" role="listitem">
         <div

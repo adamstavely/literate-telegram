@@ -8,7 +8,7 @@
 
       <div class="wizard">
         <!-- Step rail (left) -->
-        <nav class="steps-rail" aria-label="Registration steps">
+        <nav class="steps-rail" aria-label="Registration steps" tabindex="0">
           @for (step of steps; track step.id) {
             <div
               class="rail-step"
@@ -307,6 +307,48 @@
                 }
 
                 @if (isApi) {
+                  <div class="field">
+                    <div class="field-label">Import from OpenAPI / Swagger <span style="color: var(--muted); font-weight: 400">(optional)</span></div>
+                    <p class="field-hint">Paste a spec URL or the raw JSON/YAML to auto-fill the fields and endpoints below.</p>
+                    <div class="choice-grid choice-grid-2" role="tablist" aria-label="Import source">
+                      <button type="button" class="choice" [class.on]="importMode() === 'url'" (click)="importMode.set('url')" [attr.aria-pressed]="importMode() === 'url'">
+                        <div class="choice-t">By URL</div>
+                        <div class="choice-d">Fetch a hosted spec</div>
+                      </button>
+                      <button type="button" class="choice" [class.on]="importMode() === 'paste'" (click)="importMode.set('paste')" [attr.aria-pressed]="importMode() === 'paste'">
+                        <div class="choice-t">Paste / upload</div>
+                        <div class="choice-d">JSON or YAML text</div>
+                      </button>
+                    </div>
+                    @if (importMode() === 'url') {
+                      <label class="sr-only" for="reg-spec-url">Spec URL</label>
+                      <input id="reg-spec-url" class="input mono" type="url" style="margin-top: 8px" [ngModel]="specUrl()" (ngModelChange)="specUrl.set($event)" [ngModelOptions]="{ standalone: true }" placeholder="https://api.example.com/openapi.json" />
+                    } @else {
+                      <label class="sr-only" for="reg-spec-text">Spec text</label>
+                      <textarea id="reg-spec-text" class="textarea mono" rows="5" style="margin-top: 8px" [ngModel]="specText()" (ngModelChange)="specText.set($event)" [ngModelOptions]="{ standalone: true }" placeholder="Paste OpenAPI 3.x or Swagger 2.0 (JSON or YAML)"></textarea>
+                    }
+                    <div style="display: flex; gap: 10px; align-items: center; margin-top: 8px">
+                      <button type="button" class="btn btn-secondary btn-sm" (click)="importSpec()" [disabled]="importing()">
+                        {{ importing() ? 'Importing…' : 'Import spec' }}
+                      </button>
+                      @if (importedEndpoints().length) {
+                        <span class="field-hint" style="margin: 0" aria-live="polite">Imported {{ importedEndpoints().length }} endpoint{{ importedEndpoints().length === 1 ? '' : 's' }}.</span>
+                      }
+                    </div>
+                    @if (importError()) {
+                      <div class="callout" role="alert" style="margin-top: 8px">{{ importError() }}</div>
+                    }
+                    @if (importedEndpoints().length) {
+                      <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 3px; max-height: 180px; overflow: auto" aria-label="Imported endpoints">
+                        @for (ep of importedEndpoints(); track ep.method + ep.path) {
+                          <div style="display: flex; gap: 8px; align-items: baseline; font-size: 13px">
+                            <span class="mono" style="font-weight: 640; min-width: 58px">{{ ep.method }}</span>
+                            <span class="mono" style="color: var(--muted)">{{ ep.path }}</span>
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
                   <div class="field">
                     <div class="field-label">Style</div>
                     <div class="choice-grid choice-grid-2">

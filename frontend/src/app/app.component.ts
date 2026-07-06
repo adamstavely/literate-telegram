@@ -6,6 +6,7 @@ import {
   inject,
   DestroyRef,
   signal,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -17,12 +18,12 @@ import { AUTH_FLASH_KEY } from './core/interceptors/auth.interceptor';
 import { IconComponent } from './shared/components/icon/icon.component';
 
 @Component({
-  selector: 'app-root',
-  standalone: true,
-  schemas: [CUSTOM_ELEMENTS_SCHEMA],
-  imports: [RouterOutlet, HeaderComponent, IconComponent],
-  templateUrl: './app.component.html',
-  styleUrl: './app.component.scss',
+    selector: 'app-root',
+    schemas: [CUSTOM_ELEMENTS_SCHEMA],
+    imports: [RouterOutlet, HeaderComponent, IconComponent],
+    templateUrl: './app.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
+    styleUrl: './app.component.scss'
 })
 export class AppComponent implements OnInit {
   private readonly themeService = inject(ThemeService);

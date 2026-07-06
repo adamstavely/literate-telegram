@@ -1,15 +1,14 @@
-import { Component, OnInit, signal, inject, DestroyRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, signal, inject, DestroyRef, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RegistryService } from '../../core/services/registry.service';
 import { Collection } from '../../shared/types';
 import { CollectionCardComponent } from '../../shared/components/collection-card/collection-card.component';
 
 @Component({
-  selector: 'app-collections',
-  standalone: true,
-  imports: [CommonModule, CollectionCardComponent],
-  template: `
+    selector: 'app-collections',
+    imports: [CollectionCardComponent],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    template: `
     <div class="container page">
       <div class="page-head">
         <div class="eyebrow">Curated stacks</div>
@@ -34,7 +33,7 @@ import { CollectionCardComponent } from '../../shared/components/collection-card
         </div>
       }
     </div>
-  `,
+  `
 })
 export class CollectionsComponent implements OnInit {
   private readonly registry = inject(RegistryService);

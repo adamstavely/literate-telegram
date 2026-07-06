@@ -107,11 +107,31 @@
       <div class="ep-sec ep-sec-split">
         <div class="ep-try-head">
           <div class="ep-sec-title" style="margin-bottom: 0">{{ tryOn() ? 'Try it out' : 'Example' }}</div>
-          <button class="ep-try-btn" [class.on]="tryOn()" type="button" (click)="toggleTry()">
-            <app-icon [name]="tryOn() ? 'close' : 'play'" [size]="13" aria-hidden="true" />
-            {{ tryOn() ? 'Cancel' : 'Try it out' }}
-          </button>
+          @if (liveEnabled) {
+            <button class="ep-try-btn" [class.on]="tryOn()" type="button" (click)="toggleTry()">
+              <app-icon [name]="tryOn() ? 'close' : 'play'" [size]="13" aria-hidden="true" />
+              {{ tryOn() ? 'Cancel' : 'Try it out' }}
+            </button>
+          }
         </div>
+
+        @if (tryOn()) {
+          <div class="ep-field">
+            <label class="ep-field-label" [attr.for]="'ep-auth-' + ep.method">
+              <span class="param-name mono">Authorization</span>
+              <span class="param-type mono">sent only with this request</span>
+            </label>
+            <input
+              class="input mono ep-input"
+              [id]="'ep-auth-' + ep.method"
+              type="password"
+              autocomplete="off"
+              [ngModel]="authToken()"
+              (ngModelChange)="authToken.set($event)"
+              placeholder="Bearer token or API key (optional)"
+            />
+          </div>
+        }
 
         @if (tryOn() && inputFields.length > 0) {
           <div class="ep-form">
@@ -147,7 +167,7 @@
               {{ running() ? 'Sending…' : 'Execute' }}
             </button>
             <button class="btn btn-secondary btn-sm" type="button" (click)="reset()" [disabled]="running()">Reset</button>
-            <span class="ep-exec-hint">Sends a sandboxed request against a mock of {{ api.name }}.</span>
+            <span class="ep-exec-hint">Sends a real request to {{ api.name }} via the Interop proxy. Credentials are used for this request only and never stored.</span>
           </div>
         }
 
@@ -170,7 +190,7 @@
             @if (running()) {
               <div class="ep-resp-empty" aria-busy="true"><span class="ep-spinner"></span>Awaiting response…</div>
             } @else if (resp()) {
-              <div class="result-pane" role="region" aria-label="Mock server response">{{ resp()!.body }}</div>
+              <div class="result-pane" role="region" aria-label="Server response">{{ resp()!.body }}</div>
             } @else {
               <div class="ep-resp-empty">Press <b>Execute</b> to send the request and see the response.</div>
             }

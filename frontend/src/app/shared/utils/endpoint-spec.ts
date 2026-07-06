@@ -4,7 +4,7 @@
  * parameters, request body, responses, and example request/response — plus a
  * live request builder for the "Try it out" console.
  */
-import { Api, ApiEndpoint } from '../types';
+import { Api, ApiEndpoint, EndpointParam } from '../types';
 
 export type ParamLocation = 'path' | 'query' | 'body' | 'variable';
 
@@ -14,6 +14,8 @@ export interface EpParam {
   type: string;
   required: boolean;
   desc: string;
+  /** Seed value for the try-it form (from an imported spec example). */
+  example?: string;
 }
 
 export interface EpResponse {
@@ -100,11 +102,117 @@ const EP_EXAMPLE_VALS: Record<string, string> = {
 
 export const epToken = (ep: ApiEndpoint): string => {
   if (/\(/.test(ep.path)) return ep.path.split('(')[0].trim();
-  const parts = ep.path.split('/').filter(Boolean).filter((s) => !s.startsWith(':'));
+  const parts = ep.path
+    .split('/')
+    .filter(Boolean)
+    .filter((s) => !s.startsWith(':') && !s.startsWith('{'));
   return parts[parts.length - 1] || 'resource';
 };
 
+/** Replace both `:name` (seed style) and `{name}` (OpenAPI style) path params. */
+function substitutePath(path: string, resolve: (name: string) => string): string {
+  return path.replace(/:(\w+)|\{(\w+)\}/g, (_m, a, b) => resolve(a ?? b));
+}
+
+const HTTP_LABELS: Record<string, string> = {
+  '200': 'OK', '201': 'Created', '202': 'Accepted', '204': 'No Content',
+  '400': 'Bad Request', '401': 'Unauthorized', '403': 'Forbidden', '404': 'Not Found',
+  '409': 'Conflict', '422': 'Unprocessable', '429': 'Too Many Requests', '500': 'Server Error',
+};
+function httpLabel(code: string): string {
+  return HTTP_LABELS[code] ?? (code === 'default' ? 'Default' : code);
+}
+function toneForCode(code: string): 'ok' | 'warn' | 'danger' {
+  if (/^2/.test(code)) return 'ok';
+  if (/^5/.test(code)) return 'danger';
+  if (/^4/.test(code)) return 'warn';
+  return 'ok';
+}
+function importedParam(p: EndpointParam, loc: ParamLocation): EpParam {
+  return {
+    name: p.name,
+    in: loc,
+    type: p.type || 'string',
+    required: p.required,
+    desc: p.description ?? '',
+    ...(p.example !== undefined ? { example: p.example } : {}),
+  };
+}
+function demoPathVal(name: string, example?: string): string {
+  if (example) return example;
+  return name === 'n' ? '1284' : name === 'owner' ? 'acme' : name === 'repo' ? 'app' : '123';
+}
+function buildExampleCurl(
+  api: Api,
+  ep: ApiEndpoint,
+  spec: { isGql: boolean; pathParams: EpParam[]; query: EpParam[]; body: EpParam[] },
+): string {
+  const baseUrl = api.baseUrl ?? api.endpoint ?? '';
+  if (spec.isGql) {
+    const argList = [...spec.query, ...spec.body];
+    const decl = argList.length ? `(${argList.map((a) => `$${a.name}: ${a.type}`).join(', ')})` : '';
+    const pass = argList.length ? `(${argList.map((a) => `${a.name.replace(/Filter$/, '')}: $${a.name}`).join(', ')})` : '';
+    return `curl ${baseUrl} \\\n  -H "Authorization: Bearer $TOKEN" \\\n  -H "Content-Type: application/json" \\\n  -d '{ "query": "${ep.method === 'MUTATION' ? 'mutation' : 'query'}${decl} { ${epToken(ep)}${pass} { id } }" }'`;
+  }
+  const url =
+    baseUrl +
+    substitutePath(ep.path, (n) => demoPathVal(n, spec.pathParams.find((p) => p.name === n)?.example));
+  const q = spec.query.filter((p) => p.required).map((p) => `${p.name}=…`).join('&');
+  const lines = [
+    `curl ${ep.method !== 'GET' ? `-X ${ep.method} ` : ''}"${url}${q ? '?' + q : ''}" \\`,
+    `  -H "Authorization: Bearer $TOKEN"`,
+  ];
+  if (spec.body.length) {
+    lines[lines.length - 1] += ` \\`;
+    lines.push(`  -H "Content-Type: application/json" \\`);
+    const bodyObj = spec.body
+      .slice(0, 3)
+      .map((f) => `"${f.name}": ${f.type === 'integer' ? '1000' : f.type.includes('[]') ? '[]' : `"…"`}`)
+      .join(', ');
+    lines.push(`  -d '{ ${bodyObj} }'`);
+  }
+  return lines.join('\n');
+}
+
+/** Build an EndpointSpec from real imported metadata (params/body/responses). */
+function specFromImport(api: Api, ep: ApiEndpoint): EndpointSpec {
+  const isGql = api.style === 'GraphQL';
+  const params = ep.params ?? [];
+  const pathParams = params.filter((p) => p.in === 'path').map((p) => importedParam(p, 'path'));
+  const query = params
+    .filter((p) => p.in === 'query' || p.in === 'header')
+    .map((p) => importedParam(p, isGql ? 'variable' : 'query'));
+  const bodyIn: ParamLocation = isGql ? 'variable' : 'body';
+  const body = (ep.requestBody?.fields ?? []).map((p) => importedParam(p, bodyIn));
+
+  let responses: EpResponse[] = (ep.responses ?? []).map((r) => ({
+    code: r.code,
+    tone: toneForCode(r.code),
+    label: httpLabel(r.code),
+    desc: r.description ?? '',
+  }));
+  if (responses.length === 0) {
+    const code = ep.method === 'POST' ? '201' : '200';
+    responses = [{ code, tone: 'ok', label: httpLabel(code), desc: '' }];
+  }
+
+  const token = epToken(ep);
+  const okResp =
+    (ep.responses ?? []).find((r) => /^2/.test(r.code) && r.example) ??
+    (ep.responses ?? []).find((r) => r.example);
+  const sample =
+    okResp?.example ?? ep.requestBody?.example ?? `{\n  "object": "${token.replace(/s$/, '')}",\n  "id": "obj_1a2b3c"\n}`;
+
+  const example = buildExampleCurl(api, ep, { isGql, pathParams, query, body });
+  return { pathParams, query, body, bodyIn, responses, sample, example, isGql };
+}
+
 export function buildEndpointSpec(api: Api, ep: ApiEndpoint): EndpointSpec {
+  // Prefer real metadata from an imported OpenAPI spec; otherwise synthesize
+  // from the built-in dictionaries (seed data has no rich endpoint fields).
+  if ((ep.params && ep.params.length > 0) || ep.requestBody || (ep.responses && ep.responses.length > 0)) {
+    return specFromImport(api, ep);
+  }
   const isGql = api.style === 'GraphQL';
   const token = epToken(ep);
   const write = /^(POST|PUT|PATCH|DELETE|MUTATION)$/.test(ep.method);
@@ -168,6 +276,7 @@ export function buildEndpointSpec(api: Api, ep: ApiEndpoint): EndpointSpec {
 }
 
 export const exampleVal = (p: EpParam): string => {
+  if (p.example !== undefined && p.example !== '') return p.example;
   const key = p.name.toLowerCase();
   if (key in EP_EXAMPLE_VALS) return EP_EXAMPLE_VALS[key];
   if (/^(integer|number)$/.test(p.type) || /Int/.test(p.type)) return '1';
@@ -195,7 +304,7 @@ export function buildLiveRequest(api: Api, ep: ApiEndpoint, spec: EndpointSpec, 
     const q = `${op}${decl} { ${epToken(ep)}${pass} { id } }`;
     return `curl ${baseUrl} \\\n  -H "Authorization: Bearer $TOKEN" \\\n  -H "Content-Type: application/json" \\\n  -d '${JSON.stringify({ query: q, variables: varsObj })}'`;
   }
-  const url = baseUrl + ep.path.replace(/:(\w+)/g, (_m, n) => encodeURIComponent(vals[n] || `:${n}`));
+  const url = baseUrl + substitutePath(ep.path, (n) => encodeURIComponent(vals[n] || `:${n}`));
   const qp = spec.query.filter((p) => vals[p.name] !== undefined && vals[p.name] !== '').map((p) => `${p.name}=${encodeURIComponent(vals[p.name])}`).join('&');
   const lines = [`curl ${ep.method !== 'GET' ? `-X ${ep.method} ` : ''}"${url}${qp ? '?' + qp : ''}" \\`, `  -H "Authorization: Bearer $TOKEN"`];
   if (spec.body.length) {
@@ -206,6 +315,56 @@ export function buildLiveRequest(api: Api, ep: ApiEndpoint, spec: EndpointSpec, 
     lines.push(`  -d '${JSON.stringify(obj)}'`);
   }
   return lines.join('\n');
+}
+
+export interface StructuredRequest {
+  method: string;
+  /** Path relative to the API base URL, with path params substituted. */
+  path: string;
+  query: Record<string, string>;
+  body?: string;
+}
+
+/**
+ * Build the concrete request (method/path/query/body) for a real proxied call,
+ * from the user's entered values. Mirrors buildLiveRequest's value handling but
+ * returns structured data instead of a display curl, and never includes auth
+ * (credentials are supplied separately by the console's Authorize field).
+ */
+export function buildStructuredRequest(
+  api: Api,
+  ep: ApiEndpoint,
+  spec: EndpointSpec,
+  vals: Record<string, string>,
+): StructuredRequest {
+  if (spec.isGql) {
+    const args = [...spec.query, ...spec.body];
+    const varsObj: Record<string, unknown> = {};
+    args.forEach((a) => {
+      if (vals[a.name] !== undefined && vals[a.name] !== '') varsObj[a.name] = coerce(a, vals[a.name]);
+    });
+    const op = ep.method === 'MUTATION' ? 'mutation' : 'query';
+    const decl = args.length ? `(${args.map((a) => `$${a.name}: ${a.type}`).join(', ')})` : '';
+    const pass = args.length ? `(${args.map((a) => `${a.name.replace(/Filter$/, '')}: $${a.name}`).join(', ')})` : '';
+    const query = `${op}${decl} { ${epToken(ep)}${pass} { id } }`;
+    // GraphQL is always a POST to the base URL.
+    return { method: 'POST', path: '', query: {}, body: JSON.stringify({ query, variables: varsObj }) };
+  }
+
+  const path = substitutePath(ep.path, (n) => vals[n] ?? '');
+  const query: Record<string, string> = {};
+  spec.query.forEach((p) => {
+    if (vals[p.name] !== undefined && vals[p.name] !== '') query[p.name] = vals[p.name];
+  });
+  let body: string | undefined;
+  if (spec.body.length && /^(POST|PUT|PATCH|DELETE)$/.test(ep.method)) {
+    const obj: Record<string, unknown> = {};
+    spec.body.forEach((f) => {
+      if (vals[f.name] !== undefined && vals[f.name] !== '') obj[f.name] = coerce(f, vals[f.name]);
+    });
+    body = JSON.stringify(obj);
+  }
+  return { method: ep.method, path, query, body };
 }
 
 /* Fold entered values into the canned success body so the response feels live. */
