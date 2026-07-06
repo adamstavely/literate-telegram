@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 
@@ -20,6 +20,7 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
       </div>
     </section>
   `,
+    changeDetection: ChangeDetectionStrategy.Eager,
     styles: [
         `.nf-code { font-size: 64px; font-weight: 700; color: var(--accent); line-height: 1; }`,
     ]

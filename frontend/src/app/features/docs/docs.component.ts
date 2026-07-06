@@ -7,6 +7,7 @@ import {
   inject,
   Input,
   HostListener,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { Router } from '@angular/router';
 import { DOC_SECTIONS, DOC_ARTICLES, DocArticle } from './docs-content';
@@ -20,6 +21,7 @@ export interface DocTocHeading {
 @Component({
     selector: 'app-docs',
     imports: [IconComponent],
+    changeDetection: ChangeDetectionStrategy.Eager,
     templateUrl: './docs.component.html'
 })
 export class DocsComponent implements OnChanges {

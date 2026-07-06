@@ -10,6 +10,7 @@ import {
   ElementRef,
   ViewChild,
   CUSTOM_ELEMENTS_SCHEMA,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -29,6 +30,7 @@ import { AuthenticatedUser, Notification } from '../../types';
     selector: 'app-header',
     schemas: [CUSTOM_ELEMENTS_SCHEMA],
     imports: [RouterLink, RouterLinkActive, FormsModule, IconComponent, AvatarComponent, DatePipe],
+    changeDetection: ChangeDetectionStrategy.Eager,
     templateUrl: './header.component.html'
 })
 export class HeaderComponent implements OnInit, OnDestroy {

@@ -8,6 +8,7 @@ import {
   DestroyRef,
   Input,
   HostListener,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
@@ -47,6 +48,7 @@ type TabId = 'overview' | 'install' | 'tools' | 'reviews';
         SensitivityPanelComponent,
         EndpointCardComponent,
     ],
+    changeDetection: ChangeDetectionStrategy.Eager,
     templateUrl: './detail.component.html'
 })
 export class DetailComponent implements OnChanges {

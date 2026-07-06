@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { OAuthService } from 'angular-oauth2-oidc';
 import { AuthService } from '../../core/services/auth.service';
@@ -9,6 +9,7 @@ const RETURN_URL_KEY = 'auth-return-url';
 @Component({
     selector: 'app-auth-callback',
     imports: [RouterLink],
+    changeDetection: ChangeDetectionStrategy.Eager,
     template: `
     <div class="container page" role="status" aria-live="polite" style="padding-top: 48px">
       @if (error()) {

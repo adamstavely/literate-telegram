@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, inject, DestroyRef } from '@angular/core';
+import { Component, OnInit, signal, inject, DestroyRef, ChangeDetectionStrategy } from '@angular/core';
 
 import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
@@ -10,6 +10,7 @@ import { CollectionCardComponent } from '../../shared/components/collection-card
 @Component({
     selector: 'app-collections',
     imports: [RouterLink, CollectionCardComponent],
+    changeDetection: ChangeDetectionStrategy.Eager,
     template: `
     <div class="container page">
       <div class="page-head">

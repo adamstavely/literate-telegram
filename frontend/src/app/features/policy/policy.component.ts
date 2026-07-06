@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed, inject, DestroyRef } from '@angular/core';
+import { Component, OnInit, signal, computed, inject, DestroyRef, ChangeDetectionStrategy } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { IconComponent } from '../../shared/components/icon/icon.component';
@@ -157,6 +157,7 @@ const PANE: Record<string, { title: string; desc: string }> = {
 @Component({
     selector: 'app-policy',
     imports: [RouterLink, IconComponent],
+    changeDetection: ChangeDetectionStrategy.Eager,
     templateUrl: './policy.component.html'
 })
 export class PolicyComponent implements OnInit {

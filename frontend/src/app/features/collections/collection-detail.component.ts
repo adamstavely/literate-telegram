@@ -1,4 +1,4 @@
-import { Component, OnChanges, SimpleChanges, signal, inject, DestroyRef, Input } from '@angular/core';
+import { Component, OnChanges, SimpleChanges, signal, inject, DestroyRef, Input, ChangeDetectionStrategy } from '@angular/core';
 
 import { RouterLink, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -48,6 +48,7 @@ const KIND_META: Record<string, { icon: string; label: string; color: string; no
     SensitivityPanelComponent,
     VerifiedMarkComponent
 ],
+    changeDetection: ChangeDetectionStrategy.Eager,
     templateUrl: './collection-detail.component.html'
 })
 export class CollectionDetailComponent implements OnChanges {

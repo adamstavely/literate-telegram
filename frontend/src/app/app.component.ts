@@ -6,6 +6,7 @@ import {
   inject,
   DestroyRef,
   signal,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -21,6 +22,7 @@ import { IconComponent } from './shared/components/icon/icon.component';
     schemas: [CUSTOM_ELEMENTS_SCHEMA],
     imports: [RouterOutlet, HeaderComponent, IconComponent],
     templateUrl: './app.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './app.component.scss'
 })
 export class AppComponent implements OnInit {
