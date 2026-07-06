@@ -349,6 +349,7 @@ export function initSiteHeader(): void {
       };
       el.addEventListener('click', mark);
       el.addEventListener('keydown', (e) => {
+        if (!(e instanceof KeyboardEvent)) return;
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           mark();

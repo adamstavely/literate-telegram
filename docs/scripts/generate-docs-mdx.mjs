@@ -28,10 +28,6 @@ function docHref(target) {
   return `/docs/${target}`;
 }
 
-function escapeAttr(s) {
-  return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-}
-
 function parseInline(str) {
   return str
     .replace(/&/g, '&amp;')
