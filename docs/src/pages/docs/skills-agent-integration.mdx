@@ -1,0 +1,175 @@
+---
+layout: ../../layouts/DocLayout.astro
+title: "How to add skills support to your agent"
+description: "A guide for adding Agent Skills support to an AI agent or development tool."
+navLabel: "Agent integration"
+tags: ["Agent Skills","Integration"]
+---
+
+import Lead from '../../components/mdx/Lead.astro';
+import RawHtml from '../../components/mdx/RawHtml.astro';
+
+<Lead>A guide for adding Agent Skills support to an AI agent or development tool.</Lead>
+
+<RawHtml html={`<h2 id="the-core-principle-progressive-disclosure" class="doc-h2">The core principle: progressive disclosure</h2>
+<p class="doc-p">Every skills-compatible agent follows the same three-tier loading strategy:</p>
+<div class="doc-table-wrap"><table class="doc-table">
+<thead>
+<tr>
+<th>Tier</th>
+<th>What&#39;s loaded</th>
+<th>When</th>
+<th>Token cost</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1. Catalog</td>
+<td>Name + description</td>
+<td>Session start</td>
+<td>~50-100 tokens per skill</td>
+</tr>
+<tr>
+<td>2. Instructions</td>
+<td>Full <code>SKILL.md</code> body</td>
+<td>When the skill is activated</td>
+<td>&lt;5000 tokens (recommended)</td>
+</tr>
+<tr>
+<td>3. Resources</td>
+<td>Scripts, references, assets</td>
+<td>When the instructions reference them</td>
+<td>Varies</td>
+</tr>
+</tbody></table></div>
+<p class="doc-p">The model sees the catalog from the start, so it knows what skills are available. When it decides a skill is relevant, it loads the full instructions. If those instructions reference supporting files, the model loads them individually as needed.</p>
+<p class="doc-p">This keeps the base context small while giving the model access to specialized knowledge on demand. An agent with 20 installed skills doesn&#39;t pay the token cost of 20 full instruction sets upfront — only the ones actually used in a given conversation.</p>
+<h2 id="step-1-discover-skills" class="doc-h2">Step 1: Discover skills</h2>
+<p class="doc-p">At session startup, find all available skills and load their metadata.</p>
+<h3 class="doc-h3">Where to scan</h3>
+<p class="doc-p">Which directories you scan depends on your agent&#39;s environment. Most locally-running agents scan at least two scopes:</p>
+<ul class="doc-list">
+<li><strong>Project-level</strong> (relative to the working directory): Skills specific to a project or repository.</li>
+<li><strong>User-level</strong> (relative to the home directory): Skills available across all projects for a given user.</li>
+</ul>
+<p class="doc-p">Other scopes are possible too — for example, organization-wide skills deployed by an admin, or skills bundled with the agent itself. The right set of scopes depends on your agent&#39;s deployment model.</p>
+<p class="doc-p">Within each scope, consider scanning both a <strong>client-specific directory</strong> and the <strong><code>.agents/skills/</code> convention</strong>:</p>
+<div class="doc-table-wrap"><table class="doc-table">
+<thead>
+<tr>
+<th>Scope</th>
+<th>Path</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Project</td>
+<td><code>&lt;project&gt;/.&lt;your-client&gt;/skills/</code></td>
+<td>Your client&#39;s native location</td>
+</tr>
+<tr>
+<td>Project</td>
+<td><code>&lt;project&gt;/.agents/skills/</code></td>
+<td>Cross-client interoperability</td>
+</tr>
+<tr>
+<td>User</td>
+<td><code>~/.&lt;your-client&gt;/skills/</code></td>
+<td>Your client&#39;s native location</td>
+</tr>
+<tr>
+<td>User</td>
+<td><code>~/.agents/skills/</code></td>
+<td>Cross-client interoperability</td>
+</tr>
+</tbody></table></div>
+<p class="doc-p">The <code>.agents/skills/</code> paths have emerged as a widely-adopted convention for cross-client skill sharing. While the Agent Skills specification does not mandate where skill directories live (it only defines what goes inside them), scanning <code>.agents/skills/</code> means skills installed by other compliant clients are automatically visible to yours, and vice versa.</p>
+<div class="callout doc-callout">Some implementations also scan \\\`.claude/skills/\\\` (both project-level and user-level) for pragmatic compatibility, since many existing skills are installed there. Other additional locations include ancestor directories up to the git root (useful for monorepos), [XDG](https://specifications.freedesktop.org/basedir-spec/latest/) config directories, and user-configured paths.</div>
+
+
+
+<h3 class="doc-h3">What to scan for</h3>
+<p class="doc-p">Within each skills directory, look for <strong>subdirectories containing a file named exactly <code>SKILL.md</code></strong>:</p>
+<div class="codeblock"><pre><code>~/.agents/skills/
+├── pdf-processing/
+│   ├── SKILL.md          ← discovered
+│   └── scripts/
+│       └── extract.py
+├── data-analysis/
+│   └── SKILL.md          ← discovered
+└── README.md             ← ignored (not a skill directory)
+</code></pre></div>
+<p class="doc-p">Practical scanning rules:</p>
+<ul class="doc-list">
+<li>Skip directories that won&#39;t contain skills, such as <code>.git/</code> and <code>node_modules/</code></li>
+<li>Optionally respect <code>.gitignore</code> to avoid scanning build artifacts</li>
+<li>Set reasonable bounds (e.g., max depth of 4-6 levels, max 2000 directories) to prevent runaway scanning in large directory trees</li>
+</ul>
+<h3 class="doc-h3">Handling name collisions</h3>
+<p class="doc-p">When two skills share the same <code>name</code>, apply a deterministic precedence rule.</p>
+<p class="doc-p">The universal convention across existing implementations: <strong>project-level skills override user-level skills.</strong></p>
+<p class="doc-p">Within the same scope (e.g., two skills named <code>code-review</code> found under both <code>&lt;project&gt;/.agents/skills/</code> and <code>&lt;project&gt;/.&lt;your-client&gt;/skills/</code>), either first-found or last-found is acceptable — pick one and be consistent. Log a warning when a collision occurs so the user knows a skill was shadowed.</p>
+<h3 class="doc-h3">Trust considerations</h3>
+<p class="doc-p">Project-level skills come from the repository being worked on, which may be untrusted (e.g., a freshly cloned open-source project). Consider gating project-level skill loading on a trust check — only load them if the user has marked the project folder as trusted. This prevents untrusted repositories from silently injecting instructions into the agent&#39;s context.</p>
+<h3 class="doc-h3">Cloud-hosted and sandboxed agents</h3>
+<p class="doc-p">If your agent runs in a container or on a remote server, it won&#39;t have access to the user&#39;s local filesystem. Discovery needs to work differently depending on the skill scope:</p>
+<ul class="doc-list">
+<li><strong>Project-level skills</strong> are often the easiest case. If the agent operates on a cloned repository (even inside a sandbox), project-level skills travel with the code and can be scanned from the repo&#39;s directory tree.</li>
+<li><strong>User-level and organization-level skills</strong> don&#39;t exist in the sandbox. You&#39;ll need to provision them from an external source — for example, cloning a configuration repository, accepting skill URLs or packages through your agent&#39;s settings, or letting users upload skill directories through a web UI.</li>
+<li><strong>Built-in skills</strong> can be packaged as static assets within the agent&#39;s deployment artifact, making them available in every session without external fetching.</li>
+</ul>
+<p class="doc-p">Once skills are available to the agent, the rest of the lifecycle — parsing, disclosure, activation — works the same.</p>
+<h2>Step 2: Parse <code>SKILL.md</code> files</h2>
+<p class="doc-p">For each discovered <code>SKILL.md</code>, extract the metadata and body content.</p>
+<h3 class="doc-h3">Frontmatter extraction</h3>
+<p class="doc-p">A <code>SKILL.md</code> file has two parts: YAML frontmatter between <code>---</code> delimiters, and a markdown body after the closing delimiter. To parse:</p>
+<ol class="doc-steps">
+<li>Find the opening <code>---</code> at the start of the file and the closing <code>---</code> after it.</li>
+<li>Parse the YAML block between them. Extract <code>name</code> and <code>description</code> (required), plus any optional fields.</li>
+<li>Everything after the closing <code>---</code>, trimmed, is the skill&#39;s body content.</li>
+</ol>
+<p class="doc-p">See the <a href="/docs/skills-specification" class="doc-link">specification</a> for the full set of frontmatter fields and their constraints.</p>
+<h3 class="doc-h3">Handling malformed YAML</h3>
+<p class="doc-p">Skill files authored for other clients may contain technically invalid YAML that their parsers happen to accept. The most common issue is unquoted values containing colons:</p>
+<div class="codeblock"><pre><code class="language-yaml">&lt;skill_content name=&quot;pdf-processing&quot;&gt;
+# PDF Processing
+
+## When to use this skill
+Use this skill when the user needs to work with PDF files...
+
+[rest of SKILL.md body]
+
+Skill directory: /home/user/.agents/skills/pdf-processing
+Relative paths in this skill are relative to the skill directory.
+
+&lt;skill_resources&gt;
+  &lt;file&gt;scripts/extract.py&lt;/file&gt;
+  &lt;file&gt;scripts/merge.py&lt;/file&gt;
+  &lt;file&gt;references/pdf-spec-summary.md&lt;/file&gt;
+&lt;/skill_resources&gt;
+&lt;/skill_content&gt;
+</code></pre></div>
+<p class="doc-p">This has practical benefits:</p>
+<ul class="doc-list">
+<li>The model can clearly distinguish skill instructions from other conversation content</li>
+<li>The harness can identify skill content during context compaction (<a href="#step-5-manage-skill-context-over-time#step-5-manage-skill-context-over-time" class="doc-link">Step 5</a>)</li>
+<li>Bundled resources are surfaced to the model without being eagerly loaded</li>
+</ul>
+<h3 class="doc-h3">Listing bundled resources</h3>
+<p class="doc-p">When a dedicated activation tool returns skill content, it can also enumerate supporting files (scripts, references, assets) in the skill directory — but it should <strong>not eagerly read them</strong>. The model loads specific files on demand using its file-read tools when the skill&#39;s instructions reference them.</p>
+<p class="doc-p">For large skill directories, consider capping the listing and noting that it may be incomplete.</p>
+<h3 class="doc-h3">Permission allowlisting</h3>
+<p class="doc-p">If your agent has a permission system that gates file access, <strong>allowlist skill directories</strong> so the model can read bundled resources without triggering user confirmation prompts. Without this, every reference to a bundled script or reference file results in a permission dialog, breaking the flow for skills that include resources beyond the <code>SKILL.md</code> itself.</p>
+<h2 id="step-5-manage-skill-context-over-time" class="doc-h2">Step 5: Manage skill context over time</h2>
+<p class="doc-p">Once skill instructions are in the conversation context, keep them effective for the duration of the session.</p>
+<h3 class="doc-h3">Protect skill content from context compaction</h3>
+<p class="doc-p">If your agent truncates or summarizes older messages when the context window fills up, <strong>exempt skill content from pruning</strong>. Skill instructions are durable behavioral guidance — losing them mid-conversation silently degrades the agent&#39;s performance without any visible error. The model continues operating but without the specialized instructions the skill provided.</p>
+<p class="doc-p">Common approaches:</p>
+<ul class="doc-list">
+<li>Flag skill tool outputs as protected so the pruning algorithm skips them</li>
+<li>Use the <a href="#structured-wrapping#structured-wrapping" class="doc-link">structured tags</a> from Step 4 to identify skill content and preserve it during compaction</li>
+</ul>
+<h3 class="doc-h3">Deduplicate activations</h3>
+<p class="doc-p">Consider tracking which skills have been activated in the current session. If the model (or user) attempts to load a skill that&#39;s already in context, you can skip the re-injection to avoid the same instructions appearing multiple times in the conversation.</p>
+<h3 class="doc-h3">Subagent delegation (optional)</h3>
+<p class="doc-p">This is an advanced pattern only supported by some clients. Instead of injecting skill instructions into the main conversation, the skill is run in a <strong>separate subagent session</strong>. The subagent receives the skill instructions, performs the task, and returns a summary of its work to the main conversation.</p>
+<p class="doc-p">This pattern is useful when a skill&#39;s workflow is complex enough to benefit from a dedicated, focused session.</p>`} />

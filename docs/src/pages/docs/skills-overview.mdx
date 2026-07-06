@@ -1,0 +1,48 @@
+---
+layout: ../../layouts/DocLayout.astro
+title: "Agent Skills Overview"
+description: "A standardized way to give AI agents new capabilities and expertise."
+navLabel: "Overview"
+tags: ["Agent Skills","Getting Started"]
+---
+
+import Lead from '../../components/mdx/Lead.astro';
+import RawHtml from '../../components/mdx/RawHtml.astro';
+
+<Lead>A standardized way to give AI agents new capabilities and expertise.</Lead>
+
+<RawHtml html={`<h2 id="what-are-agent-skills" class="doc-h2">What are Agent Skills?</h2>
+<p class="doc-p">Agent Skills are a lightweight, open format for extending AI agent capabilities with specialized knowledge and workflows.</p>
+<p class="doc-p">At its core, a skill is a folder containing a <code>SKILL.md</code> file. This file includes metadata (<code>name</code> and <code>description</code>, at minimum) and instructions that tell an agent how to perform a specific task. Skills can also bundle scripts, reference materials, templates, and other resources.</p>
+<div class="codeblock"><pre><code>my-skill/
+├── SKILL.md          # Required: metadata + instructions
+├── scripts/          # Optional: executable code
+├── references/       # Optional: documentation
+├── assets/           # Optional: templates, resources
+└── ...               # Any additional files or directories
+</code></pre></div>
+<h2 id="why-agent-skills" class="doc-h2">Why Agent Skills?</h2>
+<p class="doc-p">Agents are increasingly capable, but often don&#39;t have the context they need to do real work reliably. Skills solve this by packaging procedural knowledge and company-, team-, and user-specific context into portable, version-controlled folders that agents load on demand. This gives agents:</p>
+<ul class="doc-list">
+<li><strong>Domain expertise</strong>: Capture specialized knowledge — from legal review processes to data analysis pipelines to presentation formatting — as reusable instructions and resources.</li>
+<li><strong>Repeatable workflows</strong>: Turn multi-step tasks into consistent, auditable procedures.</li>
+<li><strong>Cross-product reuse</strong>: Build a skill once and use it across any skills-compatible agent.</li>
+</ul>
+<h2 id="how-do-agent-skills-work" class="doc-h2">How do Agent Skills work?</h2>
+<p class="doc-p">Agents load skills through <strong>progressive disclosure</strong>, in three stages:</p>
+<ol class="doc-steps">
+<li><p class="doc-p"><strong>Discovery</strong>: At startup, agents load only the name and description of each available skill, just enough to know when it might be relevant.</p>
+</li>
+<li><p class="doc-p"><strong>Activation</strong>: When a task matches a skill&#39;s description, the agent reads the full <code>SKILL.md</code> instructions into context.</p>
+</li>
+<li><p class="doc-p"><strong>Execution</strong>: The agent follows the instructions, optionally executing bundled code or loading referenced files as needed.</p>
+</li>
+</ol>
+<p class="doc-p">Full instructions load only when a task calls for them, so agents can keep many skills on hand with only a small context footprint.</p>
+<h2 id="where-can-i-use-agent-skills" class="doc-h2">Where can I use Agent Skills?</h2>
+<p class="doc-p">Agent Skills are supported by a large number of AI tools and agentic clients — see the <a href="https://agentskills.io/clients" class="doc-link">Client Showcase</a> to explore some of them!</p>
+<h2 id="open-development" class="doc-h2">Open development</h2>
+<p class="doc-p">The Agent Skills format was originally developed by <a href="https://www.anthropic.com/" class="doc-link">Anthropic</a>, released as an open standard, and has been adopted by a growing number of agent products. The standard is open to contributions from the broader ecosystem.</p>
+<p class="doc-p">Come join the discussion on <a href="https://github.com/agentskills/agentskills" class="doc-link">GitHub</a> or <a href="https://discord.gg/MKPE9g8aUy" class="doc-link">Discord</a>!</p>
+<h2 id="get-started-with-agent-skills" class="doc-h2">Get started with Agent Skills</h2>
+<div class="doc-cards"><a href="/docs/skills-quickstart" class="doc-card"><div class="doc-card-t">Quickstart</div><div class="doc-card-b">Create your first Agent Skill and see it in action.</div></a><a href="/docs/skills-specification" class="doc-card"><div class="doc-card-t">Specification</div><div class="doc-card-b">The complete format specification for Agent Skills.</div></a></div>`} />

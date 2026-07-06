@@ -48,7 +48,7 @@ const KIND_META: Record<string, { icon: string; label: string; color: string; no
     SensitivityPanelComponent,
     VerifiedMarkComponent
 ],
-    changeDetection: ChangeDetectionStrategy.Eager,
+    changeDetection: ChangeDetectionStrategy.Default,
     templateUrl: './collection-detail.component.html'
 })
 export class CollectionDetailComponent implements OnChanges {

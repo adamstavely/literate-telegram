@@ -7,6 +7,7 @@ import auditRouter from './routes/audit.js';
 import collectionsRouter from './routes/collections.js';
 import logsRouter from './routes/logs.js';
 import policyRouter from './routes/policy.js';
+import docsFeedbackRouter from './routes/docs-feedback.js';
 import apisRouter from './routes/apis.js';
 import proxyRouter from './routes/proxy.js';
 
@@ -69,6 +70,7 @@ router.use('/notifications', notificationsRouter);
 router.use('/audit', auditRouter);
 router.use('/logs', logsRouter);
 router.use('/policy', policyRouter);
+router.use('/docs/feedback', docsFeedbackRouter);
 router.use('/apis', apisRouter);
 router.use('/proxy', proxyRouter);
 

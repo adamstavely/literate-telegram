@@ -22,7 +22,7 @@ import { IconComponent } from './shared/components/icon/icon.component';
     schemas: [CUSTOM_ELEMENTS_SCHEMA],
     imports: [RouterOutlet, HeaderComponent, IconComponent],
     templateUrl: './app.component.html',
-    changeDetection: ChangeDetectionStrategy.Eager,
+    changeDetection: ChangeDetectionStrategy.Default,
     styleUrl: './app.component.scss'
 })
 export class AppComponent implements OnInit {

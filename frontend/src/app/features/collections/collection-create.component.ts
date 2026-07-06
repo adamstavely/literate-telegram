@@ -14,7 +14,7 @@ const COL_ACCENTS = ['#5a63d8', '#2A6FDB', '#0d9aa6', '#1f9d62', '#c2820b', '#d4
 @Component({
     selector: 'app-collection-create',
     imports: [FormsModule, IconComponent, RouterLink],
-    changeDetection: ChangeDetectionStrategy.Eager,
+    changeDetection: ChangeDetectionStrategy.Default,
     templateUrl: './collection-create.component.html'
 })
 export class CollectionCreateComponent {

@@ -1,0 +1,68 @@
+---
+layout: ../../layouts/DocLayout.astro
+title: "Specification"
+description: "The complete format specification for Agent Skills."
+tags: ["Agent Skills","Reference"]
+---
+
+import Lead from '../../components/mdx/Lead.astro';
+import RawHtml from '../../components/mdx/RawHtml.astro';
+
+<Lead>The complete format specification for Agent Skills.</Lead>
+
+<RawHtml html={`<h2 id="directory-structure" class="doc-h2">Directory structure</h2>
+<p class="doc-p">A skill is a directory containing, at minimum, a <code>SKILL.md</code> file:</p>
+<div class="codeblock"><pre><code>skill-name/
+├── SKILL.md          # Required: metadata + instructions
+├── scripts/          # Optional: executable code
+├── references/       # Optional: documentation
+├── assets/           # Optional: templates, resources
+└── ...               # Any additional files or directories
+</code></pre></div>
+<h2><code>SKILL.md</code> format</h2>
+<p class="doc-p">The <code>SKILL.md</code> file must contain YAML frontmatter followed by Markdown content.</p>
+<h3 class="doc-h3">Frontmatter</h3>
+<div class="doc-table-wrap"><table class="doc-table">
+<thead>
+<tr>
+<th>Field</th>
+<th>Required</th>
+<th>Constraints</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>name</code></td>
+<td>Yes</td>
+<td>Max 64 characters. Lowercase letters, numbers, and hyphens only. Must not start or end with a hyphen.</td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>Yes</td>
+<td>Max 1024 characters. Non-empty. Describes what the skill does and when to use it.</td>
+</tr>
+<tr>
+<td><code>license</code></td>
+<td>No</td>
+<td>License name or reference to a bundled license file.</td>
+</tr>
+<tr>
+<td><code>compatibility</code></td>
+<td>No</td>
+<td>Max 500 characters. Indicates environment requirements (intended product, system packages, network access, etc.).</td>
+</tr>
+<tr>
+<td><code>metadata</code></td>
+<td>No</td>
+<td>Arbitrary key-value mapping for additional metadata.</td>
+</tr>
+<tr>
+<td><code>allowed-tools</code></td>
+<td>No</td>
+<td>Space-separated string of pre-approved tools the skill may use. (Experimental)</td>
+</tr>
+</tbody></table></div>
+<div class="callout doc-callout">**Minimal example:**
+
+<div class="codeblock"><pre><code class="language-markdown">skills-ref validate ./my-skill
+</code></pre></div>
+<p class="doc-p">This checks that your <code>SKILL.md</code> frontmatter is valid and follows all naming conventions.</p>`} />

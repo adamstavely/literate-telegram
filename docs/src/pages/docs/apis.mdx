@@ -1,0 +1,50 @@
+---
+layout: ../../layouts/DocLayout.astro
+title: "APIs"
+description: "The raw HTTP service an MCP server wraps."
+tags: ["Object Types","APIs"]
+---
+
+import Callout from '../../components/mdx/Callout.astro';
+import DocCards from '../../components/mdx/DocCards.astro';
+import DocTable from '../../components/mdx/DocTable.astro';
+import KeyVal from '../../components/mdx/KeyVal.astro';
+import Lead from '../../components/mdx/Lead.astro';
+import Steps from '../../components/mdx/Steps.astro';
+
+<Lead>An API is the bottom of the stack — a raw REST or GraphQL service with endpoints, a base URL, and a credential. It's the <em>raw material</em> a server turns into governed, agent-safe tools.</Lead>
+
+## Why catalogue the raw API
+
+
+A raw API isn't agent-safe on its own: it has no concept of least privilege, and calling it means holding a live secret. Cataloguing it in the registry makes the surface visible — so you can see what exists, what's already wrapped, and what's a candidate to wrap next.
+
+
+<Callout tone="accent" icon="api">The registry models the whole stack: an <strong>API</strong> is wrapped by an <strong>MCP server</strong>, which exposes <strong>tools</strong>, which <strong>skills</strong> teach an agent to use, and an <strong>agent</strong> composes it all. APIs are layer zero.</Callout>
+
+
+## REST vs. GraphQL
+
+
+<KeyVal rows={[
+  ["REST", "Resource-oriented HTTP — predictable URLs, a verb per action, one request per resource."],
+  ["GraphQL", "A single typed endpoint — ask for exactly the fields you need in one round trip."]
+]} />
+
+
+The registry records each endpoint as a method and a path (`POST /charges`) or a GraphQL operation (`MUTATION issueCreate`), so you can read the surface before wrapping it.
+
+
+## Wrapping an API
+
+
+The point of an API entry is the **wrap**. An MCP server takes the endpoints, holds the credential at its boundary, and exposes a least-privilege subset as tools. An agent then uses the *server* — it never sees the raw API or its key.
+
+
+<Callout tone="warn" icon="shield">Cataloguing an API does not expose it to agents. Until it's wrapped as a server, the gateway has nothing to govern. Unwrapped APIs in the catalog are an invitation, not a connection.</Callout>
+
+
+## Reading an API page
+
+
+Each API page lists its endpoints, its style and auth, and a **Wrapped by** link to the MCP server that fronts it — or a *Wrap as MCP server* call to action when none does yet. Browse the [APIs in the catalog](/) to see Stripe, GitHub REST, and Linear's GraphQL surface.

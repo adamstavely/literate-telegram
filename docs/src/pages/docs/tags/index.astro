@@ -1,0 +1,25 @@
+---
+import TagsLayout from '../../../layouts/TagsLayout.astro';
+import TagList from '../../../components/TagList.astro';
+import { getAllTags } from '../../../lib/docs';
+
+const tags = await getAllTags();
+---
+
+<TagsLayout
+  title="Tags"
+  description="Browse Interop documentation by topic."
+>
+  {
+    tags.length === 0 ? (
+      <p class="docs-doc-list-empty">
+        No tags yet — add a <code class="doc-icode">tags:</code> list to a doc's frontmatter.
+      </p>
+    ) : (
+      <TagList
+        tags={tags.map((t) => ({ display: t.display, count: t.count }))}
+        showCounts
+      />
+    )
+  }
+</TagsLayout>

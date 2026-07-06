@@ -1,5 +1,6 @@
 export const environment = {
   production: true,
+  docsOrigin: '',
   apiBaseUrl: '/api',
   oidc: {
     issuer: '${OIDC_ISSUER}',

@@ -1,0 +1,44 @@
+---
+layout: ../../layouts/DocLayout.astro
+title: "Least privilege"
+description: "The default posture: nothing reaches an agent unasked."
+tags: ["Governance","Security"]
+---
+
+import Callout from '../../components/mdx/Callout.astro';
+import DocCards from '../../components/mdx/DocCards.astro';
+import DocTable from '../../components/mdx/DocTable.astro';
+import KeyVal from '../../components/mdx/KeyVal.astro';
+import Lead from '../../components/mdx/Lead.astro';
+import Steps from '../../components/mdx/Steps.astro';
+
+<Lead>The registry's governing principle is that capability is granted, never assumed. An agent sees exactly the tools an admin has chosen to expose — no more.</Lead>
+
+## The default posture
+
+
+- **Read-only by default.** Write tools stay disabled until an admin enables them.
+- **Per-tool approval.** Each tool is individually allowlisted into a virtual server before any caller sees it.
+- **Block writes until reviewed.** Mutating tools are held even if the publisher shipped them enabled.
+- **Quarantine high risk.** Anything a high-severity rule blocks is held out of the catalog until cleared.
+
+
+<Callout tone="accent" icon="shield">Admins tune all of this on the <strong>Policy settings</strong> page — pick a Strict / Balanced / Open preset, or set each control individually.</Callout>
+
+
+## Risk rules
+
+
+Every submission is evaluated against a set of rules. Each match produces a flag and an action — *flag only*, *require review*, *block publish*, or *auto-reject*. The most severe matched action wins.
+
+
+<DocTable head={["Rule", "Severity", "Default action"]} rows={[
+  ["Arbitrary code execution", "High", "Block publish"],
+  ["No sandbox declared", "High", "Block publish"],
+  ["Write tools on by default", "Medium", "Require review"],
+  ["Unverified publisher domain", "Medium", "Flag"],
+  ["Destructive verbs, no confirm", "High", "Require review"]
+]} />
+
+
+These rules are exactly what populates the moderation queue. A flagged submission carries its flags into review so an admin sees why it was held.

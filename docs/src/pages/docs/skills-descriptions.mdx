@@ -1,0 +1,41 @@
+---
+layout: ../../layouts/DocLayout.astro
+title: "Optimizing skill descriptions"
+description: "How to improve your skill's description so it triggers reliably on relevant prompts."
+navLabel: "Skill descriptions"
+tags: ["Agent Skills","Best Practices"]
+---
+
+import Lead from '../../components/mdx/Lead.astro';
+import RawHtml from '../../components/mdx/RawHtml.astro';
+
+<Lead>How to improve your skill's description so it triggers reliably on relevant prompts.</Lead>
+
+<RawHtml html={`<h2 id="how-skill-triggering-works" class="doc-h2">How skill triggering works</h2>
+<p class="doc-p">Agents use <a href="/docs/skills-specification#progressive-disclosure" class="doc-link">progressive disclosure</a> to manage context. At startup, they load only the <code>name</code> and <code>description</code> of each available skill — just enough to decide when a skill might be relevant. When a user&#39;s task matches a description, the agent reads the full <code>SKILL.md</code> into context and follows its instructions.</p>
+<p class="doc-p">This means the description carries the entire burden of triggering. If the description doesn&#39;t convey when the skill is useful, the agent won&#39;t know to reach for it.</p>
+<p class="doc-p">One important nuance: agents typically only consult skills for tasks that require knowledge or capabilities beyond what they can handle alone. A simple, one-step request like &quot;read this PDF&quot; may not trigger a PDF skill even if the description matches perfectly, because the agent can handle it with basic tools. Tasks that involve specialized knowledge — an unfamiliar API, a domain-specific workflow, or an uncommon format — are where a well-written description can make the difference.</p>
+<h2 id="writing-effective-descriptions" class="doc-h2">Writing effective descriptions</h2>
+<p class="doc-p">Before testing, it helps to know what a good description looks like. A few principles:</p>
+<ul class="doc-list">
+<li><strong>Use imperative phrasing.</strong> Frame the description as an instruction to the agent: &quot;Use this skill when...&quot; rather than &quot;This skill does...&quot; The agent is deciding whether to act, so tell it when to act.</li>
+<li><strong>Focus on user intent, not implementation.</strong> Describe what the user is trying to achieve, not the skill&#39;s internal mechanics. The agent matches against what the user asked for.</li>
+<li><strong>Err on the side of being pushy.</strong> Explicitly list contexts where the skill applies, including cases where the user doesn&#39;t name the domain directly: &quot;even if they don&#39;t explicitly mention &#39;CSV&#39; or &#39;analysis.&#39;&quot;</li>
+<li><strong>Keep it concise.</strong> A few sentences to a short paragraph is usually right — long enough to cover the skill&#39;s scope, short enough that it doesn&#39;t bloat the agent&#39;s context across many skills. The <a href="/docs/skills-specification#description-field" class="doc-link">specification</a> enforces a hard limit of 1024 characters.</li>
+</ul>
+<h2 id="designing-trigger-eval-queries" class="doc-h2">Designing trigger eval queries</h2>
+<p class="doc-p">To test triggering, you need a set of eval queries — realistic user prompts labeled with whether they should or shouldn&#39;t trigger your skill.</p>
+<div class="codeblock"><pre><code class="language-json"># Before
+description: Process CSV files.
+
+# After
+description: &gt;
+  Analyze CSV and tabular data files — compute summary statistics,
+  add derived columns, generate charts, and clean messy data. Use this
+  skill when the user has a CSV, TSV, or Excel file and wants to
+  explore, transform, or visualize the data, even if they don&#39;t
+  explicitly mention &quot;CSV&quot; or &quot;analysis.&quot;
+</code></pre></div>
+<p class="doc-p">The improved description is more specific about what the skill does (summary stats, derived columns, charts, cleaning) and broader about when it applies (CSV, TSV, Excel; even without explicit keywords).</p>
+<h2 id="next-steps" class="doc-h2">Next steps</h2>
+<p class="doc-p">Once your skill triggers reliably, you&#39;ll want to evaluate whether it produces good outputs. See <a href="/docs/skills-evaluating" class="doc-link">Evaluating skill output quality</a> for how to set up test cases, grade results, and iterate.</p>`} />

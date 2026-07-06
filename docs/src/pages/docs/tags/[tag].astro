@@ -1,0 +1,35 @@
+---
+import TagsLayout from '../../../layouts/TagsLayout.astro';
+import DocList from '../../../components/DocList.astro';
+import { getAllTags, getDocsByTag } from '../../../lib/docs';
+import { tagsIndexHref } from '../../../lib/tag-utils';
+
+export async function getStaticPaths() {
+  const tags = await getAllTags();
+  return Promise.all(
+    tags.map(async (t) => ({
+      params: { tag: t.slug },
+      props: { display: t.display, docs: await getDocsByTag(t.slug) },
+    })),
+  );
+}
+
+interface Props {
+  display: string;
+  docs: Awaited<ReturnType<typeof getDocsByTag>>;
+}
+
+const { display, docs } = Astro.props;
+const pages = docs.map((d) => ({
+  title: d.title,
+  description: d.description,
+  url: d.url,
+}));
+---
+
+<TagsLayout title={display} description={`${pages.length} article${pages.length === 1 ? '' : 's'}`}>
+  <p class="docs-tags-back">
+    <a href={tagsIndexHref()} class="doc-link">← All tags</a>
+  </p>
+  <DocList pages={pages} />
+</TagsLayout>

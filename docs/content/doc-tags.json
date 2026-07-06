@@ -1,0 +1,23 @@
+{
+  "overview": ["Getting Started", "Platform"],
+  "quickstart": ["Getting Started", "Tutorial"],
+  "concepts": ["Getting Started", "Platform"],
+  "apis": ["Object Types", "APIs"],
+  "servers": ["Object Types", "MCP"],
+  "tools": ["Object Types", "Tools"],
+  "skills": ["Object Types", "Skills"],
+  "agents": ["Object Types", "Agents"],
+  "least-privilege": ["Governance", "Security"],
+  "publishing": ["Governance", "Publishing"],
+  "skill-spec": ["Reference", "Skills"],
+  "transports": ["Reference", "MCP"],
+  "compatibility": ["Reference", "MCP"],
+  "skills-overview": ["Agent Skills", "Getting Started"],
+  "skills-quickstart": ["Agent Skills", "Tutorial"],
+  "skills-specification": ["Agent Skills", "Reference"],
+  "skills-agent-integration": ["Agent Skills", "Integration"],
+  "skills-best-practices": ["Agent Skills", "Best Practices"],
+  "skills-descriptions": ["Agent Skills", "Best Practices"],
+  "skills-scripts": ["Agent Skills", "Reference"],
+  "skills-evaluating": ["Agent Skills", "Best Practices"]
+}

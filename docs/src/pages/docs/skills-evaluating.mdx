@@ -1,0 +1,51 @@
+---
+layout: ../../layouts/DocLayout.astro
+title: "Evaluating skill output quality"
+description: "How to test whether your skill produces good outputs using eval-driven iteration."
+navLabel: "Evaluating skills"
+tags: ["Agent Skills","Best Practices"]
+---
+
+import Lead from '../../components/mdx/Lead.astro';
+import RawHtml from '../../components/mdx/RawHtml.astro';
+
+<Lead>How to test whether your skill produces good outputs using eval-driven iteration.</Lead>
+
+<RawHtml html={`<h2 id="designing-test-cases" class="doc-h2">Designing test cases</h2>
+<p class="doc-p">A test case has three parts:</p>
+<ul class="doc-list">
+<li><strong>Prompt</strong>: a realistic user message — the kind of thing someone would actually type.</li>
+<li><strong>Expected output</strong>: a human-readable description of what success looks like.</li>
+<li><strong>Input files</strong> (optional): files the skill needs to work with.</li>
+</ul>
+<p class="doc-p">Store test cases in <code>evals/evals.json</code> inside your skill directory:</p>
+<div class="codeblock"><pre><code class="language-json">{
+  &quot;eval-top-months-chart&quot;: &quot;The chart is missing axis labels and the months are in alphabetical order instead of chronological.&quot;,
+  &quot;eval-clean-missing-emails&quot;: &quot;&quot;
+}
+</code></pre></div>
+<p class="doc-p">&quot;The chart is missing axis labels&quot; is actionable; &quot;looks bad&quot; is not. Empty feedback means the output looked fine — that test case passed your review. During the <a href="#iterating-on-the-skill#iterating-on-the-skill" class="doc-link">iteration step</a>, focus your improvements on the test cases where you had specific complaints.</p>
+<h2 id="iterating-on-the-skill" class="doc-h2">Iterating on the skill</h2>
+<p class="doc-p">After grading and reviewing, you have three sources of signal:</p>
+<ul class="doc-list">
+<li><strong>Failed assertions</strong> point to specific gaps — a missing step, an unclear instruction, or a case the skill doesn&#39;t handle.</li>
+<li><strong>Human feedback</strong> points to broader quality issues — the approach was wrong, the output was poorly structured, or the skill produced a technically correct but unhelpful result.</li>
+<li><strong>Execution transcripts</strong> reveal <em>why</em> things went wrong. If the agent ignored an instruction, the instruction may be ambiguous. If the agent spent time on unproductive steps, those instructions may need to be simplified or removed.</li>
+</ul>
+<p class="doc-p">The most effective way to turn these signals into skill improvements is to give all three — along with the current <code>SKILL.md</code> — to an LLM and ask it to propose changes. The LLM can synthesize patterns across failed assertions, reviewer complaints, and transcript behavior that would be tedious to connect manually. When prompting the LLM, include these guidelines:</p>
+<ul class="doc-list">
+<li><strong>Generalize from feedback.</strong> The skill will be used across many different prompts, not just the test cases. Fixes should address underlying issues broadly rather than adding narrow patches for specific examples.</li>
+<li><strong>Keep the skill lean.</strong> Fewer, better instructions often outperform exhaustive rules. If transcripts show wasted work (unnecessary validation, unneeded intermediate outputs), remove those instructions. If pass rates plateau despite adding more rules, the skill may be over-constrained — try removing instructions and see if results hold or improve.</li>
+<li><strong>Explain the why.</strong> Reasoning-based instructions (&quot;Do X because Y tends to cause Z&quot;) work better than rigid directives (&quot;ALWAYS do X, NEVER do Y&quot;). Models follow instructions more reliably when they understand the purpose.</li>
+<li><strong>Bundle repeated work.</strong> If every test run independently wrote a similar helper script (a chart builder, a data parser), that&#39;s a signal to bundle the script into the skill&#39;s <code>scripts/</code> directory. See <a href="/docs/skills-scripts" class="doc-link">Using scripts</a> for how to do this.</li>
+</ul>
+<h3 class="doc-h3">The loop</h3>
+<ol class="doc-steps">
+<li>Give the eval signals and current <code>SKILL.md</code> to an LLM and ask it to propose improvements.</li>
+<li>Review and apply the changes.</li>
+<li>Rerun all test cases in a new <code>iteration-&lt;N+1&gt;/</code> directory.</li>
+<li>Grade and aggregate the new results.</li>
+<li>Review with a human. Repeat.</li>
+</ol>
+<p class="doc-p">Stop when you&#39;re satisfied with the results, feedback is consistently empty, or you&#39;re no longer seeing meaningful improvement between iterations.</p>
+<div class="callout accent doc-callout">The [\\\`skill-creator\\\`](https://github.com/anthropics/skills/tree/main/skills/skill-creator) Skill automates much of this workflow — running evals, grading assertions, aggregating benchmarks, and presenting results for human review.</div>`} />

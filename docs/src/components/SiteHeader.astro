@@ -1,0 +1,197 @@
+---
+import Icon from './Icon.astro';
+import Avatar from './Avatar.astro';
+import { appUrl, getAppOrigin } from '../lib/app-url';
+
+/** Registry site header — matches Angular app-header chrome. */
+interface Props {
+  activeNav?: 'browse' | 'collections' | 'docs' | 'admin';
+}
+
+const { activeNav = 'docs' } = Astro.props;
+const appOrigin = getAppOrigin();
+---
+
+<header class="hdr" role="banner" data-app-origin={appOrigin}>
+  <div class="container hdr-row hdr-wide">
+    <a class="brand" href={appUrl('/')} aria-label="Interop — home">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 128 128" fill="none">
+          <rect x="0" y="0" width="128" height="128" rx="28" fill="var(--accent)" />
+          <g transform="rotate(22.5 64 64)">
+            <rect x="33.5" y="46" width="36" height="36" rx="11" fill="none" stroke="#ffffff" stroke-width="6.5" />
+            <rect x="58.5" y="46" width="36" height="36" rx="11" fill="none" stroke="#c9d3ff" stroke-width="6.5" />
+            <path d="M58.5 46 Q69.5 46 69.5 57 L69.5 65" fill="none" stroke="#ffffff" stroke-width="6.5" stroke-linecap="round" />
+          </g>
+        </svg>
+      </div>
+      <div class="brand-name">Interop</div>
+    </a>
+
+    <button
+      class="hamburger iconbtn"
+      type="button"
+      id="hdr-menu-btn"
+      aria-expanded="false"
+      aria-controls="primary-nav"
+      aria-label="Toggle navigation menu"
+    >
+      <span data-menu-icon><Icon name="list" size={20} /></span>
+    </button>
+
+    <nav id="primary-nav" class="nav" aria-label="Primary navigation">
+      <a
+        class:list={['nav-item', { on: activeNav === 'browse' }]}
+        href={appUrl('/')}
+        data-nav-link
+      >Browse</a>
+      <a
+        class:list={['nav-item', { on: activeNav === 'collections' }]}
+        href={appUrl('/collections')}
+        data-nav-link
+      >Collections</a>
+      <a
+        class:list={['nav-item', { on: activeNav === 'docs' }]}
+        href="/docs/overview"
+        data-nav-link
+      >Docs</a>
+      <a
+        id="hdr-admin-link"
+        class:list={['nav-item', { on: activeNav === 'admin' }]}
+        href={appUrl('/admin')}
+        data-nav-link
+        hidden
+      >Admin</a>
+    </nav>
+
+    <div class="hdr-spacer"></div>
+
+    <div class="hdr-search" role="search">
+      <label for="header-search" class="sr-only">Search registry</label>
+      <Icon name="search" size={16} />
+      <input
+        id="header-search"
+        type="search"
+        placeholder="Search…"
+        autocomplete="off"
+        aria-label="Search registry entries"
+      />
+      <span class="kbd" aria-hidden="true">⌘K</span>
+    </div>
+
+    <a class="btn btn-primary btn-sm" href={appUrl('/register')}>
+      <Icon name="plus" size={14} />
+      Publish
+    </a>
+
+    <button
+      class="iconbtn"
+      type="button"
+      id="theme-toggle"
+      aria-label="Switch theme"
+      title="Switch theme"
+    >
+      <span id="theme-icon"><Icon name="moon" size={18} /></span>
+    </button>
+
+    <div style="position: relative">
+      <button
+        class="iconbtn"
+        type="button"
+        id="hdr-notif-btn"
+        style="position: relative"
+        aria-expanded="false"
+        aria-haspopup="true"
+        title="Notifications"
+        aria-label="Notifications"
+      >
+        <Icon name="bell" size={18} />
+        <span
+          id="hdr-notif-badge"
+          style="position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--bg)"
+          aria-hidden="true"
+          hidden
+        ></span>
+      </button>
+
+      <div
+        id="hdr-notif-pop"
+        class="notif-pop"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Notifications"
+        tabindex="-1"
+        hidden
+      >
+        <div class="notif-head">
+          <span class="notif-head-t">Notifications</span>
+          <span id="hdr-notif-head-count" class="notif-head-n" aria-hidden="true" hidden></span>
+          <div style="flex: 1"></div>
+          <button id="hdr-notif-mark-all" class="notif-markall" type="button" hidden>Mark all read</button>
+        </div>
+        <div class="notif-tabs" role="tablist" aria-label="Notification filter">
+          <button
+            type="button"
+            class="notif-tab on"
+            role="tab"
+            id="hdr-notif-tab-all"
+            aria-controls="hdr-notif-list"
+            aria-selected="true"
+            tabindex="0"
+          >All</button>
+          <button
+            type="button"
+            class="notif-tab"
+            role="tab"
+            id="hdr-notif-tab-unread"
+            aria-controls="hdr-notif-list"
+            aria-selected="false"
+            tabindex="-1"
+          >Unread</button>
+        </div>
+        <div id="hdr-notif-error" class="callout" role="alert" style="margin: 10px 12px 0" hidden></div>
+        <div
+          id="hdr-notif-list"
+          class="notif-list"
+          role="tabpanel"
+          aria-labelledby="hdr-notif-tab-all"
+        ></div>
+        <div id="hdr-notif-foot" class="notif-foot" hidden>
+          <button type="button" id="hdr-notif-admin">Open admin queue</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="apps-wrap">
+      <button
+        class="iconbtn apps-btn"
+        type="button"
+        id="hdr-apps-btn"
+        aria-expanded="false"
+        aria-haspopup="menu"
+        title="Switch app"
+        aria-label="Switch app"
+      >
+        <Icon name="grid" size={18} />
+      </button>
+      <div id="hdr-apps-pop" class="apps-pop" role="menu" aria-label="Interop platform apps" hidden>
+        <div class="apps-pop-head">
+          <span class="apps-pop-title">Interop platform</span>
+          <span class="apps-pop-sub">Acme Co workspace</span>
+        </div>
+        <div id="hdr-apps-grid" class="apps-grid"></div>
+        <div class="apps-pop-foot">
+          <span class="apps-status"><span class="apps-status-dot"></span>All systems operational</span>
+          <span class="apps-pop-ver">v2.4</span>
+        </div>
+      </div>
+    </div>
+
+    <Avatar name="Guest" size={30} round />
+  </div>
+</header>
+
+<script>
+  import { initSiteHeader } from '../lib/site-header.client';
+  initSiteHeader();
+</script>

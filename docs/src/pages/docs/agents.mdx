@@ -1,0 +1,65 @@
+---
+layout: ../../layouts/DocLayout.astro
+title: "Agents"
+description: "The composition layer — servers and skills, assembled."
+tags: ["Object Types","Agents"]
+---
+
+import Callout from '../../components/mdx/Callout.astro';
+import DocCards from '../../components/mdx/DocCards.astro';
+import DocTable from '../../components/mdx/DocTable.astro';
+import KeyVal from '../../components/mdx/KeyVal.astro';
+import Lead from '../../components/mdx/Lead.astro';
+import Steps from '../../components/mdx/Steps.astro';
+
+<Lead>An agent is the top of the stack: a deployable assistant that <strong>composes</strong> the other object types. Servers and tools give it the ability to <em>act</em>; skills give it the ability to <em>reason</em>; a model and an autonomy policy tie it together.</Lead>
+
+## An agent is a composition
+
+
+Where a server is a thing you connect and a skill is a thing you read, an agent is a thing you *assemble*. It references registry entries by slug — the servers it's wired to and the skills it loads — plus the model it runs on and the autonomy it's granted.
+
+
+```json
+{
+  "agent": "anthropic/release-captain",
+  "model": "Claude Sonnet 4.5",
+  "autonomy": "approval",
+  "servers": ["anthropic/github", "linear/mcp"],
+  "skills": ["anthropic/release-notes", "anthropic/pr-review"]
+}
+```
+
+
+Deploying resolves those slugs to the governed servers and skills your org has actually approved — so an agent is never more privileged than its building blocks.
+
+
+## Do and think
+
+
+The two halves of an agent map exactly onto the layers below it. The **servers** are its hands — the tools it can call. The **skills** are its judgement — the playbooks that shape *how* it uses those tools. A capable agent needs both.
+
+
+<Callout tone="accent" icon="agent">Servers and tools give an agent the ability to <strong>do</strong>; skills give it the ability to <strong>think</strong>. An agent is where the two meet.</Callout>
+
+
+## Autonomy
+
+
+The most important property of an agent is how far it can go without a human. The registry records one of three policies, and the gateway enforces it:
+
+
+<DocTable head={["Policy", "Behaviour"]} rows={[
+  ["Read-only", "Drafts and reads. Never takes a mutating action."],
+  ["Asks approval", "Proposes actions; a human confirms before anything runs."],
+  ["Autonomous", "Acts on its own within its granted scope."]
+]} />
+
+
+Autonomy is capped by scope: an agent only ever sees the tools an admin has exposed to it through a virtual server. A higher autonomy policy widens *what it may do unattended*, never *what it can reach*.
+
+
+## Reading an agent page
+
+
+Each agent page leads with its **Capabilities** — the servers and skills it composes, each a live link into the registry — plus a *Composed of* count, its model, its autonomy badge, and an agent manifest. Browse the [agents in the catalog](/) to see Release Captain, On-Call SRE, and Code Reviewer.

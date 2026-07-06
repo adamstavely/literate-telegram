@@ -1,0 +1,44 @@
+---
+layout: ../../layouts/DocLayout.astro
+title: "Publishing & review"
+description: "How an entry gets from submission to catalog."
+tags: ["Governance","Publishing"]
+---
+
+import Callout from '../../components/mdx/Callout.astro';
+import DocCards from '../../components/mdx/DocCards.astro';
+import DocTable from '../../components/mdx/DocTable.astro';
+import KeyVal from '../../components/mdx/KeyVal.astro';
+import Lead from '../../components/mdx/Lead.astro';
+import Steps from '../../components/mdx/Steps.astro';
+
+<Lead>Anyone on the team can publish; admins decide what reaches an agent. Every entry travels the same path from draft to live.</Lead>
+
+## The publish flow
+
+
+<Steps items={[
+  { title: "Choose a type", body: "Server, tool, or skill — this determines how the entry is governed." },
+  { title: "Declare its shape", body: "Identity and the interface: transport and auth for a server, the input schema for a tool, triggers and SKILL.md for a skill." },
+  { title: "Set governance", body: "Read-only defaults, per-tool approval, and visibility. Skills set who can load them." },
+  { title: "Submit for review", body: "The entry lands in the moderation queue with any rule flags attached." }
+]} />
+
+
+## The fast path
+
+
+Not everything needs a human. Two opt-in rules let trusted submissions skip the queue when no risk rule flags them:
+
+
+- **Verified publishers.** Servers from an allowlisted, verified domain auto-approve.
+- **Skills.** Because skills carry no credentials, they can publish without review unless a content rule flags them.
+
+
+<Callout tone="ok" icon="verified">Domains earn the verified badge by completing DNS verification. Admins manage the allowlist under <strong>Policy settings → Publisher trust</strong>.</Callout>
+
+
+## In the queue
+
+
+Admins review each pending entry with its flags, risk level, and publisher in view, then approve or reject. High-risk submissions can require a second approver before going live.

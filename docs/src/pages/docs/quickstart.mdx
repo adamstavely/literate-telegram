@@ -1,0 +1,69 @@
+---
+layout: ../../layouts/DocLayout.astro
+title: "Quickstart"
+description: "From an empty agent to a working tool call in three steps."
+tags: ["Getting Started","Tutorial"]
+---
+
+import Callout from '../../components/mdx/Callout.astro';
+import DocCards from '../../components/mdx/DocCards.astro';
+import DocTable from '../../components/mdx/DocTable.astro';
+import KeyVal from '../../components/mdx/KeyVal.astro';
+import Lead from '../../components/mdx/Lead.astro';
+import Steps from '../../components/mdx/Steps.astro';
+
+<Lead>This walks through the shortest path: discover an entry, connect it to a client, and feel a tool's shape in the sandbox before you wire it up for real.</Lead>
+
+## 1. Find something to connect
+
+
+Open [Browse](/) and filter by type. Start with a read-only server — the `Filesystem` or `Brave Search` server is a safe first connection because nothing it exposes mutates state.
+
+
+<Callout icon="search">Press <strong>⌘K</strong> anywhere to jump straight to search.</Callout>
+
+
+## 2. Connect a client
+
+
+On any server's page, hit **Install** and pick your client. Interop hands you a config block — drop it into your client's MCP settings.
+
+
+```json
+{
+  "mcpServers": {
+    "brave-search": {
+      "transport": "http",
+      "url": "https://registry.dev/brave/search"
+    }
+  }
+}
+```
+
+
+On first use the client prompts you to authorize. Credentials live with the **server**, never with the individual tool calls.
+
+
+## 3. Invoke a tool
+
+
+Every tool has a **Use** action that runs against a mock, so you can see the input schema and return shape without touching production. Real calls run through the same interface once you're connected.
+
+
+```text
+web_search({ query: "model context protocol" })
+
+→ [
+    { "title": "Model Context Protocol", "url": "https://modelcontextprotocol.io" },
+    { "title": "Spec — Tools", "url": "https://spec.mcp.dev/tools" }
+  ]
+```
+
+
+## Add a skill
+
+
+Skills don't connect — they're *read*. Adding one drops its SKILL.md into your agent's skill index; the agent loads the full instructions only when a task matches its trigger phrases. See [Skills](/docs/skills) for how that works.
+
+
+<Callout tone="ok" icon="check">That's the whole loop: <strong>discover → connect → use.</strong> Servers and tools give an agent the ability to <em>do</em> things; skills give it the ability to <em>think</em> about how.</Callout>

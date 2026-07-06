@@ -1,0 +1,44 @@
+---
+layout: ../../layouts/DocLayout.astro
+title: "MCP servers"
+description: "The governed toolbox behind one endpoint."
+tags: ["Object Types","MCP"]
+---
+
+import Callout from '../../components/mdx/Callout.astro';
+import DocCards from '../../components/mdx/DocCards.astro';
+import DocTable from '../../components/mdx/DocTable.astro';
+import KeyVal from '../../components/mdx/KeyVal.astro';
+import Lead from '../../components/mdx/Lead.astro';
+import Steps from '../../components/mdx/Steps.astro';
+
+<Lead>A server is the unit you connect to. It packages a set of tools and exposes them over a single transport, holding the credentials and lifecycle so individual tool calls don't have to.</Lead>
+
+## What a server carries
+
+
+<KeyVal rows={[
+  ["Transport", "How the server is reached — <code class=\"doc-icode\">stdio</code>, streamable <code class=\"doc-icode\">HTTP</code>, or <code class=\"doc-icode\">SSE</code>."],
+  ["Authentication", "The credential scheme: OAuth 2.1, API key, bot token, connection string."],
+  ["Tools", "The functions it exposes. Many tools, one server."],
+  ["Resources & prompts", "Read-only context and prompt templates the server can offer alongside its tools."],
+  ["Lifecycle", "Versioning, health, and the update cadence the registry tracks."]
+]} />
+
+
+## Virtual servers
+
+
+A caller rarely needs every tool a server ships. A **virtual server** is a least-privilege view: an admin allowlists a subset of tools from one or more real servers, and that's all the caller sees. The capability axis becomes an access-control surface.
+
+
+<Callout tone="accent" icon="shield">An agent only ever sees the tools an admin has explicitly exposed through a virtual server. That's the registry's default, not an opt-in.</Callout>
+
+
+## Reading a server page
+
+
+Each server's detail page lists its tools, its transport and auth, its install count and trend, and which clients it's compatible with. Write tools are marked — under the default posture they stay behind an allowlist until an admin enables them.
+
+
+<Callout icon="server">Browse the <a href="/" class="doc-link">servers in the catalog</a> to see real examples: Filesystem, GitHub, Postgres, Slack.</Callout>

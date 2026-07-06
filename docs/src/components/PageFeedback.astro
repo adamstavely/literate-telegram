@@ -1,0 +1,136 @@
+---
+interface Props {
+  question?: string;
+  pagePath?: string;
+  pageTitle?: string;
+  /** Compact footer row — no top border; question and buttons inline. */
+  bare?: boolean;
+}
+
+const {
+  question = 'Was this page helpful?',
+  pagePath = Astro.url.pathname,
+  pageTitle = '',
+  bare = false,
+} = Astro.props;
+
+const feedbackApi = '/api/docs/feedback';
+---
+
+<section class:list={['docs-feedback', { bare }]} aria-label="Page feedback">
+  <div class="docs-feedback-inner">
+    <p class="docs-feedback-q" id="page-feedback-question">{question}</p>
+
+    <div class="docs-feedback-panel" id="page-feedback-panel">
+      <div class="docs-feedback-buttons" id="page-feedback-buttons">
+        <button type="button" class="btn btn-sm btn-secondary" data-helpful="yes">Yes</button>
+        <button type="button" class="btn btn-sm btn-secondary" data-helpful="no">No</button>
+      </div>
+
+      <div class="docs-feedback-message hidden" id="page-feedback-message-wrap">
+        <label class="docs-feedback-label" for="page-feedback-message">
+          What could we improve?
+        </label>
+        <textarea
+          id="page-feedback-message"
+          class="docs-feedback-textarea"
+          rows="3"
+          maxlength="500"
+          placeholder="Optional — tell us what's missing or unclear"
+        ></textarea>
+        <button type="button" class="btn btn-sm btn-accent" id="page-feedback-submit">
+          Submit feedback
+        </button>
+      </div>
+
+      <p class="docs-feedback-thanks hidden" id="page-feedback-thanks" role="status">
+        Thanks for your feedback!
+      </p>
+
+      <p class="docs-feedback-error hidden" id="page-feedback-error" role="alert"></p>
+    </div>
+  </div>
+</section>
+
+<script is:inline define:vars={{ feedbackApi, pagePath, pageTitle }}>
+  const buttons = document.getElementById('page-feedback-buttons');
+  const messageWrap = document.getElementById('page-feedback-message-wrap');
+  const messageInput = document.getElementById('page-feedback-message');
+  const submitBtn = document.getElementById('page-feedback-submit');
+  const thanks = document.getElementById('page-feedback-thanks');
+  const errorEl = document.getElementById('page-feedback-error');
+
+  function hide(el) {
+    el?.classList.add('hidden');
+  }
+
+  function show(el) {
+    el?.classList.remove('hidden');
+  }
+
+  function hideAll() {
+    hide(buttons);
+    hide(messageWrap);
+    hide(thanks);
+    hide(errorEl);
+    if (errorEl) errorEl.textContent = '';
+  }
+
+  function showError(msg) {
+    if (!errorEl) return;
+    errorEl.textContent = msg;
+    show(errorEl);
+  }
+
+  async function ensureSession() {
+    await fetch(`${feedbackApi}/session`, { credentials: 'include' });
+  }
+
+  async function submit(helpful, message) {
+    hide(errorEl);
+    try {
+      const res = await fetch(feedbackApi, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          pagePath,
+          helpful,
+          message: message?.trim()?.slice(0, 500) || undefined,
+          pageTitle: pageTitle || undefined,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        hideAll();
+        show(thanks);
+        return;
+      }
+      showError(data.error || 'Failed to submit. Please try again.');
+      show(buttons);
+    } catch {
+      showError('Failed to submit. Please try again.');
+      show(buttons);
+    }
+  }
+
+  ensureSession().catch(() => {});
+
+  buttons?.querySelectorAll('button[data-helpful]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const helpful = btn.getAttribute('data-helpful');
+      if (helpful === 'yes') {
+        submit('yes');
+      } else {
+        hide(buttons);
+        show(messageWrap);
+        messageInput?.focus();
+      }
+    });
+  });
+
+  submitBtn?.addEventListener('click', () => {
+    const message = messageInput instanceof HTMLTextAreaElement ? messageInput.value : '';
+    submit('no', message);
+  });
+</script>

@@ -47,8 +47,7 @@
       >Collections</a>
       <a
         class="nav-item"
-        routerLink="/docs"
-        routerLinkActive="on"
+        [href]="docsOverviewUrl"
         (click)="closeMenu()"
       >Docs</a>
       @if (isAdmin()) {
@@ -272,16 +271,5 @@
     </div>
 
     <app-avatar [name]="displayName()" [size]="30" [round]="true" />
-    @if (isAuthenticated()) {
-      <button
-        type="button"
-        class="btn btn-ghost btn-sm"
-        style="margin-left: 8px"
-        (click)="logout()"
-        aria-label="Sign out"
-      >
-        Sign out
-      </button>
-    }
   </div>
 </header>

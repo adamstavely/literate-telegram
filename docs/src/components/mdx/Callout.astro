@@ -1,0 +1,17 @@
+---
+import Icon from '../Icon.astro';
+import type { IconName } from '../../lib/icons';
+
+interface Props {
+  tone?: 'default' | 'accent' | 'ok' | 'warn';
+  icon?: IconName;
+}
+
+const { tone = 'default', icon } = Astro.props;
+const accentClass = tone === 'accent' ? ' accent' : '';
+---
+
+<div class:list={['callout', 'doc-callout', accentClass]}>
+  {icon && <Icon name={icon} size={16} />}
+  <div><slot /></div>
+</div>

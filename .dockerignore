@@ -1,0 +1,11 @@
+.git
+**/.git
+**/node_modules
+**/dist
+**/.angular
+**/.env
+**/.env.*
+**/*.log
+**/coverage
+chats
+agent-transcripts

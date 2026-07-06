@@ -1,0 +1,73 @@
+---
+layout: ../../layouts/DocLayout.astro
+title: "Best practices for skill creators"
+description: "How to write skills that are well-scoped and calibrated to the task."
+navLabel: "Best practices"
+tags: ["Agent Skills","Best Practices"]
+---
+
+import Lead from '../../components/mdx/Lead.astro';
+import RawHtml from '../../components/mdx/RawHtml.astro';
+
+<Lead>How to write skills that are well-scoped and calibrated to the task.</Lead>
+
+<RawHtml html={`<h2 id="start-from-real-expertise" class="doc-h2">Start from real expertise</h2>
+<p class="doc-p">A common pitfall in skill creation is asking an LLM to generate a skill without providing domain-specific context — relying solely on the LLM&#39;s general training knowledge. The result is vague, generic procedures (&quot;handle errors appropriately,&quot; &quot;follow best practices for authentication&quot;) rather than the specific API patterns, edge cases, and project conventions that make a skill valuable.</p>
+<p class="doc-p">Effective skills are grounded in real expertise. The key is feeding domain-specific context into the creation process.</p>
+<h3 class="doc-h3">Extract from a hands-on task</h3>
+<p class="doc-p">Complete a real task in conversation with an agent, providing context, corrections, and preferences along the way. Then extract the reusable pattern into a skill. Pay attention to:</p>
+<ul class="doc-list">
+<li><strong>Steps that worked</strong> — the sequence of actions that led to success</li>
+<li><strong>Corrections you made</strong> — places where you steered the agent&#39;s approach (e.g., &quot;use library X instead of Y,&quot; &quot;check for edge case Z&quot;)</li>
+<li><strong>Input/output formats</strong> — what the data looked like going in and coming out</li>
+<li><strong>Context you provided</strong> — project-specific facts, conventions, or constraints the agent didn&#39;t already know</li>
+</ul>
+<h3 class="doc-h3">Synthesize from existing project artifacts</h3>
+<p class="doc-p">When you have a body of existing knowledge, you can feed it into an LLM and ask it to synthesize a skill. A data-pipeline skill synthesized from your team&#39;s actual incident reports and runbooks will outperform one synthesized from a generic &quot;data engineering best practices&quot; article, because it captures <em>your</em> schemas, failure modes, and recovery procedures. The key is project-specific material, not generic references.</p>
+<p class="doc-p">Good source material includes:</p>
+<ul class="doc-list">
+<li>Internal documentation, runbooks, and style guides</li>
+<li>API specifications, schemas, and configuration files</li>
+<li>Code review comments and issue trackers (captures recurring concerns and reviewer expectations)</li>
+<li>Version control history, especially patches and fixes (reveals patterns through what actually changed)</li>
+<li>Real-world failure cases and their resolutions</li>
+</ul>
+<h2 id="refine-with-real-execution" class="doc-h2">Refine with real execution</h2>
+<p class="doc-p">The first draft of a skill usually needs refinement. Run the skill against real tasks, then feed the results — all of them, not just failures — back into the creation process. Ask: what triggered false positives? What was missed? What could be cut?</p>
+<p class="doc-p">Even a single pass of execute-then-revise noticeably improves quality, and complex domains often benefit from several.</p>
+<div class="callout accent doc-callout">Read agent execution traces, not just final outputs. If the agent wastes time on unproductive steps, common causes include instructions that are too vague (the agent tries several approaches before finding one that works), instructions that don't apply to the current task (the agent follows them anyway), or too many options presented without a clear default.</div>
+
+
+
+<p class="doc-p">For a more structured approach to iteration, including test cases, assertions, and grading, see <a href="/docs/skills-evaluating" class="doc-link">Evaluating skill output quality</a>.</p>
+<h2 id="spending-context-wisely" class="doc-h2">Spending context wisely</h2>
+<p class="doc-p">Once a skill activates, its full <code>SKILL.md</code> body loads into the agent&#39;s context window alongside conversation history, system context, and other active skills. Every token in your skill competes for the agent&#39;s attention with everything else in that window.</p>
+<h3 class="doc-h3">Add what the agent lacks, omit what it knows</h3>
+<p class="doc-p">Focus on what the agent <em>wouldn&#39;t</em> know without your skill: project-specific conventions, domain-specific procedures, non-obvious edge cases, and the particular tools or APIs to use. You don&#39;t need to explain what a PDF is, how HTTP works, or what a database migration does.</p>
+<div class="codeblock"><pre><code class="language-markdown">## PDF form filling
+
+1. Extract form fields: \\\`python scripts/analyze_form.py input.pdf\\\` → \\\`form_fields.json\\\`
+   (lists every field name, type, and whether it&#39;s required)
+2. Create \\\`field_values.json\\\` mapping each field name to its intended value
+3. Validate: \\\`python scripts/validate_fields.py form_fields.json field_values.json\\\`
+   (checks that every field name exists in the form, types are compatible, and
+   required fields aren&#39;t missing)
+4. If validation fails, revise \\\`field_values.json\\\` and re-validate
+5. Fill the form: \\\`python scripts/fill_form.py input.pdf field_values.json output.pdf\\\`
+\\\`\\\`\\\`
+
+The key ingredient is step 3: a validation script that checks the plan (\\\`field_values.json\\\`) against the source of truth (\\\`form_fields.json\\\`). Errors like &quot;Field &#39;signature\\\\_date&#39; not found — available fields: customer\\\\_name, order\\\\_total, signature\\\\_date\\\\_signed&quot; give the agent enough information to self-correct.
+
+### Bundling reusable scripts
+
+When [iterating on a skill](/skill-creation/evaluating-skills), compare the agent&#39;s execution traces across test cases. If you notice the agent independently reinventing the same logic each run — building charts, parsing a specific format, validating output — that&#39;s a signal to write a tested script once and bundle it in \\\`scripts/\\\`.
+
+For more on designing and bundling scripts, see [Using scripts in skills](/skill-creation/using-scripts).
+
+## Next steps
+
+Once you have a working skill, two guides can help you refine it further:
+
+* **[Evaluating skill output quality](/skill-creation/evaluating-skills)** — Set up test cases, grade results, and iterate systematically.
+* **[Optimizing skill descriptions](/skill-creation/optimizing-descriptions)** — Test and improve your skill&#39;s \\\`description\\\` field so it triggers on the right prompts.
+</code></pre></div>`} />
