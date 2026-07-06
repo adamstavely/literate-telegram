@@ -24,6 +24,7 @@ describe('nginx security header coverage', () => {
 
   test('/docs location serves Astro static HTML with security headers', () => {
     assert.match(nginxConf, /location \^~ \/docs/);
-    assert.match(nginxConf, /try_files \$uri \$uri\/ \$uri\/index\.html =404;/);
+    // Unknown /docs/* routes fall back to the Astro-built custom 404 page.
+    assert.match(nginxConf, /try_files \$uri \$uri\/ \$uri\/index\.html \/docs\/404\/index\.html;/);
   });
 });
