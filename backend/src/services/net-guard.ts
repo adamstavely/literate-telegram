@@ -241,9 +241,11 @@ export async function safeFetch(rawUrl: string, opts: SafeFetchOptions = {}): Pr
     }
 
     const location = res.headers.get('location');
-    if (res.status >= 300 && res.status < 400 && location) {
+    if (res.status >= 300 && res.status < 400 && location && hop < maxRedirects) {
+      // Follow the redirect (re-validated on the next loop iteration). When the
+      // redirect budget is exhausted (or maxRedirects is 0), fall through and
+      // return the 3xx response as-is rather than following it off-host.
       clearTimeout(timer);
-      if (hop >= maxRedirects) throw new HttpError(502, 'Too many redirects');
       current = new URL(location, url).toString();
       continue;
     }
