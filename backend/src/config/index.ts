@@ -61,6 +61,16 @@ export interface Config {
     logIndex: string;
     auditIndex: string;
   };
+  /** Guardrails for server-initiated outbound requests (OpenAPI import, API proxy). */
+  outbound: {
+    timeoutMs: number;
+    maxResponseBytes: number;
+    maxSpecBytes: number;
+    /** Allow plain-http targets. Off by default — https only. */
+    allowHttp: boolean;
+    /** Reject targets that resolve to private/loopback/link-local/metadata IPs (SSRF). */
+    blockPrivateAddresses: boolean;
+  };
 }
 
 function loadConfig(): Config {
@@ -135,6 +145,13 @@ function loadConfig(): Config {
       level: optionalEnv('LOG_LEVEL', 'info'),
       logIndex: optionalEnv('LOG_INDEX', 'interop-logs'),
       auditIndex: optionalEnv('AUDIT_INDEX', 'interop-audit'),
+    },
+    outbound: {
+      timeoutMs: optionalEnvNumber('OUTBOUND_TIMEOUT_MS', 10000),
+      maxResponseBytes: optionalEnvNumber('OUTBOUND_MAX_RESPONSE_BYTES', 2_000_000),
+      maxSpecBytes: optionalEnvNumber('OPENAPI_MAX_SPEC_BYTES', 2_000_000),
+      allowHttp: optionalEnv('OUTBOUND_ALLOW_HTTP', 'false') === 'true',
+      blockPrivateAddresses: optionalEnv('OUTBOUND_BLOCK_PRIVATE', 'true') !== 'false',
     },
   };
 }
