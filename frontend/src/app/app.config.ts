@@ -1,7 +1,7 @@
 import { ApplicationConfig, APP_INITIALIZER } from '@angular/core';
 import { APP_BASE_HREF } from '@angular/common';
 import { provideRouter, withComponentInputBinding, withViewTransitions } from '@angular/router';
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { provideHttpClient, withInterceptors, withXhr } from '@angular/common/http';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideOAuthClient } from 'angular-oauth2-oidc';
 
@@ -17,7 +17,7 @@ export const appConfig: ApplicationConfig = {
       withComponentInputBinding(),
       withViewTransitions(),
     ),
-    provideHttpClient(
+    provideHttpClient(withXhr(), 
       withInterceptors([authInterceptor, auditInterceptor]),
     ),
     provideAnimations(),

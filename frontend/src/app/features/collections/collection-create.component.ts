@@ -1,4 +1,4 @@
-import { Component, signal, computed, inject, DestroyRef } from '@angular/core';
+import { Component, signal, computed, inject, DestroyRef, ChangeDetectionStrategy } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -12,10 +12,10 @@ const COL_ICONS = ['box', 'bolt', 'shield', 'inbox', 'install', 'code', 'globe',
 const COL_ACCENTS = ['#5a63d8', '#2A6FDB', '#0d9aa6', '#1f9d62', '#c2820b', '#d4602a', '#d44a3f', '#8b46d6', '#e0648f'];
 
 @Component({
-  selector: 'app-collection-create',
-  standalone: true,
-  imports: [FormsModule, IconComponent, RouterLink],
-  templateUrl: './collection-create.component.html',
+    selector: 'app-collection-create',
+    imports: [FormsModule, IconComponent, RouterLink],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    templateUrl: './collection-create.component.html'
 })
 export class CollectionCreateComponent {
   private readonly registry = inject(RegistryService);

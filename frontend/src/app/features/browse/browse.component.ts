@@ -5,6 +5,7 @@ import {
   computed,
   inject,
   DestroyRef,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -24,10 +25,10 @@ interface ActiveFilter {
 }
 
 @Component({
-  selector: 'app-browse',
-  standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, EntryCardComponent, IconComponent, CollectionCardComponent],
-  templateUrl: './browse.component.html',
+    selector: 'app-browse',
+    imports: [CommonModule, FormsModule, RouterLink, EntryCardComponent, IconComponent, CollectionCardComponent],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    templateUrl: './browse.component.html'
 })
 export class BrowseComponent implements OnInit {
   private readonly registry = inject(RegistryService);

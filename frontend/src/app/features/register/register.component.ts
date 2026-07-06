@@ -4,6 +4,7 @@ import {
   signal,
   inject,
   DestroyRef,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
@@ -21,10 +22,10 @@ interface WizardStep {
 }
 
 @Component({
-  selector: 'app-register',
-  standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, IconComponent],
-  templateUrl: './register.component.html',
+    selector: 'app-register',
+    imports: [CommonModule, ReactiveFormsModule, FormsModule, IconComponent],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    templateUrl: './register.component.html'
 })
 export class RegisterComponent implements OnInit {
   private readonly fb = inject(FormBuilder);

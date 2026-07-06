@@ -1,15 +1,14 @@
 import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { IconComponent } from '../icon/icon.component';
 import { SensitivityLevel } from '../../types';
 import { SENSITIVITY } from '../../constants/sensitivity.constants';
 
 @Component({
-  selector: 'app-sensitivity-badge',
-  standalone: true,
-  imports: [CommonModule, IconComponent],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
+    selector: 'app-sensitivity-badge',
+    imports: [IconComponent],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    template: `
     <span
       class="sens-badge"
       [class.sens-public]="level === 'public'"
@@ -25,7 +24,7 @@ import { SENSITIVITY } from '../../constants/sensitivity.constants';
         <span>{{ meta.label }}</span>
       }
     </span>
-  `,
+  `
 })
 export class SensitivityBadgeComponent {
   @Input() level: SensitivityLevel = 'public';

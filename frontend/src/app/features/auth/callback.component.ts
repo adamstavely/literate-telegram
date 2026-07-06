@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { OAuthService } from 'angular-oauth2-oidc';
 import { AuthService } from '../../core/services/auth.service';
@@ -7,10 +7,10 @@ import { AUTH_FLASH_KEY } from '../../core/interceptors/auth.interceptor';
 const RETURN_URL_KEY = 'auth-return-url';
 
 @Component({
-  selector: 'app-auth-callback',
-  standalone: true,
-  imports: [RouterLink],
-  template: `
+    selector: 'app-auth-callback',
+    imports: [RouterLink],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    template: `
     <div class="container page" role="status" aria-live="polite" style="padding-top: 48px">
       @if (error()) {
         <h1 class="h2">Sign-in failed</h1>
@@ -23,7 +23,7 @@ const RETURN_URL_KEY = 'auth-return-url';
         <p class="lede">Completing authentication with your identity provider.</p>
       }
     </div>
-  `,
+  `
 })
 export class CallbackComponent implements OnInit {
   private readonly oauth = inject(OAuthService);

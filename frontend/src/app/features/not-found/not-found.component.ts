@@ -1,12 +1,11 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 
 @Component({
-  selector: 'app-not-found',
-  standalone: true,
-  imports: [RouterLink, IconComponent],
-  template: `
+    selector: 'app-not-found',
+    imports: [RouterLink, IconComponent],
+    template: `
     <section class="notfound" aria-labelledby="nf-title">
       <div class="container" style="padding: 80px 0; text-align: center">
         <div class="nf-code mono" aria-hidden="true">404</div>
@@ -21,8 +20,9 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
       </div>
     </section>
   `,
-  styles: [
-    `.nf-code { font-size: 64px; font-weight: 700; color: var(--accent); line-height: 1; }`,
-  ],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    styles: [
+        `.nf-code { font-size: 64px; font-weight: 700; color: var(--accent); line-height: 1; }`,
+    ]
 })
 export class NotFoundComponent {}

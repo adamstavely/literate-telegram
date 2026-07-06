@@ -32,11 +32,10 @@ interface LiveResponse {
  * client-side mock — no request leaves the browser.
  */
 @Component({
-  selector: 'app-endpoint-card',
-  standalone: true,
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, IconComponent],
-  templateUrl: './endpoint-card.component.html',
+    selector: 'app-endpoint-card',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    imports: [FormsModule, IconComponent],
+    templateUrl: './endpoint-card.component.html'
 })
 export class EndpointCardComponent implements OnInit {
   @Input({ required: true }) api!: Api;
