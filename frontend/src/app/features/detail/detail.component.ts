@@ -48,7 +48,7 @@ type TabId = 'overview' | 'install' | 'tools' | 'reviews';
         SensitivityPanelComponent,
         EndpointCardComponent,
     ],
-    changeDetection: ChangeDetectionStrategy.Eager,
+    changeDetection: ChangeDetectionStrategy.Default,
     templateUrl: './detail.component.html'
 })
 export class DetailComponent implements OnChanges {

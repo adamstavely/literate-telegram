@@ -9,7 +9,7 @@ const RETURN_URL_KEY = 'auth-return-url';
 @Component({
     selector: 'app-auth-callback',
     imports: [RouterLink],
-    changeDetection: ChangeDetectionStrategy.Eager,
+    changeDetection: ChangeDetectionStrategy.Default,
     template: `
     <div class="container page" role="status" aria-live="polite" style="padding-top: 48px">
       @if (error()) {

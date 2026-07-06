@@ -20,7 +20,7 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
       </div>
     </section>
   `,
-    changeDetection: ChangeDetectionStrategy.Eager,
+    changeDetection: ChangeDetectionStrategy.Default,
     styles: [
         `.nf-code { font-size: 64px; font-weight: 700; color: var(--accent); line-height: 1; }`,
     ]

@@ -157,7 +157,7 @@ const PANE: Record<string, { title: string; desc: string }> = {
 @Component({
     selector: 'app-policy',
     imports: [RouterLink, IconComponent],
-    changeDetection: ChangeDetectionStrategy.Eager,
+    changeDetection: ChangeDetectionStrategy.Default,
     templateUrl: './policy.component.html'
 })
 export class PolicyComponent implements OnInit {

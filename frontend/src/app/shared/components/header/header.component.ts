@@ -31,7 +31,7 @@ import { docsUrl } from '../../../core/utils/docs-url';
     selector: 'app-header',
     schemas: [CUSTOM_ELEMENTS_SCHEMA],
     imports: [RouterLink, RouterLinkActive, FormsModule, IconComponent, AvatarComponent, DatePipe],
-    changeDetection: ChangeDetectionStrategy.Eager,
+    changeDetection: ChangeDetectionStrategy.Default,
     templateUrl: './header.component.html'
 })
 export class HeaderComponent implements OnInit, OnDestroy {

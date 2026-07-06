@@ -27,7 +27,7 @@ interface ActiveFilter {
 @Component({
     selector: 'app-browse',
     imports: [CommonModule, FormsModule, RouterLink, EntryCardComponent, IconComponent, CollectionCardComponent],
-    changeDetection: ChangeDetectionStrategy.Eager,
+    changeDetection: ChangeDetectionStrategy.Default,
     templateUrl: './browse.component.html'
 })
 export class BrowseComponent implements OnInit {

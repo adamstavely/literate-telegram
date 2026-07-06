@@ -7,7 +7,7 @@ import { CollectionCardComponent } from '../../shared/components/collection-card
 @Component({
     selector: 'app-collections',
     imports: [CollectionCardComponent],
-    changeDetection: ChangeDetectionStrategy.Eager,
+    changeDetection: ChangeDetectionStrategy.Default,
     template: `
     <div class="container page">
       <div class="page-head">

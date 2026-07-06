@@ -50,7 +50,7 @@ interface KpiCard {
 @Component({
     selector: 'app-admin',
     imports: [RouterLink, FormsModule, IconComponent, TypeBadgeComponent],
-    changeDetection: ChangeDetectionStrategy.Eager,
+    changeDetection: ChangeDetectionStrategy.Default,
     templateUrl: './admin.component.html'
 })
 export class AdminComponent implements OnInit {
