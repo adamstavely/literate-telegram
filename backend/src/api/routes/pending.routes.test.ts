@@ -147,6 +147,35 @@ describe('PUT /api/pending/:id/approve', () => {
     assert.match(res.body.message, /already exists/);
   });
 
+  test('returns 409 when registry slug reservation is held by another entry', async () => {
+    stubEs('search', async () => pendingSearchHit());
+    stubEs('create', async (args: { index?: string }) => {
+      if (String(args.index).includes('registry-slugs')) {
+        const e = new Error('conflict') as Error & { statusCode: number };
+        e.statusCode = 409;
+        throw e;
+      }
+      return {};
+    });
+    stubEs('get', async (args: { index?: string }) => {
+      if (String(args.index).includes('registry-slugs')) {
+        return { _source: { entryId: 'other-entry' } };
+      }
+      if (String(args.index).includes('slug-locks')) {
+        return { _source: { entryId: 'entry-1' } };
+      }
+      return { _source: DEFAULT_POLICY_DOCUMENT };
+    });
+
+    const res = await request(app)
+      .put('/api/pending/pending-1/approve')
+      .set(AUTH)
+      .send({});
+
+    assert.equal(res.status, 409);
+    assert.match(res.body.message, /already exists/);
+  });
+
   test('leaves pending untouched when registry publish fails (registry-first ordering)', async () => {
     const updateCalls: Array<{ doc: Record<string, unknown> }> = [];
 

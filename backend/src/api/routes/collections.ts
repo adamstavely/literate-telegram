@@ -22,19 +22,37 @@ const router = Router();
 const MEMBER_KINDS: readonly CollectionMemberKind[] = ['server', 'skill', 'agent', 'api'];
 
 async function loadCreatedDefinitions(): Promise<CollectionDefinition[]> {
+  const all: CollectionDefinition[] = [];
+  const pageSize = 200;
+
   try {
-    const response = await esClient.search<CollectionDefinition>({
-      index: INDEX_NAMES.COLLECTIONS,
-      size: 200,
-      query: { match_all: {} },
-    });
-    return response.hits.hits
-      .map((h) => h._source)
-      .filter((s): s is CollectionDefinition => s !== undefined);
+    let searchAfter: unknown[] | undefined;
+
+    while (true) {
+      const response = await esClient.search<CollectionDefinition>({
+        index: INDEX_NAMES.COLLECTIONS,
+        size: pageSize,
+        sort: [{ createdAt: 'asc' }, { id: 'asc' }],
+        query: { match_all: {} },
+        ...(searchAfter ? { search_after: searchAfter } : {}),
+      });
+
+      const batch = response.hits.hits
+        .map((h) => h._source)
+        .filter((s): s is CollectionDefinition => s !== undefined);
+      all.push(...batch);
+
+      if (batch.length < pageSize) break;
+      const lastHit = response.hits.hits[response.hits.hits.length - 1];
+      if (!lastHit?.sort) break;
+      searchAfter = lastHit.sort;
+    }
   } catch {
     // Index may not exist yet — only the curated definitions are available.
     return [];
   }
+
+  return all;
 }
 
 async function allDefinitions(): Promise<CollectionDefinition[]> {

@@ -6,6 +6,11 @@ import { optionalAuth } from '../../middleware/auth.js';
 import { ingestRateLimiter } from '../../middleware/rate-limit.js';
 import { logger } from '../../logger/logger.js';
 import { boundedMeta } from '../../services/sanitize-meta.js';
+import {
+  boundedIngestString,
+  MAX_INGEST_UA_LEN,
+  MAX_INGEST_URL_LEN,
+} from '../../services/ingest-fields.js';
 
 const router = Router();
 
@@ -27,9 +32,9 @@ router.post(
     body('entries').isArray({ min: 1, max: 50 }),
     body('entries.*.level').isIn(['info', 'warn', 'error']),
     body('entries.*.message').isString().trim().isLength({ min: 1, max: 2000 }),
-    body('entries.*.timestamp').isISO8601(),
-    body('entries.*.url').isString(),
-    body('entries.*.userAgent').isString(),
+    body('entries.*.timestamp').optional().isISO8601(),
+    body('entries.*.url').isString().trim().isLength({ min: 1, max: MAX_INGEST_URL_LEN }),
+    body('entries.*.userAgent').isString().trim().isLength({ min: 1, max: MAX_INGEST_UA_LEN }),
   ],
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const errors = validationResult(req);
@@ -45,11 +50,12 @@ router.post(
       const body = entries.flatMap((entry) => {
         const stack =
           typeof entry.context?.['stack'] === 'string' ? entry.context['stack'] : undefined;
+        const ingestedAt = new Date().toISOString();
 
         return [
           { index: { _index: INDEX_NAMES.LOGS } },
           {
-            '@timestamp': entry.timestamp,
+            '@timestamp': ingestedAt,
             level: entry.level,
             message: entry.message,
             correlationId: req.id,
@@ -57,8 +63,9 @@ router.post(
             service: 'interop-web',
             stack,
             meta: {
-              url: entry.url,
-              userAgent: entry.userAgent,
+              url: boundedIngestString(entry.url, MAX_INGEST_URL_LEN),
+              userAgent: boundedIngestString(entry.userAgent, MAX_INGEST_UA_LEN),
+              ...(entry.timestamp ? { clientTimestamp: entry.timestamp } : {}),
               ...boundedMeta(entry.context, { excludeKeys: ['stack'] }),
             },
           },

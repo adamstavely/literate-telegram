@@ -5,7 +5,6 @@ import { auditAction } from '../../middleware/audit.js';
 import { getPolicy, savePolicy, PolicyVersionConflictError } from '../../services/policy.js';
 import { validatePolicyDocument } from '../../services/policy-validation.js';
 import { PolicyDocument } from '../../types/index.js';
-import { config } from '../../config/index.js';
 
 const router = Router();
 
@@ -55,10 +54,7 @@ router.put(
         return;
       }
 
-      if (
-        config.nodeEnv !== 'development' &&
-        (ifSeqNo === undefined || ifPrimaryTerm === undefined)
-      ) {
+      if (ifSeqNo === undefined || ifPrimaryTerm === undefined) {
         res.status(428).json({
           error: 'Precondition Required',
           message: 'Policy save requires ifSeqNo and ifPrimaryTerm from the latest GET /api/policy response.',
@@ -70,9 +66,7 @@ router.put(
       const saved = await savePolicy(
         { policy, rules, domains },
         req.user!.sub,
-        ifSeqNo !== undefined && ifPrimaryTerm !== undefined
-          ? { ifSeqNo, ifPrimaryTerm }
-          : {},
+        { ifSeqNo, ifPrimaryTerm },
       );
 
       await auditAction(req, 'UPDATE_POLICY', 'default', {

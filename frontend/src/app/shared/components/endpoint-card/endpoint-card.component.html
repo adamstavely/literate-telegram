@@ -129,7 +129,12 @@
                   [ngModel]="vals()[p.name]"
                   (ngModelChange)="setVal(p.name, $event)"
                   [attr.placeholder]="p.desc"
+                  [attr.aria-required]="p.required ? true : null"
+                  [attr.aria-describedby]="p.desc ? 'ep-desc-' + ep.method + '-' + p.name : null"
                 />
+                @if (p.desc) {
+                  <span class="sr-only" [id]="'ep-desc-' + ep.method + '-' + p.name">{{ p.desc }}</span>
+                }
               </div>
             }
           </div>

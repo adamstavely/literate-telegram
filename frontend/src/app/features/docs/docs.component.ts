@@ -8,8 +8,6 @@ import {
   Input,
   HostListener,
 } from '@angular/core';
-import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { SecurityContext } from '@angular/core';
 import { Router } from '@angular/router';
 import { DOC_SECTIONS, DOC_ARTICLES, DocArticle } from './docs-content';
 import { IconComponent } from '../../shared/components/icon/icon.component';
@@ -26,7 +24,6 @@ export interface DocTocHeading {
   templateUrl: './docs.component.html',
 })
 export class DocsComponent implements OnChanges {
-  private readonly sanitizer = inject(DomSanitizer);
   private readonly router = inject(Router);
 
   /** Bound via withComponentInputBinding() from route params. */
@@ -106,11 +103,6 @@ export class DocsComponent implements OnChanges {
     const [path, hash] = href.slice('/docs/'.length).split('#');
     const article = this.articles().find(a => a.id === path);
     if (article) this.selectArticle(article, hash || undefined);
-  }
-
-  renderContent(body: string): SafeHtml {
-    const cleaned = this.sanitizer.sanitize(SecurityContext.HTML, body) ?? '';
-    return this.sanitizer.bypassSecurityTrustHtml(cleaned);
   }
 
   formatDate(iso: string): string {

@@ -57,7 +57,7 @@ export const submitRateLimiter = rateLimit({
  */
 export const ingestRateLimiter = rateLimit({
   windowMs: config.rateLimit.ingestWindowMs,
-  max: perReplicaLimit(config.rateLimit.ingestMax),
+  max: () => perReplicaLimit(config.rateLimit.ingestMax),
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {

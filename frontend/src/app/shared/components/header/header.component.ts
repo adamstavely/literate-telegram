@@ -99,7 +99,9 @@ export class HeaderComponent implements OnInit, OnDestroy {
       ? this.notifications().filter(n => !n.read)
       : this.notifications(),
   );
-  readonly displayName = computed(() => this.currentUser()?.name ?? 'You');
+  readonly displayName = computed(() =>
+    this.isAuthenticated() ? (this.currentUser()?.name ?? 'Signed-in user') : 'Guest',
+  );
 
   /** Search */
   searchQuery = '';

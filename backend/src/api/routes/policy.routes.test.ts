@@ -31,4 +31,16 @@ describe('PUT /api/policy', () => {
       config.nodeEnv = prev;
     }
   });
+
+  test('returns 428 when OCC tokens omitted in development', async () => {
+    const { policy, rules, domains } = DEFAULT_POLICY_DOCUMENT;
+
+    const res = await request(app)
+      .put('/api/policy')
+      .set(AUTH)
+      .send({ policy, rules, domains });
+
+    assert.equal(res.status, 428);
+    assert.equal(res.body.error, 'Precondition Required');
+  });
 });
