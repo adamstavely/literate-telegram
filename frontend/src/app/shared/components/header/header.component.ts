@@ -9,7 +9,6 @@ import {
   HostListener,
   ElementRef,
   ViewChild,
-  CUSTOM_ELEMENTS_SCHEMA,
   ChangeDetectionStrategy
 } from '@angular/core';
 import { RouterLink, RouterLinkActive, Router } from '@angular/router';
@@ -29,7 +28,7 @@ import { docsUrl } from '../../../core/utils/docs-url';
 
 @Component({
     selector: 'app-header',
-    schemas: [CUSTOM_ELEMENTS_SCHEMA],
+    standalone: true,
     imports: [RouterLink, RouterLinkActive, FormsModule, IconComponent, AvatarComponent, DatePipe],
     changeDetection: ChangeDetectionStrategy.Default,
     templateUrl: './header.component.html'

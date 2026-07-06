@@ -41,6 +41,7 @@ const KIND_META: Record<string, { icon: string; label: string; color: string; no
 
 @Component({
     selector: 'app-collection-detail',
+    standalone: true,
     imports: [
     RouterLink,
     IconComponent,

@@ -20,6 +20,7 @@ function formatInstalls(n: number): string {
 
 @Component({
     selector: 'app-entry-card',
+    standalone: true,
     imports: [
         CommonModule,
         IconComponent,

@@ -5,6 +5,7 @@ import { IconComponent } from '../icon/icon.component';
 
 @Component({
     selector: 'app-type-badge',
+    standalone: true,
     imports: [IconComponent],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `

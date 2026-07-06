@@ -156,6 +156,7 @@ const PANE: Record<string, { title: string; desc: string }> = {
 
 @Component({
     selector: 'app-policy',
+    standalone: true,
     imports: [RouterLink, IconComponent],
     changeDetection: ChangeDetectionStrategy.Default,
     templateUrl: './policy.component.html'

@@ -1,0 +1,117 @@
+<section class="notfound" aria-labelledby="nf-title">
+  <div class="nf-inner">
+    <svg
+      class="nf-mark"
+      width="188"
+      height="188"
+      viewBox="0 0 140 140"
+      aria-label="Broken Interop mark"
+      role="img"
+    >
+      <g transform="rotate(38 70 70)">
+        <g class="lk-left">
+          <path
+            d="M78 74 L78 60 Q78 44 62 44 L42 44 Q26 44 26 60 L26 80 Q26 96 42 96 L52 96"
+            fill="none"
+            stroke="var(--nf-stroke-primary)"
+            stroke-width="9"
+            stroke-linecap="butt"
+            stroke-linejoin="round"
+          />
+          <g class="chunk chunk-l">
+            <path
+              d="M78 74 L78 80 Q78 96 62 96 L52 96"
+              fill="none"
+              stroke="var(--nf-stroke-primary)"
+              stroke-width="9"
+              stroke-linecap="butt"
+              stroke-linejoin="round"
+            />
+          </g>
+        </g>
+        <g class="lk-right">
+          <path
+            d="M88 44 L98 44 Q114 44 114 60 L114 80 Q114 96 98 96 L78 96 Q62 96 62 80 L62 74"
+            fill="none"
+            stroke="var(--nf-stroke-secondary)"
+            stroke-width="9"
+            stroke-linecap="butt"
+            stroke-linejoin="round"
+          />
+          <g class="chunk chunk-r">
+            <path
+              d="M62 74 L62 60 Q62 44 78 44 L88 44"
+              fill="none"
+              stroke="var(--nf-stroke-secondary)"
+              stroke-width="9"
+              stroke-linecap="butt"
+              stroke-linejoin="round"
+            />
+          </g>
+        </g>
+        <g class="lk-spark">
+          <line
+            x1="78"
+            y1="52"
+            x2="78"
+            y2="40"
+            stroke="var(--nf-spark)"
+            stroke-width="4"
+            stroke-linecap="round"
+          />
+          <line
+            x1="88"
+            y1="60"
+            x2="99"
+            y2="57"
+            stroke="var(--nf-spark)"
+            stroke-width="4"
+            stroke-linecap="round"
+          />
+          <line
+            x1="70"
+            y1="66"
+            x2="60"
+            y2="72"
+            stroke="var(--nf-spark)"
+            stroke-width="4"
+            stroke-linecap="round"
+          />
+        </g>
+      </g>
+    </svg>
+
+    <div class="nf-eyebrow fade-1">
+      <span class="nf-label" aria-hidden="true">404</span>
+    </div>
+
+    <div class="nf-copy fade-2">
+      <h1 id="nf-title" class="nf-title">This link is broken.</h1>
+      <p class="nf-lede">
+        The connection you were looking for came apart. The page may have moved, or the link was
+        mistyped along the way.
+      </p>
+    </div>
+
+    <div class="nf-actions fade-3">
+      <a class="nf-btn nf-btn-primary" routerLink="/">
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.4"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M3 11l9-8 9 8" />
+          <path d="M5 10v10h14V10" />
+        </svg>
+        Back to home
+      </a>
+      <a class="nf-btn nf-btn-secondary" [href]="supportUrl">Contact support</a>
+    </div>
+  </div>
+</section>

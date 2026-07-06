@@ -2,7 +2,6 @@ import {
   Component,
   OnInit,
   HostListener,
-  CUSTOM_ELEMENTS_SCHEMA,
   inject,
   DestroyRef,
   signal,
@@ -19,7 +18,7 @@ import { IconComponent } from './shared/components/icon/icon.component';
 
 @Component({
     selector: 'app-root',
-    schemas: [CUSTOM_ELEMENTS_SCHEMA],
+    standalone: true,
     imports: [RouterOutlet, HeaderComponent, IconComponent],
     templateUrl: './app.component.html',
     changeDetection: ChangeDetectionStrategy.Default,

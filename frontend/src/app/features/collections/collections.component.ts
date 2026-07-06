@@ -6,6 +6,7 @@ import { CollectionCardComponent } from '../../shared/components/collection-card
 
 @Component({
     selector: 'app-collections',
+    standalone: true,
     imports: [CollectionCardComponent],
     changeDetection: ChangeDetectionStrategy.Default,
     template: `

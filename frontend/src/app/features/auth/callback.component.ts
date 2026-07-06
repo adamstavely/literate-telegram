@@ -8,6 +8,7 @@ const RETURN_URL_KEY = 'auth-return-url';
 
 @Component({
     selector: 'app-auth-callback',
+    standalone: true,
     imports: [RouterLink],
     changeDetection: ChangeDetectionStrategy.Default,
     template: `

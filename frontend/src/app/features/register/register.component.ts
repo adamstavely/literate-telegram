@@ -24,6 +24,7 @@ interface WizardStep {
 
 @Component({
     selector: 'app-register',
+    standalone: true,
     imports: [CommonModule, ReactiveFormsModule, FormsModule, IconComponent],
     changeDetection: ChangeDetectionStrategy.Default,
     templateUrl: './register.component.html'

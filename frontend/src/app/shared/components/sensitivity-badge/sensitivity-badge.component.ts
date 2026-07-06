@@ -6,6 +6,7 @@ import { SENSITIVITY } from '../../constants/sensitivity.constants';
 
 @Component({
     selector: 'app-sensitivity-badge',
+    standalone: true,
     imports: [IconComponent],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `

@@ -16,6 +16,7 @@ function seededRandom(seed: string): () => number {
 
 @Component({
     selector: 'app-sparkline',
+    standalone: true,
     imports: [],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
