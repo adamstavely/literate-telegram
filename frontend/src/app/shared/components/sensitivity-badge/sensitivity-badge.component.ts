@@ -1,12 +1,12 @@
 import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { IconComponent } from '../icon/icon.component';
 import { SensitivityLevel } from '../../types';
 import { SENSITIVITY } from '../../constants/sensitivity.constants';
 
 @Component({
     selector: 'app-sensitivity-badge',
-    imports: [CommonModule, IconComponent],
+    imports: [IconComponent],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
     <span

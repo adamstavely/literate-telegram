@@ -1,5 +1,5 @@
 import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { SensitivityLevel } from '../../types';
 import { SENSITIVITY, SENS_ORDER } from '../../constants/sensitivity.constants';
 import { IconComponent } from '../icon/icon.component';
@@ -8,7 +8,7 @@ import { TooltipComponent } from '../tooltip/tooltip.component';
 
 @Component({
     selector: 'app-sensitivity-panel',
-    imports: [CommonModule, IconComponent, SensBarsComponent, TooltipComponent],
+    imports: [IconComponent, SensBarsComponent, TooltipComponent],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
     <div class="aside-card sens-panel" [class]="'sens-' + level">

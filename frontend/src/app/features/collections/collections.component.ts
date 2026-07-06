@@ -1,5 +1,5 @@
 import { Component, OnInit, signal, inject, DestroyRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { RegistryService } from '../../core/services/registry.service';
@@ -9,7 +9,7 @@ import { CollectionCardComponent } from '../../shared/components/collection-card
 
 @Component({
     selector: 'app-collections',
-    imports: [CommonModule, RouterLink, CollectionCardComponent],
+    imports: [RouterLink, CollectionCardComponent],
     template: `
     <div class="container page">
       <div class="page-head">

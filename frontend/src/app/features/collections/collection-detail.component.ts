@@ -1,5 +1,5 @@
 import { Component, OnChanges, SimpleChanges, signal, inject, DestroyRef, Input } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { RouterLink, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, switchMap, EMPTY } from 'rxjs';
@@ -42,13 +42,12 @@ const KIND_META: Record<string, { icon: string; label: string; color: string; no
 @Component({
     selector: 'app-collection-detail',
     imports: [
-        CommonModule,
-        RouterLink,
-        IconComponent,
-        SensitivityBadgeComponent,
-        SensitivityPanelComponent,
-        VerifiedMarkComponent,
-    ],
+    RouterLink,
+    IconComponent,
+    SensitivityBadgeComponent,
+    SensitivityPanelComponent,
+    VerifiedMarkComponent
+],
     templateUrl: './collection-detail.component.html'
 })
 export class CollectionDetailComponent implements OnChanges {

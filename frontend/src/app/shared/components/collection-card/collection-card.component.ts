@@ -1,5 +1,5 @@
 import { Component, Input, ChangeDetectionStrategy, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { Router } from '@angular/router';
 import { Collection, RegistryEntry } from '../../types';
 import { IconComponent } from '../icon/icon.component';
@@ -14,7 +14,7 @@ const TYPE_ICONS: Record<string, { icon: string; color: string }> = {
 
 @Component({
     selector: 'app-collection-card',
-    imports: [CommonModule, IconComponent, SensitivityBadgeComponent],
+    imports: [IconComponent, SensitivityBadgeComponent],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
     <div

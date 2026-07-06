@@ -1,5 +1,5 @@
 import { Component, Input, ChangeDetectionStrategy, OnChanges } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 
 function seededRandom(seed: string): () => number {
   let h = 0;
@@ -16,7 +16,7 @@ function seededRandom(seed: string): () => number {
 
 @Component({
     selector: 'app-sparkline',
-    imports: [CommonModule],
+    imports: [],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
     <svg

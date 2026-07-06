@@ -1,11 +1,11 @@
 import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 
 let tooltipSeq = 0;
 
 @Component({
     selector: 'app-tooltip',
-    imports: [CommonModule],
+    imports: [],
     changeDetection: ChangeDetectionStrategy.OnPush,
     // The wrapper is focusable and describes itself via the tooltip, and the CSS
     // reveals the tooltip on :focus-within as well as :hover — so the content is
