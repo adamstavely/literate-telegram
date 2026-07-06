@@ -81,9 +81,12 @@ backend:
     TRUST_PROXY: "1"
     INGEST_RATE_LIMIT_WINDOW_MS: "60000"
     INGEST_RATE_LIMIT_MAX: "30"
-  # Name of the Secret that holds ES_PASSWORD, OIDC_ISSUER, OIDC_AUDIENCE, OIDC_JWKS_URI.
-  # When existingSecret is set, Helm will not render secret.yaml — provision the Secret out-of-band.
+  # Name of the chart-managed Secret holding ES_PASSWORD, OIDC_ISSUER,
+  # OIDC_AUDIENCE, OIDC_JWKS_URI (rendered by secret.yaml).
   envSecret: interop-backend-secrets
+  # To use a Secret you provision out-of-band instead, set existingSecret to ITS
+  # NAME. The chart then skips rendering secret.yaml and every pod/job/statefulset
+  # references existingSecret directly — no need to also change envSecret.
   existingSecret: ""
 
 # ---------------------------------------------------------------------------

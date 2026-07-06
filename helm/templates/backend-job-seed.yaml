@@ -53,7 +53,7 @@ spec:
             - name: ES_PASS
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.backend.envSecret }}
+                  name: {{ include "interop.backend.secretName" . }}
                   key: ES_PASSWORD
         # Wait for backend API to be available
         - name: wait-for-backend
@@ -90,22 +90,22 @@ spec:
             - name: ES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.backend.envSecret }}
+                  name: {{ include "interop.backend.secretName" . }}
                   key: ES_PASSWORD
             - name: OIDC_ISSUER
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.backend.envSecret }}
+                  name: {{ include "interop.backend.secretName" . }}
                   key: OIDC_ISSUER
             - name: OIDC_AUDIENCE
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.backend.envSecret }}
+                  name: {{ include "interop.backend.secretName" . }}
                   key: OIDC_AUDIENCE
             - name: OIDC_JWKS_URI
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.backend.envSecret }}
+                  name: {{ include "interop.backend.secretName" . }}
                   key: OIDC_JWKS_URI
           resources:
             requests:

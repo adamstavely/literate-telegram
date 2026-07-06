@@ -97,6 +97,15 @@ ServiceAccount name.
 {{- end }}
 
 {{/*
+Name of the Secret holding backend env secrets. When backend.existingSecret is
+set the chart does not render its own Secret and every ref points at the external
+one; otherwise it points at the chart-managed Secret (backend.envSecret).
+*/}}
+{{- define "interop.backend.secretName" -}}
+{{- .Values.backend.existingSecret | default .Values.backend.envSecret -}}
+{{- end }}
+
+{{/*
 Backend service name.
 */}}
 {{- define "interop.backend.serviceName" -}}

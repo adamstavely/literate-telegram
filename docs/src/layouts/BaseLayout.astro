@@ -17,25 +17,9 @@ const pageTitle = title ? `${title} — Interop Docs` : 'Interop Docs';
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>{pageTitle}</title>
-    <script is:inline>
-      (function () {
-        try {
-          var raw = localStorage.getItem('interop-theme');
-          if (!raw) return;
-          var theme = JSON.parse(raw);
-          var mode = theme.mode;
-          if (mode === 'system') {
-            mode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-          }
-          if (mode === 'light' || mode === 'dark') {
-            document.documentElement.setAttribute('data-theme', mode);
-          }
-          if (theme.accent && theme.accent !== 'cobalt') {
-            document.documentElement.setAttribute('data-accent', theme.accent);
-          }
-        } catch (_) {}
-      })();
-    </script>
+    <!-- External (same-origin) theme-boot so it runs under a strict
+         `script-src 'self'` CSP without FOUC. See public/docs/theme-init.js. -->
+    <script is:inline src="/docs/theme-init.js"></script>
   </head>
   <body>
     <div class="app">

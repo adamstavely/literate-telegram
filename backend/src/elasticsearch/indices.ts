@@ -1,5 +1,7 @@
+import type { MappingProperty } from '@elastic/elasticsearch/lib/api/types.js';
 import { config } from '../config/index.js';
 import { esClient } from './client.js';
+import { logger } from '../logger/logger.js';
 
 const REGISTRY_INDEX = 'interop-registry';
 const PENDING_INDEX = 'interop-pending';
@@ -26,6 +28,53 @@ export const INDEX_NAMES = {
   COLLECTIONS: COLLECTIONS_INDEX,
   DOCS_FEEDBACK: DOCS_FEEDBACK_INDEX,
 } as const;
+
+// Rich per-endpoint sub-fields (populated by OpenAPI import). Shared between the
+// registry + pending mappings and the additive putMapping migration so existing
+// clusters gain the fields too. requestBody is a free-form shape — stored in
+// _source but not indexed (avoids nested-mapping churn / explosion).
+const ENDPOINT_PROPERTIES: Record<string, MappingProperty> = {
+  method: { type: 'keyword' },
+  path: { type: 'keyword' },
+  summary: { type: 'text' },
+  operationId: { type: 'keyword' },
+  description: { type: 'text' },
+  params: {
+    type: 'nested',
+    properties: {
+      name: { type: 'keyword' },
+      in: { type: 'keyword' },
+      type: { type: 'keyword' },
+      required: { type: 'boolean' },
+      description: { type: 'text' },
+    },
+  },
+  responses: {
+    type: 'nested',
+    properties: {
+      status: { type: 'keyword' },
+      description: { type: 'text' },
+    },
+  },
+  requestBody: { type: 'object', enabled: false },
+};
+
+// Top-level fields for standalone `tool` entries (the same shape the `tools`
+// nested block declares for a server's tools, but at the document root).
+const TOOL_TOP_LEVEL_PROPERTIES: Record<string, MappingProperty> = {
+  parentServer: { type: 'keyword' },
+  returns: { type: 'keyword' },
+  readOnly: { type: 'boolean' },
+  params: {
+    type: 'nested',
+    properties: {
+      name: { type: 'keyword' },
+      type: { type: 'keyword' },
+      description: { type: 'text' },
+      required: { type: 'boolean' },
+    },
+  },
+};
 
 async function createILMPolicy(policyName: string, maxAgeDays: number): Promise<boolean> {
   try {
@@ -135,6 +184,8 @@ async function createRegistryIndex(): Promise<void> {
         autonomy: { type: 'keyword' },
         servers: { type: 'keyword' },
         skills: { type: 'keyword' },
+        // Standalone `tool` entry fields (root-level, distinct from server tools)
+        ...TOOL_TOP_LEVEL_PROPERTIES,
         // API fields
         style: { type: 'keyword' },
         endpoint: { type: 'keyword' },
@@ -142,11 +193,7 @@ async function createRegistryIndex(): Promise<void> {
         baseUrl: { type: 'keyword' },
         endpoints: {
           type: 'nested',
-          properties: {
-            method: { type: 'keyword' },
-            path: { type: 'keyword' },
-            summary: { type: 'text' },
-          },
+          properties: ENDPOINT_PROPERTIES,
         },
       },
     },
@@ -229,17 +276,16 @@ async function createPendingIndex(): Promise<void> {
             autonomy: { type: 'keyword' },
             servers: { type: 'keyword' },
             skills: { type: 'keyword' },
+            parentServer: { type: 'keyword' },
+            returns: { type: 'keyword' },
+            readOnly: { type: 'boolean' },
             style: { type: 'keyword' },
             endpoint: { type: 'keyword' },
             wrappedBy: { type: 'keyword' },
             baseUrl: { type: 'keyword' },
             endpoints: {
               type: 'nested',
-              properties: {
-                method: { type: 'keyword' },
-                path: { type: 'keyword' },
-                summary: { type: 'text' },
-              },
+              properties: ENDPOINT_PROPERTIES,
             },
           },
         },
@@ -546,6 +592,37 @@ async function createDocsFeedbackIndex(): Promise<void> {
   });
 }
 
+/**
+ * Additive mapping migration for clusters created before the rich endpoint /
+ * standalone-tool fields existed. `create` is guarded by `indexExists`, so an
+ * existing index never picks up new fields on its own; under `dynamic: false`
+ * those fields would be silently un-indexed (retained in _source, so display
+ * still works, but unsearchable). putMapping only adds fields — it never
+ * rewrites or reindexes — so this is safe to run on every startup. Best-effort:
+ * a failure here must not stop the server from starting.
+ */
+async function migrateMappings(): Promise<void> {
+  const targets: Array<{ index: string; label: string }> = [
+    { index: REGISTRY_INDEX, label: 'registry' },
+    { index: PENDING_INDEX, label: 'pending' },
+  ];
+  for (const { index, label } of targets) {
+    try {
+      if (!(await indexExists(index))) continue;
+      const properties: Record<string, MappingProperty> =
+        index === PENDING_INDEX
+          ? { entry: { properties: { ...TOOL_TOP_LEVEL_PROPERTIES, endpoints: { type: 'nested', properties: ENDPOINT_PROPERTIES } } } }
+          : { ...TOOL_TOP_LEVEL_PROPERTIES, endpoints: { type: 'nested', properties: ENDPOINT_PROPERTIES } };
+      await esClient.indices.putMapping({ index, properties });
+    } catch (err) {
+      logger.warn('Additive mapping migration failed (non-fatal)', {
+        index: label,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+}
+
 export async function setupIndices(): Promise<void> {
   await Promise.all([
     createRegistryIndex(),
@@ -560,4 +637,6 @@ export async function setupIndices(): Promise<void> {
     createCollectionsIndex(),
     createDocsFeedbackIndex(),
   ]);
+  // After indices exist, backfill mappings on any pre-existing cluster.
+  await migrateMappings();
 }

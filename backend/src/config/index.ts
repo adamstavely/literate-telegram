@@ -177,6 +177,20 @@ export function validateProductionGuardrails(cfg: Config): void {
       'ES_CA_FINGERPRINT is required when ES_NODE uses https in production.',
     );
   }
+  // The outbound SSRF guard must not be disabled in production. Without this
+  // tripwire, OUTBOUND_BLOCK_PRIVATE=false / OUTBOUND_ALLOW_HTTP=true would let
+  // an authenticated user reach cloud metadata or internal hosts via the import
+  // and proxy routes.
+  if (!cfg.outbound.blockPrivateAddresses) {
+    throw new Error(
+      'OUTBOUND_BLOCK_PRIVATE must not be disabled in production (SSRF guard).',
+    );
+  }
+  if (cfg.outbound.allowHttp) {
+    throw new Error(
+      'OUTBOUND_ALLOW_HTTP must not be enabled in production (SSRF guard; https-only outbound).',
+    );
+  }
 }
 
 if (config.nodeEnv === 'production') {

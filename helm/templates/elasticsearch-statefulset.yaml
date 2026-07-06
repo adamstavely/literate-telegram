@@ -79,7 +79,7 @@ spec:
             - name: ELASTIC_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.backend.envSecret }}
+                  name: {{ include "interop.backend.secretName" . }}
                   key: ES_PASSWORD
             - name: bootstrap.memory_lock
               value: "false"

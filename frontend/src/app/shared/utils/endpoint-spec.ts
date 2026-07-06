@@ -351,7 +351,7 @@ export function buildStructuredRequest(
     return { method: 'POST', path: '', query: {}, body: JSON.stringify({ query, variables: varsObj }) };
   }
 
-  const path = substitutePath(ep.path, (n) => vals[n] ?? '');
+  const path = substitutePath(ep.path, (n) => encodeURIComponent(vals[n] ?? ''));
   const query: Record<string, string> = {};
   spec.query.forEach((p) => {
     if (vals[p.name] !== undefined && vals[p.name] !== '') query[p.name] = vals[p.name];

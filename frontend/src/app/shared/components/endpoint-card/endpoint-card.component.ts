@@ -9,6 +9,7 @@ import {
   ChangeDetectionStrategy,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { timeout, TimeoutError } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { Api, ApiEndpoint } from '../../types';
@@ -129,7 +130,10 @@ export class EndpointCardComponent implements OnInit {
 
     this.registry
       .proxyTry({ entryId: this.api.id, method: req.method, path: req.path, query: req.query, body: req.body, headers })
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      // Bound the wait so an upstream that never responds can't strand the
+      // console on a permanent spinner (the backend proxy also times out, but
+      // this is the client's own safety net).
+      .pipe(timeout(30000), takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (r) => {
           this.running.set(false);
@@ -149,6 +153,9 @@ export class EndpointCardComponent implements OnInit {
   }
 
   private errorResponse(err: unknown, ms: number): LiveResponse {
+    if (err instanceof TimeoutError) {
+      return { code: '504', tone: 'danger', label: 'Timeout', ms, body: 'The request timed out waiting for a response.' };
+    }
     if (err instanceof HttpErrorResponse) {
       const errorBody = err.error as { message?: unknown } | null;
       const message =

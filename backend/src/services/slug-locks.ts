@@ -1,7 +1,7 @@
 import { esClient } from '../elasticsearch/client.js';
 import { INDEX_NAMES } from '../elasticsearch/indices.js';
 import { logger } from '../logger/logger.js';
-import { registrySlugReserved } from './registry-slugs.js';
+import { registrySlugReserved, sweepStaleRegistrySlugs } from './registry-slugs.js';
 
 /** Do not reclaim a slug lock until this long after claim (avoids TOCTOU races). */
 export const LOCK_GRACE_MS = 15 * 60 * 1000;
@@ -221,18 +221,24 @@ export async function sweepStaleSlugLocks(): Promise<number> {
   return released;
 }
 
+/** Run both orphan sweeps (slug locks + registry-slug reservations) once. */
+async function runSweep(): Promise<void> {
+  const [locks, reservations] = await Promise.all([
+    sweepStaleSlugLocks(),
+    sweepStaleRegistrySlugs(),
+  ]);
+  if (locks > 0) logger.info('Released orphan slug locks during sweep', { count: locks });
+  if (reservations > 0) {
+    logger.info('Released orphan registry-slug reservations during sweep', { count: reservations });
+  }
+}
+
 /** Start periodic orphan slug-lock sweeps (no-op if already running). */
 export function startSlugLockSweep(): void {
   if (sweepTimer) return;
 
-  void sweepStaleSlugLocks();
-  sweepTimer = setInterval(() => {
-    void sweepStaleSlugLocks().then((count) => {
-      if (count > 0) {
-        logger.info('Released orphan slug locks during sweep', { count });
-      }
-    });
-  }, SWEEP_INTERVAL_MS);
+  void runSweep();
+  sweepTimer = setInterval(() => void runSweep(), SWEEP_INTERVAL_MS);
   sweepTimer.unref();
 }
 

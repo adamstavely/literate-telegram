@@ -249,10 +249,10 @@ export function sanitizeSubmission(body: RawBody): Partial<RegistryEntry> {
       return {
         ...base,
         transports: enumArray(body['transports'], TRANSPORTS),
-        auth: str(body['auth']) ?? 'None',
+        auth: (str(body['auth']) ?? 'None').slice(0, MAX_API_FIELD_LEN),
         clients: stringArray(body['clients']) ?? [],
-        license: str(body['license']) ?? '',
-        source: str(body['source']) ?? '',
+        license: (str(body['license']) ?? '').slice(0, MAX_API_FIELD_LEN),
+        source: (str(body['source']) ?? '').slice(0, MAX_API_FIELD_LEN),
         tools: Array.isArray(body['tools'])
           ? body['tools'].slice(0, MAX_TOOLS).map(sanitizeTool)
           : [],
@@ -263,8 +263,8 @@ export function sanitizeSubmission(body: RawBody): Partial<RegistryEntry> {
     case 'tool':
       return {
         ...base,
-        parentServer: str(body['parentServer']) ?? '',
-        returns: str(body['returns']) ?? '',
+        parentServer: (str(body['parentServer']) ?? '').slice(0, MAX_API_FIELD_LEN),
+        returns: (str(body['returns']) ?? '').slice(0, MAX_API_FIELD_LEN),
         readOnly: boolean(body['readOnly']) ?? true,
         params: sanitizeParams(body['params']),
       } as Partial<RegistryEntry>;
@@ -280,7 +280,7 @@ export function sanitizeSubmission(body: RawBody): Partial<RegistryEntry> {
     case 'agent':
       return {
         ...base,
-        model: str(body['model']) ?? '',
+        model: (str(body['model']) ?? '').slice(0, MAX_API_FIELD_LEN),
         autonomy: enumValue(body['autonomy'], AUTONOMY, 'low'),
         servers: stringArray(body['servers']) ?? [],
         skills: stringArray(body['skills']) ?? [],
