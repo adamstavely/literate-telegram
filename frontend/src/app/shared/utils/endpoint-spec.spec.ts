@@ -1,4 +1,11 @@
-import { buildEndpointSpec, buildLiveRequest, epToken, exampleVal, liveResponseBody } from './endpoint-spec';
+import {
+  buildEndpointSpec,
+  buildLiveRequest,
+  buildStructuredRequest,
+  epToken,
+  exampleVal,
+  liveResponseBody,
+} from './endpoint-spec';
 import { Api, ApiEndpoint } from '../types';
 
 function api(partial: Partial<Api>): Api {
@@ -96,5 +103,24 @@ describe('endpoint-spec', () => {
       const idParam = spec.pathParams.find((p) => p.name === 'id')!;
       expect(exampleVal(idParam)).toBe('p1');
     });
+
+    it('buildStructuredRequest produces a REST request with substituted path, query, and body', () => {
+      const spec = buildEndpointSpec(api({}), importedEp);
+      const req = buildStructuredRequest(api({}), importedEp, spec, { id: '42', expand: 'owner', name: 'rex' });
+      expect(req.method).toBe('POST');
+      expect(req.path).toBe('/pets/42');
+      expect(req.query).toEqual({ expand: 'owner' });
+      expect(req.body).toBe(JSON.stringify({ name: 'rex' }));
+    });
+  });
+
+  it('buildStructuredRequest builds a GraphQL POST with query + variables', () => {
+    const ep: ApiEndpoint = { method: 'MUTATION', path: 'issueCreate', summary: '' };
+    const gqlApi = api({ style: 'GraphQL', baseUrl: 'https://gql.test/graphql' });
+    const spec = buildEndpointSpec(gqlApi, ep);
+    const req = buildStructuredRequest(gqlApi, ep, spec, {});
+    expect(req.method).toBe('POST');
+    expect(req.path).toBe('');
+    expect(req.body).toContain('mutation');
   });
 });

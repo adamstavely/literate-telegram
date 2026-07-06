@@ -110,6 +110,16 @@ export interface Api extends BaseEntry {
   endpoints?: ApiEndpoint[];
 }
 
+/** Result of a real proxied "Try it out" call (POST /api/proxy). */
+export interface ProxyResponse {
+  status: number;
+  statusText: string;
+  headers: { 'content-type'?: string };
+  body: string;
+  truncated: boolean;
+  ms: number;
+}
+
 /** Draft returned by POST /api/apis/import (not a persisted entry). */
 export interface ApiDraft {
   name?: string;

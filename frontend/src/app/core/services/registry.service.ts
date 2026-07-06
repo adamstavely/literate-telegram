@@ -15,6 +15,7 @@ import {
   AppStats,
   Collection,
   ApiDraft,
+  ProxyResponse,
 } from '../../shared/types/index';
 
 export type { AppStats as RegistryStats } from '../../shared/types/index';
@@ -85,6 +86,18 @@ export class RegistryService {
     return this.http
       .post<{ draft: ApiDraft }>(`${this.base}/apis/import`, input)
       .pipe(map((r) => r.draft));
+  }
+
+  /** Execute a real "Try it out" request against a registered API via the proxy. */
+  proxyTry(payload: {
+    entryId: string;
+    method: string;
+    path: string;
+    query: Record<string, string>;
+    body?: string;
+    headers?: Record<string, string>;
+  }): Observable<ProxyResponse> {
+    return this.http.post<ProxyResponse>(`${this.base}/proxy`, payload);
   }
 
   // ── Admin / Pending ──────────────────────────────────────────────────────

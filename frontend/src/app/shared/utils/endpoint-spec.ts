@@ -317,6 +317,56 @@ export function buildLiveRequest(api: Api, ep: ApiEndpoint, spec: EndpointSpec, 
   return lines.join('\n');
 }
 
+export interface StructuredRequest {
+  method: string;
+  /** Path relative to the API base URL, with path params substituted. */
+  path: string;
+  query: Record<string, string>;
+  body?: string;
+}
+
+/**
+ * Build the concrete request (method/path/query/body) for a real proxied call,
+ * from the user's entered values. Mirrors buildLiveRequest's value handling but
+ * returns structured data instead of a display curl, and never includes auth
+ * (credentials are supplied separately by the console's Authorize field).
+ */
+export function buildStructuredRequest(
+  api: Api,
+  ep: ApiEndpoint,
+  spec: EndpointSpec,
+  vals: Record<string, string>,
+): StructuredRequest {
+  if (spec.isGql) {
+    const args = [...spec.query, ...spec.body];
+    const varsObj: Record<string, unknown> = {};
+    args.forEach((a) => {
+      if (vals[a.name] !== undefined && vals[a.name] !== '') varsObj[a.name] = coerce(a, vals[a.name]);
+    });
+    const op = ep.method === 'MUTATION' ? 'mutation' : 'query';
+    const decl = args.length ? `(${args.map((a) => `$${a.name}: ${a.type}`).join(', ')})` : '';
+    const pass = args.length ? `(${args.map((a) => `${a.name.replace(/Filter$/, '')}: $${a.name}`).join(', ')})` : '';
+    const query = `${op}${decl} { ${epToken(ep)}${pass} { id } }`;
+    // GraphQL is always a POST to the base URL.
+    return { method: 'POST', path: '', query: {}, body: JSON.stringify({ query, variables: varsObj }) };
+  }
+
+  const path = substitutePath(ep.path, (n) => vals[n] ?? '');
+  const query: Record<string, string> = {};
+  spec.query.forEach((p) => {
+    if (vals[p.name] !== undefined && vals[p.name] !== '') query[p.name] = vals[p.name];
+  });
+  let body: string | undefined;
+  if (spec.body.length && /^(POST|PUT|PATCH|DELETE)$/.test(ep.method)) {
+    const obj: Record<string, unknown> = {};
+    spec.body.forEach((f) => {
+      if (vals[f.name] !== undefined && vals[f.name] !== '') obj[f.name] = coerce(f, vals[f.name]);
+    });
+    body = JSON.stringify(obj);
+  }
+  return { method: ep.method, path, query, body };
+}
+
 /* Fold entered values into the canned success body so the response feels live. */
 export function liveResponseBody(spec: EndpointSpec, vals: Record<string, string>): string {
   let body = spec.sample;
