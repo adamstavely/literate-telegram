@@ -9,6 +9,7 @@ import { logger } from '../../logger/logger.js';
 import { getPolicy, evaluatePolicyEnforcement, reviewDueAt } from '../../services/policy.js';
 import { sanitizeSubmission } from '../../services/entry-dto.js';
 import { claimOrOwnSlug, releaseSlug, isEsConflict, isEsNotFound } from '../../services/slug-locks.js';
+import { claimOrOwnRegistrySlug, releaseRegistrySlug } from '../../services/registry-slugs.js';
 import { runCompensation } from '../../services/compensation.js';
 import { clampPage, paginationFrom } from '../../services/pagination.js';
 
@@ -348,6 +349,15 @@ router.put(
         return;
       }
 
+      if (!(await claimOrOwnRegistrySlug(entryType, entrySlug, entry.id))) {
+        res.status(409).json({
+          error: 'Conflict',
+          message: `An entry with slug "${entrySlug}" already exists for type "${entryType}".`,
+          correlationId: req.id,
+        });
+        return;
+      }
+
       // Re-sanitize the stored blob before publishing — never trust a pending
       // document (it may predate the allowlist or have been tampered with).
       // Re-apply server-controlled lifecycle fields the sanitizer strips.
@@ -429,6 +439,7 @@ router.put(
                 if (isEsNotFound(delErr)) return; // nothing published — nothing to undo
                 throw delErr;
               }
+              await releaseRegistrySlug(entryType, entrySlug, entry.id);
             },
             { entryId: entry.id, pendingId: id, type: entry.type, slug: entry.slug },
           );
@@ -596,6 +607,9 @@ router.put(
               } catch (delErr) {
                 if (isEsNotFound(delErr)) return; // the normal case: nothing was ever published
                 throw delErr;
+              }
+              if (pending.entry.type && pending.entry.slug) {
+                await releaseRegistrySlug(pending.entry.type, pending.entry.slug, orphanEntryId);
               }
             },
             { entryId: orphanEntryId, pendingId: id, type: pending.entry.type, slug: pending.entry.slug },

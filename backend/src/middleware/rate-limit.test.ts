@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { rateLimitIdentityKey } from './rate-limit.js';
+import { rateLimitIdentityKey, perReplicaLimit } from './rate-limit.js';
 
 describe('rateLimitIdentityKey', () => {
   test('prefers authenticated user sub over IP', () => {
@@ -16,5 +16,13 @@ describe('rateLimitIdentityKey', () => {
 
   test('uses unknown when IP is missing', () => {
     assert.equal(rateLimitIdentityKey({}), 'ip:unknown');
+  });
+});
+
+describe('perReplicaLimit', () => {
+  test('returns at least 1 and floors the cluster max', () => {
+    assert.equal(perReplicaLimit(200), 200);
+    assert.equal(perReplicaLimit(10), 10);
+    assert.equal(perReplicaLimit(1), 1);
   });
 });

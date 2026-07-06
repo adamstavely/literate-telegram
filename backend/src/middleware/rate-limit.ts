@@ -8,6 +8,11 @@ export function rateLimitIdentityKey(req: { user?: { sub?: string }; ip?: string
   return `ip:${req.ip ?? 'unknown'}`;
 }
 
+/** Divide a cluster-wide limit across expected backend replicas (in-memory store). */
+export function perReplicaLimit(clusterMax: number): number {
+  return Math.max(1, Math.floor(clusterMax / config.rateLimit.replicas));
+}
+
 const rateLimitHandler = (message: string) => (req: { id?: string }, res: { status: (n: number) => { json: (b: unknown) => void } }) => {
   res.status(429).json({
     error: 'Too Many Requests',
@@ -24,7 +29,7 @@ const rateLimitHandler = (message: string) => (req: { id?: string }, res: { stat
 export function createGlobalRateLimiter(): ReturnType<typeof rateLimit> {
   return rateLimit({
     windowMs: config.rateLimit.windowMs,
-    max: config.rateLimit.max,
+    max: perReplicaLimit(config.rateLimit.max),
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: rateLimitIdentityKey,
@@ -36,7 +41,7 @@ export function createGlobalRateLimiter(): ReturnType<typeof rateLimit> {
 /** Per-user cap on entry submissions to throttle queue flooding. */
 export const submitRateLimiter = rateLimit({
   windowMs: config.rateLimit.submitWindowMs,
-  max: config.rateLimit.submitMax,
+  max: perReplicaLimit(config.rateLimit.submitMax),
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: rateLimitIdentityKey,
@@ -52,7 +57,7 @@ export const submitRateLimiter = rateLimit({
  */
 export const ingestRateLimiter = rateLimit({
   windowMs: config.rateLimit.ingestWindowMs,
-  max: config.rateLimit.ingestMax,
+  max: perReplicaLimit(config.rateLimit.ingestMax),
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {

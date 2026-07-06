@@ -13,7 +13,7 @@ router.use(requireAuth, requireAdmin);
 
 router.get('/', async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const doc = await getPolicy();
+    const doc = await getPolicy(true);
     res.json(doc);
   } catch (err) {
     next(err);
