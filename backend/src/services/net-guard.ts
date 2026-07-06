@@ -276,6 +276,10 @@ export async function safeFetch(rawUrl: string, opts: SafeFetchOptions = {}): Pr
     // Resolve + validate once, then pin the connection to that IP (rebind-safe).
     const pin = await resolveAndPin(url.hostname);
 
+    // One pinned Agent per hop. It owns a connection pool, so it must be
+    // destroyed on every exit path (error, redirect, success-after-body-read)
+    // or sustained proxy/import traffic leaks sockets/FDs.
+    const dispatcher = pin ? pinnedDispatcher(pin) : undefined;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     let res: Response;
@@ -286,10 +290,11 @@ export async function safeFetch(rawUrl: string, opts: SafeFetchOptions = {}): Pr
         body: opts.body,
         redirect: 'manual',
         signal: controller.signal,
-        ...(pin ? { dispatcher: pinnedDispatcher(pin) } : {}),
+        ...(dispatcher ? { dispatcher } : {}),
       } as RequestInit & { dispatcher?: Agent });
     } catch (err) {
       clearTimeout(timer);
+      if (dispatcher) void dispatcher.destroy();
       if (err instanceof Error && err.name === 'AbortError') {
         throw new HttpError(504, 'Upstream request timed out');
       }
@@ -302,6 +307,7 @@ export async function safeFetch(rawUrl: string, opts: SafeFetchOptions = {}): Pr
       // redirect budget is exhausted (or maxRedirects is 0), fall through and
       // return the 3xx response as-is rather than following it off-host.
       clearTimeout(timer);
+      if (dispatcher) void dispatcher.destroy(); // abandon this hop's connection
       current = new URL(location, url).toString();
       continue;
     }
@@ -325,6 +331,8 @@ export async function safeFetch(rawUrl: string, opts: SafeFetchOptions = {}): Pr
       throw err;
     } finally {
       clearTimeout(timer);
+      // Body has been fully read (or errored) by here, so the pool is safe to close.
+      if (dispatcher) void dispatcher.destroy();
     }
   }
 }

@@ -619,6 +619,20 @@ router.put(
       // The entry is abandoned — free its slug so it can be resubmitted.
       if (pending.entry.type && pending.entry.slug && pending.entry.id) {
         await releaseSlug(pending.entry.type, pending.entry.slug, pending.entry.id);
+        // Also release any registry-slug reservation. The orphan branch above
+        // only fires when a registry doc actually exists; if an approve crashed
+        // after reserving the slug but before publishing, the reservation would
+        // otherwise leak permanently. releaseRegistrySlug is owner-checked and a
+        // no-op when nothing is reserved, so this is safe to always attempt.
+        try {
+          await releaseRegistrySlug(pending.entry.type, pending.entry.slug, pending.entry.id);
+        } catch (relErr) {
+          logger.warn('Failed to release registry slug on reject', {
+            error: relErr instanceof Error ? relErr.message : String(relErr),
+            slug: pending.entry.slug,
+            type: pending.entry.type,
+          });
+        }
       }
 
       await auditAction(req, 'REJECT_ENTRY', id, {
