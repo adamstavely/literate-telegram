@@ -14,6 +14,7 @@ const TYPE_ICONS: Record<string, { icon: string; color: string }> = {
 
 @Component({
     selector: 'app-collection-card',
+    standalone: true,
     imports: [IconComponent, SensitivityBadgeComponent],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `

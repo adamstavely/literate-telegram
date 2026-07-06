@@ -39,6 +39,7 @@ interface LiveResponse {
  */
 @Component({
     selector: 'app-endpoint-card',
+    standalone: true,
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [FormsModule, IconComponent],
     templateUrl: './endpoint-card.component.html'

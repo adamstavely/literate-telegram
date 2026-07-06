@@ -39,6 +39,7 @@ type TabId = 'overview' | 'install' | 'tools' | 'reviews';
 
 @Component({
     selector: 'app-detail',
+    standalone: true,
     imports: [
         CommonModule,
         RouterLink,

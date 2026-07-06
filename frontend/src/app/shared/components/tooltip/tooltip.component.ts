@@ -5,6 +5,7 @@ let tooltipSeq = 0;
 
 @Component({
     selector: 'app-tooltip',
+    standalone: true,
     imports: [],
     changeDetection: ChangeDetectionStrategy.OnPush,
     // The wrapper is focusable and describes itself via the tooltip, and the CSS

@@ -5,6 +5,7 @@ import { SENSITIVITY } from '../../constants/sensitivity.constants';
 
 @Component({
     selector: 'app-sens-bars',
+    standalone: true,
     imports: [CommonModule],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `

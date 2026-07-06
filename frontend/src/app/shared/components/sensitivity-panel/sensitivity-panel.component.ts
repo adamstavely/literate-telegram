@@ -8,6 +8,7 @@ import { TooltipComponent } from '../tooltip/tooltip.component';
 
 @Component({
     selector: 'app-sensitivity-panel',
+    standalone: true,
     imports: [IconComponent, SensBarsComponent, TooltipComponent],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `

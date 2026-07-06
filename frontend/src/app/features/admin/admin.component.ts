@@ -49,6 +49,7 @@ interface KpiCard {
 
 @Component({
     selector: 'app-admin',
+    standalone: true,
     imports: [RouterLink, FormsModule, IconComponent, TypeBadgeComponent],
     changeDetection: ChangeDetectionStrategy.Default,
     templateUrl: './admin.component.html'
