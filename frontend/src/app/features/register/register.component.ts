@@ -21,10 +21,9 @@ interface WizardStep {
 }
 
 @Component({
-  selector: 'app-register',
-  standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, IconComponent],
-  templateUrl: './register.component.html',
+    selector: 'app-register',
+    imports: [CommonModule, ReactiveFormsModule, FormsModule, IconComponent],
+    templateUrl: './register.component.html'
 })
 export class RegisterComponent implements OnInit {
   private readonly fb = inject(FormBuilder);

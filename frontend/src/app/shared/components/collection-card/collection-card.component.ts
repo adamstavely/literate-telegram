@@ -13,11 +13,10 @@ const TYPE_ICONS: Record<string, { icon: string; color: string }> = {
 };
 
 @Component({
-  selector: 'app-collection-card',
-  standalone: true,
-  imports: [CommonModule, IconComponent, SensitivityBadgeComponent],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
+    selector: 'app-collection-card',
+    imports: [CommonModule, IconComponent, SensitivityBadgeComponent],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    template: `
     <div
       class="card card-link col-card fade-up"
       role="button"
@@ -55,7 +54,7 @@ const TYPE_ICONS: Record<string, { icon: string; color: string }> = {
         <span class="col-card-n mono">{{ collection.count }} items</span>
       </div>
     </div>
-  `,
+  `
 })
 export class CollectionCardComponent {
   @Input({ required: true }) collection!: Collection;

@@ -19,17 +19,16 @@ function formatInstalls(n: number): string {
 }
 
 @Component({
-  selector: 'app-entry-card',
-  standalone: true,
-  imports: [
-    CommonModule,
-    IconComponent,
-    VerifiedMarkComponent,
-    SensitivityBadgeComponent,
-    SparklineComponent,
-  ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  templateUrl: './entry-card.component.html',
+    selector: 'app-entry-card',
+    imports: [
+        CommonModule,
+        IconComponent,
+        VerifiedMarkComponent,
+        SensitivityBadgeComponent,
+        SparklineComponent,
+    ],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    templateUrl: './entry-card.component.html'
 })
 export class EntryCardComponent {
   @Input() entry!: RegistryEntry;

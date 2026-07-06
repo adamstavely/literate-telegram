@@ -26,11 +26,10 @@ import { activateFocusTrap } from '../../utils/focus-trap.util';
 import { AuthenticatedUser, Notification } from '../../types';
 
 @Component({
-  selector: 'app-header',
-  standalone: true,
-  schemas: [CUSTOM_ELEMENTS_SCHEMA],
-  imports: [RouterLink, RouterLinkActive, FormsModule, IconComponent, AvatarComponent, DatePipe],
-  templateUrl: './header.component.html',
+    selector: 'app-header',
+    schemas: [CUSTOM_ELEMENTS_SCHEMA],
+    imports: [RouterLink, RouterLinkActive, FormsModule, IconComponent, AvatarComponent, DatePipe],
+    templateUrl: './header.component.html'
 })
 export class HeaderComponent implements OnInit, OnDestroy {
   readonly auth = inject(AuthService);

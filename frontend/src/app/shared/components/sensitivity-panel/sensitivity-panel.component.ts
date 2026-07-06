@@ -7,11 +7,10 @@ import { SensBarsComponent } from '../sens-bars/sens-bars.component';
 import { TooltipComponent } from '../tooltip/tooltip.component';
 
 @Component({
-  selector: 'app-sensitivity-panel',
-  standalone: true,
-  imports: [CommonModule, IconComponent, SensBarsComponent, TooltipComponent],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
+    selector: 'app-sensitivity-panel',
+    imports: [CommonModule, IconComponent, SensBarsComponent, TooltipComponent],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    template: `
     <div class="aside-card sens-panel" [class]="'sens-' + level">
       <div class="section-title" style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px">
         Data sensitivity
@@ -65,7 +64,7 @@ import { TooltipComponent } from '../tooltip/tooltip.component';
         </span>
       </div>
     </div>
-  `,
+  `
 })
 export class SensitivityPanelComponent {
   @Input() level: SensitivityLevel = 'internal';

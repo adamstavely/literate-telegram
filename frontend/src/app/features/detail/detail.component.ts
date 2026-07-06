@@ -37,18 +37,17 @@ import { EndpointCardComponent } from '../../shared/components/endpoint-card/end
 type TabId = 'overview' | 'install' | 'tools' | 'reviews';
 
 @Component({
-  selector: 'app-detail',
-  standalone: true,
-  imports: [
-    CommonModule,
-    RouterLink,
-    IconComponent,
-    VerifiedMarkComponent,
-    SensitivityBadgeComponent,
-    SensitivityPanelComponent,
-    EndpointCardComponent,
-  ],
-  templateUrl: './detail.component.html',
+    selector: 'app-detail',
+    imports: [
+        CommonModule,
+        RouterLink,
+        IconComponent,
+        VerifiedMarkComponent,
+        SensitivityBadgeComponent,
+        SensitivityPanelComponent,
+        EndpointCardComponent,
+    ],
+    templateUrl: './detail.component.html'
 })
 export class DetailComponent implements OnChanges {
   @Input() type!: string;

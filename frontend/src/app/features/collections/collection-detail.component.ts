@@ -40,17 +40,16 @@ const KIND_META: Record<string, { icon: string; label: string; color: string; no
 };
 
 @Component({
-  selector: 'app-collection-detail',
-  standalone: true,
-  imports: [
-    CommonModule,
-    RouterLink,
-    IconComponent,
-    SensitivityBadgeComponent,
-    SensitivityPanelComponent,
-    VerifiedMarkComponent,
-  ],
-  templateUrl: './collection-detail.component.html',
+    selector: 'app-collection-detail',
+    imports: [
+        CommonModule,
+        RouterLink,
+        IconComponent,
+        SensitivityBadgeComponent,
+        SensitivityPanelComponent,
+        VerifiedMarkComponent,
+    ],
+    templateUrl: './collection-detail.component.html'
 })
 export class CollectionDetailComponent implements OnChanges {
   @Input() id!: string;

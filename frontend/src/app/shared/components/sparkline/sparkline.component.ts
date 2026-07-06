@@ -15,11 +15,10 @@ function seededRandom(seed: string): () => number {
 }
 
 @Component({
-  selector: 'app-sparkline',
-  standalone: true,
-  imports: [CommonModule],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
+    selector: 'app-sparkline',
+    imports: [CommonModule],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    template: `
     <svg
       [attr.width]="width"
       [attr.height]="height"
@@ -54,7 +53,7 @@ function seededRandom(seed: string): () => number {
       />
     </svg>
   `,
-  styles: [':host { display: inline-flex; }'],
+    styles: [':host { display: inline-flex; }']
 })
 export class SparklineComponent implements OnChanges {
   @Input() seed = 'default';

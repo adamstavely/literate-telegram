@@ -155,10 +155,9 @@ const PANE: Record<string, { title: string; desc: string }> = {
 };
 
 @Component({
-  selector: 'app-policy',
-  standalone: true,
-  imports: [RouterLink, IconComponent],
-  templateUrl: './policy.component.html',
+    selector: 'app-policy',
+    imports: [RouterLink, IconComponent],
+    templateUrl: './policy.component.html'
 })
 export class PolicyComponent implements OnInit {
   private readonly registry = inject(RegistryService);
