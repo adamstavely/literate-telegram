@@ -7,7 +7,6 @@ import { docsUrl } from '../../core/utils/docs-url';
   standalone: true,
   imports: [RouterLink],
   templateUrl: './not-found.component.html',
-  styleUrl: './not-found.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NotFoundComponent {

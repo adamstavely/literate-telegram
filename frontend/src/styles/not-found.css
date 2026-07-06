@@ -1,3 +1,5 @@
+/* 404 page — global so lazy route animations are not capped by anyComponentStyle budget. */
+
 .notfound {
   --nf-stroke-primary: var(--accent);
   --nf-stroke-secondary: #8a9dff;
@@ -21,7 +23,7 @@
   background: var(--nf-surface);
 }
 
-:host-context([data-theme='light']) .notfound {
+[data-theme='light'] .notfound {
   --nf-stroke-secondary: #8a9dff;
   --nf-spark: var(--accent);
   --nf-eyebrow: var(--accent);
@@ -201,74 +203,74 @@
   }
 }
 
-.lk-left,
-.lk-right,
-.lk-spark,
-.chunk {
+.notfound .lk-left,
+.notfound .lk-right,
+.notfound .lk-spark,
+.notfound .chunk {
   transform-box: fill-box;
   transform-origin: center;
 }
 
-.lk-left {
+.notfound .lk-left {
   animation: nf-snap-left 1.5s cubic-bezier(0.34, 1.4, 0.5, 1) 0.5s forwards;
 }
 
-.lk-right {
+.notfound .lk-right {
   animation: nf-snap-right 1.5s cubic-bezier(0.34, 1.4, 0.5, 1) 0.5s forwards;
 }
 
-.lk-spark {
+.notfound .lk-spark {
   opacity: 0;
   animation: nf-spark-pop 0.65s ease-out 1.18s forwards;
 }
 
-.chunk-l {
+.notfound .chunk-l {
   animation: nf-fly-chunk-l 1.5s cubic-bezier(0.3, 0.7, 0.3, 1) 0.5s forwards;
 }
 
-.chunk-r {
+.notfound .chunk-r {
   animation: nf-fly-chunk-r 1.5s cubic-bezier(0.3, 0.7, 0.3, 1) 0.5s forwards;
 }
 
-.fade-1 {
+.notfound .fade-1 {
   opacity: 0;
   animation: nf-rise-in 0.7s ease-out 1.25s forwards;
 }
 
-.fade-2 {
+.notfound .fade-2 {
   opacity: 0;
   animation: nf-rise-in 0.7s ease-out 1.4s forwards;
 }
 
-.fade-3 {
+.notfound .fade-3 {
   opacity: 0;
   animation: nf-rise-in 0.7s ease-out 1.55s forwards;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .lk-left,
-  .lk-right,
-  .lk-spark,
-  .chunk-l,
-  .chunk-r,
-  .fade-1,
-  .fade-2,
-  .fade-3 {
+  .notfound .lk-left,
+  .notfound .lk-right,
+  .notfound .lk-spark,
+  .notfound .chunk-l,
+  .notfound .chunk-r,
+  .notfound .fade-1,
+  .notfound .fade-2,
+  .notfound .fade-3 {
     animation: none;
     opacity: 1;
     transform: none;
   }
 
-  .lk-left {
+  .notfound .lk-left {
     transform: translate(-17px, -6px) rotate(-8deg);
   }
 
-  .lk-right {
+  .notfound .lk-right {
     transform: translate(19px, 7px) rotate(9deg);
   }
 
-  .chunk-l,
-  .chunk-r {
+  .notfound .chunk-l,
+  .notfound .chunk-r {
     opacity: 0;
   }
 }

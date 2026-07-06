@@ -19,6 +19,7 @@
    so the canonical stylesheet outside this directory is not reachable at image build
    time. Keep src/vendor/interop.css in sync with project/styles.css. */
 @import './vendor/interop.css';
+@import './styles/not-found.css';
 
 /* Angular-specific additions not in the canonical stylesheet */
 :root {
