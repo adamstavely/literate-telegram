@@ -65,4 +65,18 @@ describe('POST /api/audit/client', () => {
     assert.equal(res.status, 202);
     assert.equal(res.body.accepted, 1);
   });
+
+  test('returns 400 when pageUrl exceeds max length', async () => {
+    const res = await request(app)
+      .post('/api/audit/client')
+      .send({
+        events: [{
+          action: 'post',
+          resource: 'entries',
+          pageUrl: `/${'a'.repeat(3000)}`,
+        }],
+      });
+
+    assert.equal(res.status, 400);
+  });
 });

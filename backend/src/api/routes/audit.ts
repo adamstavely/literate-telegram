@@ -7,6 +7,7 @@ import { optionalAuth, requireAuth, requireAdmin } from '../../middleware/auth.j
 import { ingestRateLimiter } from '../../middleware/rate-limit.js';
 import { AuditEvent } from '../../types/index.js';
 import { boundedMeta } from '../../services/sanitize-meta.js';
+import { boundedIngestString, MAX_INGEST_URL_LEN } from '../../services/ingest-fields.js';
 import { logger } from '../../logger/logger.js';
 import { clampPage, paginationFrom } from '../../services/pagination.js';
 
@@ -36,8 +37,8 @@ router.post(
     body('events').isArray({ min: 1, max: 50 }),
     body('events.*.action').isString().trim().isLength({ min: 1, max: 100 }),
     body('events.*.resource').isString().trim().isLength({ min: 1, max: 100 }),
-    body('events.*.timestamp').isISO8601(),
-    body('events.*.pageUrl').isString(),
+    body('events.*.timestamp').optional().isISO8601(),
+    body('events.*.pageUrl').isString().trim().isLength({ min: 1, max: MAX_INGEST_URL_LEN }),
   ],
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const errors = validationResult(req);
@@ -52,6 +53,7 @@ router.post(
       const userAgent = req.headers['user-agent'] ?? 'unknown';
 
       const body = events.flatMap((event) => {
+        const ingestedAt = new Date().toISOString();
         const doc: AuditEvent = {
           id: uuidv4(),
           // Attribution is server-derived only. A client-supplied userId is
@@ -61,12 +63,13 @@ router.post(
           action: `client:${event.action}`,
           resource: event.resource,
           resourceId: event.resourceId,
-          timestamp: event.timestamp,
+          timestamp: ingestedAt,
           ip,
           userAgent,
           result: 'success',
           metadata: {
-            pageUrl: event.pageUrl,
+            pageUrl: boundedIngestString(event.pageUrl, MAX_INGEST_URL_LEN),
+            ...(event.timestamp ? { clientTimestamp: event.timestamp } : {}),
             ...boundedMeta(event.metadata),
           },
         };

@@ -141,24 +141,27 @@ function loadConfig(): Config {
 
 export const config = loadConfig();
 
-// Reject leftover placeholder OIDC values in production — they would otherwise
-// point token verification at a tenant that isn't ours.
-if (config.nodeEnv === 'production') {
-  const placeholders = [config.oidc.issuer, config.oidc.jwksUri];
+/** Production-only guardrails — exported for tests. */
+export function validateProductionGuardrails(cfg: Config): void {
+  const placeholders = [cfg.oidc.issuer, cfg.oidc.jwksUri];
   if (placeholders.some((v) => v.includes('your-tenant'))) {
     throw new Error(
       'OIDC configuration still contains placeholder values (your-tenant.*). Set OIDC_ISSUER / OIDC_JWKS_URI to real values in production.',
     );
   }
   const weakEsPasswords = ['changeme', 'elastic', 'password', ''];
-  if (weakEsPasswords.includes(config.elasticsearch.password)) {
+  if (weakEsPasswords.includes(cfg.elasticsearch.password)) {
     throw new Error(
       'ES_PASSWORD must be set to a strong, non-default value in production.',
     );
   }
-  if (config.elasticsearch.node.startsWith('https://') && !config.elasticsearch.caFingerprint) {
+  if (cfg.elasticsearch.node.startsWith('https://') && !cfg.elasticsearch.caFingerprint) {
     throw new Error(
       'ES_CA_FINGERPRINT is required when ES_NODE uses https in production.',
     );
   }
+}
+
+if (config.nodeEnv === 'production') {
+  validateProductionGuardrails(config);
 }
