@@ -49,6 +49,20 @@ const NOTIF_ICONS: Record<Notification['type'], IconName> = {
   skill: 'skill',
 };
 
+/** Escape text interpolated into innerHTML or attribute values from API data. */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function safeNotifType(type: string): Notification['type'] {
+  return type in NOTIF_ICONS ? (type as Notification['type']) : 'update';
+}
+
 function iconSvg(name: IconName, size = 16): string {
   const body = ICON_PATHS[name] ?? '';
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
@@ -329,17 +343,23 @@ export function initSiteHeader(): void {
       return;
     }
     notifList.innerHTML = items
-      .map(
-        (n) => `<div class="notif-item${n.read ? '' : ' unread'}" role="button" tabindex="0" data-notif-id="${n.id}" aria-label="Mark notification read: ${n.title}">
-        <div class="notif-ic ${n.type}">${iconSvg(NOTIF_ICONS[n.type], 16)}</div>
+      .map((n) => {
+        const type = safeNotifType(n.type);
+        const id = escapeHtml(n.id);
+        const title = escapeHtml(n.title);
+        const body = escapeHtml(n.body);
+        const createdAt = escapeHtml(n.createdAt);
+        const when = escapeHtml(formatShortDate(n.createdAt));
+        return `<div class="notif-item${n.read ? '' : ' unread'}" role="button" tabindex="0" data-notif-id="${id}" aria-label="Mark notification read: ${title}">
+        <div class="notif-ic ${type}">${iconSvg(NOTIF_ICONS[type], 16)}</div>
         <div class="notif-body">
-          <div class="notif-t"><b>${n.title}</b></div>
-          <div class="notif-d">${n.body}</div>
-          <time class="notif-time" datetime="${n.createdAt}">${formatShortDate(n.createdAt)}</time>
+          <div class="notif-t"><b>${title}</b></div>
+          <div class="notif-d">${body}</div>
+          <time class="notif-time" datetime="${createdAt}">${when}</time>
         </div>
         ${n.read ? '' : '<span class="notif-unread-dot" aria-hidden="true"></span>'}
-      </div>`,
-      )
+      </div>`;
+      })
       .join('');
 
     notifList.querySelectorAll('[data-notif-id]').forEach((el) => {
